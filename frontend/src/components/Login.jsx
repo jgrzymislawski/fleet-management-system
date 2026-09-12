@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
 
 function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,6 +49,9 @@ function Login({ onLoginSuccess }) {
         />
       </div>
       <button type="submit">Zaloguj</button>
+      <button type="button" onClick={() => navigate('/')}>
+          Strona główna
+      </button>
     </form>
   );
 }
