@@ -8,22 +8,72 @@ System do zarządzania flotą pojazdów — praca dyplomowa.
 - Frontend: React (Vite)
 - Baza danych: PostgreSQL
 - Autoryzacja: JWT
+- Konteneryzacja: Docker
 
-## Wymagania wstępne
+## Szybkie uruchomienie (zalecane — Docker)
 
-Przed uruchomieniem projektu upewnij się, że masz zainstalowane:
+Najprostszy sposób na uruchomienie całego projektu.
 
-- [Python 3.12+](https://www.python.org/downloads/)
-- [Node.js 20+](https://nodejs.org/)
-- [PostgreSQL 16+](https://www.postgresql.org/download/)
-- [Git](https://git-scm.com/downloads)
+### Kroki
 
-## Instalacja — Backend
-
-1. Sklonuj repozytorium i przejdź do folderu backend:
+1. Sklonuj repozytorium:
 ```bash
    git clone https://github.com/jgrzymislawski/fleet-management-system.git
-   cd fleet-management-system/backend
+   cd fleet-management-system
+```
+
+2. Skopiuj plik `.env.example` do `.env` w folderze `backend/`:
+```bash
+   copy backend\.env.example backend\.env      # Windows
+   cp backend/.env.example backend/.env        # Mac/Linux
+```
+
+3. Zbuduj i uruchom kontenery:
+```bash
+   docker compose up --build
+```
+
+4. W nowym terminalu wykonaj migracje bazy danych i stwórz konto administratora:
+```bash
+   docker compose exec backend python manage.py migrate
+   docker compose exec backend python manage.py createsuperuser
+```
+   Podaj dowolną nazwę użytkownika, e-mail (opcjonalnie) i hasło.
+
+5. Aplikacja jest gotowa:
+   - Frontend: [http://localhost:5173](http://localhost:5173)
+   - Backend / API: [http://localhost:8000/api/](http://localhost:8000/api/)
+   - Panel administracyjny: [http://localhost:8000/admin/](http://localhost:8000/admin/)
+
+### Zatrzymanie projektu
+
+```bash
+docker compose down
+```
+
+Dane w bazie zostają zachowane między uruchomieniami. Aby usunąć również dane bazy danych:
+```bash
+docker compose down -v
+```
+
+---
+
+## Uruchomienie bez Dockera (alternatywa)
+
+Jeśli nie chcesz korzystać z Dockera, projekt można uruchomić ręcznie.
+
+### Wymagania
+
+- [Python 3.13+](https://www.python.org/downloads/)
+- [Node.js 20+](https://nodejs.org/)
+- [PostgreSQL 17+](https://www.postgresql.org/download/)
+- [Git](https://git-scm.com/downloads)
+
+### Backend
+
+1. Przejdź do folderu backend:
+```bash
+   cd backend
 ```
 
 2. Stwórz i aktywuj środowisko wirtualne:
@@ -38,37 +88,32 @@ Przed uruchomieniem projektu upewnij się, że masz zainstalowane:
    pip install -r requirements.txt
 ```
 
-4. Stwórz plik `.env` w folderze `backend/` na podstawie `.env.example`:
+4. Stwórz plik `.env` na podstawie `.env.example`:
 ```bash
    copy .env.example .env      # Windows
    cp .env.example .env        # Mac/Linux
 ```
-   Uzupełnij plik `.env` własnymi wartościami (hasło do bazy, sekretny klucz).
 
-5. Stwórz bazę danych w PostgreSQL:
+5. Stwórz bazę danych w PostgreSQL (dane logowania muszą się zgadzać z tymi w `.env`):
 ```sql
    CREATE USER fleet_user WITH PASSWORD 'twoje_haslo';
    CREATE DATABASE fleet_db OWNER fleet_user;
    GRANT ALL PRIVILEGES ON DATABASE fleet_db TO fleet_user;
 ```
 
-6. Zastosuj migracje:
+6. Zastosuj migracje i stwórz konto administratora:
 ```bash
    python manage.py migrate
-```
-
-7. Stwórz konto administratora:
-```bash
    python manage.py createsuperuser
 ```
 
-8. Uruchom serwer:
+7. Uruchom serwer:
 ```bash
    python manage.py runserver
 ```
-   Backend będzie dostępny pod `http://127.0.0.1:8000/`, panel admina pod `http://127.0.0.1:8000/admin/`.
+   Backend dostępny pod `http://127.0.0.1:8000/`.
 
-## Instalacja — Frontend
+### Frontend
 
 1. Przejdź do folderu frontend:
 ```bash
@@ -84,7 +129,7 @@ Przed uruchomieniem projektu upewnij się, że masz zainstalowane:
 ```bash
    npm run dev
 ```
-   Frontend będzie dostępny pod `http://localhost:5173/`.
+   Frontend dostępny pod `http://localhost:5173/`.
 
 ## Status projektu
 
