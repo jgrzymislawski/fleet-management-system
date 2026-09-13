@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'vehicles',
     'drivers',
+    'assignments',
 ]
 
 MIDDLEWARE = [

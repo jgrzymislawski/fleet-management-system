@@ -20,6 +20,8 @@ services:
       - ./backend/.env
     environment:
       DB_HOST: db
+    volumes:
+      - ./backend:/app
     depends_on:
       db:
         condition: service_healthy
