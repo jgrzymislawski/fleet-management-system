@@ -4,6 +4,9 @@ import HomePage from './components/HomePage';
 import Login from './components/Login';
 import VehicleList from './components/VehicleList';
 import DriverList from './components/DriverList';
+import OfferPage from './components/OfferPage';
+import PreviewPage from './components/PreviewPage';
+import JoinPage from './components/JoinPage';
 
 function Dashboard({ onLogout }) {
   return (
@@ -34,6 +37,8 @@ function App() {
 
   return (
     <Routes>
+      <Route path="/podglad" element={<PreviewPage />} /><Route path="/dolacz" element={<JoinPage />} />
+      <Route path="/oferta" element={<OfferPage />} />
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
       <Route
