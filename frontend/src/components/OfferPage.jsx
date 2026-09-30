@@ -1,4 +1,5 @@
 import Navbar from './navbar/Navbar';
+import Footer from './footer/Footer';
 
 function OfferPage() {
   return (
@@ -11,6 +12,8 @@ function OfferPage() {
           Tutaj znajdzie się opis funkcjonalności systemu Flotivo.
         </p>
       </main>
+
+      <Footer />
     </>
   );
 }
