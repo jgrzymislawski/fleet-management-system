@@ -1,45 +1,39 @@
-import { useNavigate } from 'react-router-dom';
-import logo from '../assets/logo.png';
 import Navbar from './navbar/Navbar';
+import cars from '../assets/cars.jpg';
+import './HomePage.css';
+import Footer from './footer/Footer';
 
 function HomePage() {
-  const navigate = useNavigate();
-
   return (
-    <>
+    <div className="home-page">
       <Navbar />
 
-      <div
-        className="min-h-screen bg-[#F5F1EA] flex flex-col items-center justify-center px-6"
-        style={{ fontFamily: "'Poppins', sans-serif" }}
-      >
-        <img
-          src={logo}
-          alt="Flotivo"
-          className="w-64 mb-12"
-        />
+      <main className="home-content">
+        <h1 className="home-title">Strona główna</h1>
 
-        <p className="text-[#1A1A1A]/70 font-light text-lg tracking-wide mb-16 text-center max-w-md">
-          Zarządzaj pojazdami, kierowcami i przypisaniami floty w jednym,
-          przejrzystym miejscu.
-        </p>
+        <section className="home-hero">
+          <div className="home-image-container">
+            <img
+              src={cars}
+              alt="Flota samochodów"
+              className="home-image"
+            />
+          </div>
 
-        <p>
-          Jak to działa?
-        </p>
+          <div className="home-description">
+            <h2>
+              Dołącz do nas i już dziś uszereguj swoją flotę.
+            </h2>
 
-        <h2>
-          Musisz się zarejestrować
-        </h2>
-
-        <button
-          onClick={() => navigate('/login')}
-          className="border border-[#1A1A1A] text-[#1A1A1A] px-10 py-3 font-light tracking-[0.15em] uppercase text-sm hover:bg-[#1A1A1A] hover:text-[#F5F1EA] transition-colors duration-300"
-        >
-          Zaloguj się
-        </button>
-      </div>
-    </>
+            <p>
+              Kontroluj wydatki, ubezpieczenia, przeglądy oraz najważniejsze
+              informacje dotyczące swoich pojazdów w jednym miejscu.
+            </p>
+          </div>
+        </section>
+      </main>
+      <Footer />
+    </div>
   );
 }
 

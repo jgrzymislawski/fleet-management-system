@@ -7,13 +7,14 @@
     align-items: center;
     justify-content: space-between;
 
-    background-color: #F5F1EA;
+    background-color: #FAF5F2;
     box-sizing: border-box;
 }
 
 .navbar-logo {
-    width: 120px;
-    height: auto;
+    height: 70px;
+    width: auto;
+    cursor: pointer;
 }
 
 .navbar-links {

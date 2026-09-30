@@ -1,0 +1,32 @@
+.footer {
+    width: 100%;
+    background-color: #FAF5F2;
+    padding: 30px 0;
+}
+
+.footer-content {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.footer-logo {
+    height: 60px;
+    width: auto;
+}
+
+.footer-contact {
+    margin: 0;
+    font-size: 14px;
+    color: #1A1A1A;
+}
+
+.footer-copyright {
+    margin: 0;
+    font-size: 13px;
+    color: #1A1A1A;
+}
