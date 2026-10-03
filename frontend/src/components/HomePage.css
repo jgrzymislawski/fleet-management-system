@@ -29,6 +29,7 @@
     width: 50%;
     height: 500px;
     overflow: hidden;
+    border-radius: 10px;
 }
 
 .home-image {
@@ -52,4 +53,118 @@
     font-size: 17px;
     font-weight: 300;
     line-height: 1.8;
+}
+.home-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+.home-button {
+    padding: 13px 24px;
+
+    border-radius: 6px;
+
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+
+    cursor: pointer;
+}
+
+.home-button-primary {
+    border: 1px solid #1A1A1A;
+
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.home-button-primary:hover {
+    background-color: #333333;
+}
+
+.home-button-secondary {
+    border: 1px solid #1A1A1A;
+
+    background-color: transparent;
+    color: #1A1A1A;
+}
+
+.home-button-secondary:hover {
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+.home-features {
+    margin-top: 100px;
+}
+
+.home-features-heading {
+    text-align: center;
+    margin-bottom: 45px;
+}
+
+.home-features-heading h2 {
+    margin: 0 0 10px;
+
+    font-size: 30px;
+    font-weight: 600;
+}
+
+.home-features-heading p {
+    margin: 0;
+
+    font-size: 16px;
+    font-weight: 300;
+
+    color: #666666;
+}
+
+.home-features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px;
+}
+
+.home-feature-card {
+    padding: 35px;
+
+    border: 1px solid #D8D1CA;
+    border-radius: 8px;
+
+    background-color: #FAF5F2;
+}
+
+.home-feature-number {
+    display: block;
+
+    margin-bottom: 25px;
+
+    font-size: 14px;
+    font-weight: 600;
+
+    color: #777777;
+}
+
+.home-feature-card h3 {
+    margin: 0 0 15px;
+
+    font-size: 21px;
+    font-weight: 500;
+
+    color: #1A1A1A;
+}
+
+.home-feature-card p {
+    margin: 0;
+
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 1.7;
+
+    color: #555555;
+}
+
+.home-feature-card:hover {
+    transform: translateY(-4px);
+    transition: transform 0.2s ease;
 }

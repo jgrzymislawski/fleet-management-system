@@ -1,0 +1,169 @@
+.offer-page {
+    min-height: 100vh;
+    background-color: #F5F1EA;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+}
+
+.offer-content {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 80px 0;
+}
+
+.offer-header {
+    max-width: 750px;
+    margin-bottom: 70px;
+}
+
+.offer-label {
+    display: block;
+    margin-bottom: 15px;
+
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+
+    color: #777777;
+}
+
+.offer-header h1 {
+    margin: 0 0 25px;
+
+    font-size: 42px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.offer-header p {
+    margin: 0;
+
+    max-width: 650px;
+
+    font-size: 16px;
+    font-weight: 300;
+    line-height: 1.8;
+
+    color: #555555;
+}
+.offer-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 25px;
+
+    margin-bottom: 80px;
+}
+
+.offer-card {
+    padding: 35px;
+
+    background-color: #FAF5F2;
+    border: 1px solid #D8D1CA;
+    border-radius: 8px;
+
+    transition: transform 0.2s ease;
+}
+
+.offer-card:hover {
+    transform: translateY(-4px);
+}
+
+.offer-card span {
+    display: block;
+    margin-bottom: 25px;
+
+    font-size: 13px;
+    font-weight: 600;
+
+    color: #777777;
+}
+
+.offer-card h2 {
+    margin: 0 0 15px;
+
+    font-size: 21px;
+    font-weight: 500;
+
+    color: #1A1A1A;
+}
+
+.offer-card p {
+    margin: 0;
+
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 1.7;
+
+    color: #555555;
+}
+.offer-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+
+    padding: 45px 50px;
+
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+
+    border-radius: 10px;
+}
+
+.offer-cta h2 {
+    margin: 0 0 10px;
+
+    font-size: 27px;
+    font-weight: 500;
+}
+
+.offer-cta p {
+    margin: 0;
+
+    font-size: 14px;
+    font-weight: 300;
+
+    color: #D0D0D0;
+}
+
+.offer-actions {
+    display: flex;
+    gap: 15px;
+}
+
+.offer-button-primary,
+.offer-button-secondary {
+    padding: 13px 24px;
+
+    border-radius: 6px;
+
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+
+    cursor: pointer;
+}
+
+.offer-button-primary {
+    background-color: #FFFFFF;
+    color: #1A1A1A;
+
+    border: 1px solid #FFFFFF;
+}
+
+.offer-button-primary:hover {
+    background-color: #EDEDED;
+}
+
+.offer-button-secondary {
+    background-color: transparent;
+    color: #FFFFFF;
+
+    border: 1px solid #FFFFFF;
+}
+
+.offer-button-secondary:hover {
+    background-color: #FFFFFF;
+    color: #1A1A1A;
+}

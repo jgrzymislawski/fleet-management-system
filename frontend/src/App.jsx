@@ -26,30 +26,29 @@ function Dashboard({ onLogout }) {
       <main className="dashboard-content">
         <h1>Dashboard</h1>
 
-        <p>
-          Witaj w panelu zarządzania flotą Flotivo.
-        </p>
+        <p>Witaj w panelu zarządzania flotą Flotivo.</p>
       </main>
     </div>
   );
 }
 
-
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    () => localStorage.getItem("access_token") !== null,
+  );
   const navigate = useNavigate();
 
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);
-    navigate('/dashboard');
+    navigate("/dashboard");
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
 
     setIsLoggedIn(false);
-    navigate('/');
+    navigate("/");
   };
 
   return (
@@ -61,38 +60,41 @@ function App() {
 
       <Route
         path="/login"
-        element={
-          <Login onLoginSuccess={handleLoginSuccess} />
-        }
+        element={<Login onLoginSuccess={handleLoginSuccess} />}
       />
 
       <Route
         path="/dashboard"
         element={
-          isLoggedIn
-            ? <Dashboard onLogout={handleLogout} />
-            : <Navigate to="/login" replace />
+          isLoggedIn ? (
+            <Dashboard onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
         }
       />
 
       <Route
         path="/vehicles"
         element={
-          isLoggedIn
-            ? <VehiclesPage onLogout={handleLogout} />
-            : <Navigate to="/login" replace />
+          isLoggedIn ? (
+            <VehiclesPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
         }
       />
-       <Route
+      <Route
         path="/drivers"
         element={
-        isLoggedIn
-            ? <DriversPage onLogout={handleLogout} />
-            : <Navigate to="/login" replace />
+          isLoggedIn ? (
+            <DriversPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
         }
-/>
+      />
     </Routes>
-
   );
 }
 
