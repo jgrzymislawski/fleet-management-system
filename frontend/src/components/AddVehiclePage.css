@@ -1,0 +1,137 @@
+.add-vehicle-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    margin-bottom: 40px;
+}
+
+.add-vehicle-header h1 {
+    margin: 0 0 10px;
+
+    font-size: 32px;
+    font-weight: 600;
+}
+
+.add-vehicle-header p {
+    margin: 0;
+
+    font-size: 14px;
+    font-weight: 300;
+
+    color: #666666;
+}
+
+.cancel-vehicle-button {
+    padding: 10px 18px;
+
+    border: 1px solid #CFC8C2;
+    border-radius: 6px;
+
+    background-color: transparent;
+
+    font-family: 'Poppins', sans-serif;
+
+    cursor: pointer;
+}
+
+.add-vehicle-form {
+    max-width: 900px;
+
+    padding: 35px;
+
+    background-color: #FAF5F2;
+
+    border: 1px solid #D8D1CA;
+    border-radius: 8px;
+}
+
+.vehicle-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+
+    gap: 25px;
+}
+
+.vehicle-form-field label {
+    display: block;
+
+    margin-bottom: 8px;
+
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.vehicle-form-field input,
+.vehicle-form-field select {
+    width: 100%;
+    height: 45px;
+
+    padding: 0 12px;
+
+    box-sizing: border-box;
+
+    border: 1px solid #CFC8C2;
+    border-radius: 6px;
+
+    background-color: #FFFFFF;
+
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+
+    outline: none;
+}
+
+.vehicle-form-field input:focus,
+.vehicle-form-field select:focus {
+    border-color: #1A1A1A;
+}
+
+.vehicle-form-actions {
+    display: flex;
+    justify-content: flex-end;
+
+    gap: 15px;
+
+    margin-top: 35px;
+}
+
+.vehicle-form-cancel,
+.vehicle-form-submit {
+    padding: 11px 20px;
+
+    border-radius: 6px;
+
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+
+    cursor: pointer;
+}
+
+.vehicle-form-cancel {
+    border: 1px solid #CFC8C2;
+
+    background-color: transparent;
+
+    color: #1A1A1A;
+}
+
+.vehicle-form-submit {
+    border: none;
+
+    background-color: #1A1A1A;
+
+    color: #FFFFFF;
+}
+
+.vehicle-form-submit:hover {
+    background-color: #333333;
+}
+
+.add-vehicle-error {
+    margin-top: 25px;
+
+    font-size: 14px;
+
+    color: #A33A3A;
+}

@@ -8,11 +8,60 @@ class Vehicle(models.Model):
         ('inactive', 'Nieaktywny'),
     ]
 
+    FUEL_CHOICES = [
+        ('petrol', 'Benzyna'),
+        ('diesel', 'Diesel'),
+        ('lpg', 'LPG'),
+        ('hybrid', 'Hybryda'),
+        ('electric', 'Elektryczny'),
+    ]
+
+    VEHICLE_TYPE_CHOICES = [
+        ('passenger', 'Samochód osobowy'),
+        ('van', 'Bus / samochód dostawczy'),
+        ('truck', 'Samochód ciężarowy'),
+        ('special', 'Pojazd specjalny'),
+        ('other', 'Inny'),
+    ]
+
     brand = models.CharField(max_length=100)
     model = models.CharField(max_length=100)
-    registration_number = models.CharField(max_length=20, unique=True)
+
+    registration_number = models.CharField(
+        max_length=20,
+        unique=True
+    )
+
+    vin = models.CharField(
+        max_length=17,
+        unique=True,
+        null=True,
+        blank=True
+    )
+
     year = models.IntegerField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+
+    vehicle_type = models.CharField(
+        max_length=20,
+        choices=VEHICLE_TYPE_CHOICES,
+        default='passenger'
+    )
+
+    fuel_type = models.CharField(
+        max_length=20,
+        choices=FUEL_CHOICES,
+        null=True,
+        blank=True
+    )
+
+    mileage = models.PositiveIntegerField(default=0)
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='active'
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

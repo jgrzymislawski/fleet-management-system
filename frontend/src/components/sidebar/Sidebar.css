@@ -1,5 +1,6 @@
 .sidebar {
     width: 240px;
+    min-width: 240px;
     height: 100vh;
 
     padding: 30px 20px;
@@ -11,6 +12,9 @@
     background-color: #1A1A1A;
 
     box-sizing: border-box;
+
+    position: sticky;
+    top: 0;
 }
 
 .sidebar-logo {
@@ -73,4 +77,33 @@
 .sidebar-logout:hover {
     background-color: #FAF5F2;
     color: #1A1A1A;
+}
+
+
+/* MNIEJSZE EKRANY */
+
+@media (max-width: 900px) {
+    .sidebar {
+        width: 170px;
+        min-width: 170px;
+
+        padding: 25px 15px;
+    }
+
+    .sidebar-logo {
+        margin-bottom: 35px;
+
+        font-size: 19px;
+        letter-spacing: 1px;
+    }
+
+    .sidebar-item {
+        padding: 11px 10px;
+        font-size: 13px;
+    }
+
+    .sidebar-logout {
+        padding: 11px 10px;
+        font-size: 13px;
+    }
 }

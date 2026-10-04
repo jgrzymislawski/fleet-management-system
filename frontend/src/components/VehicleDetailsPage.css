@@ -1,0 +1,122 @@
+.vehicle-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.vehicle-details-header h1 {
+    margin: 12px 0 6px;
+    font-size: 32px;
+    color: #1A1A1A;
+}
+
+.vehicle-details-back {
+    padding: 0;
+    border: none;
+    background: none;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    color: #777;
+    cursor: pointer;
+}
+
+.vehicle-details-back:hover {
+    color: #1A1A1A;
+}
+
+.vehicle-details-subtitle {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    color: #666;
+}
+
+.vehicle-details-edit {
+    padding: 11px 18px;
+    border: none;
+    border-radius: 7px;
+    background-color: #1A1A1A;
+    color: white;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+}
+
+.vehicle-details-edit:hover {
+    opacity: 0.85;
+}
+
+.vehicle-details-card {
+    padding: 28px;
+    border-radius: 10px;
+    background-color: #FAF5F2;
+}
+
+.vehicle-details-card h2 {
+    margin-top: 0;
+    margin-bottom: 25px;
+    font-size: 20px;
+    color: #1A1A1A;
+}
+
+.vehicle-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: 60px;
+    row-gap: 25px;
+}
+
+.vehicle-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #E2DDD8;
+}
+
+.vehicle-detail-label {
+    font-size: 12px;
+    color: #888;
+}
+
+.vehicle-detail-value {
+    font-size: 15px;
+    font-weight: 500;
+    color: #1A1A1A;
+}
+
+.vehicle-details-error {
+    color: #A33A3A;
+}
+
+@media (max-width: 900px) {
+    .vehicle-details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .vehicle-details-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+@media (max-width: 900px) {
+    .vehicle-details-card {
+        padding: 20px;
+    }
+
+    .vehicle-details-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .vehicle-details-grid {
+        grid-template-columns: 1fr;
+        row-gap: 18px;
+    }
+
+    .vehicle-details-edit {
+        width: 100%;
+    }
+}

@@ -211,3 +211,166 @@
     font-size: 16px;
     color: #666666;
 }
+.dashboard-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px;
+
+    margin-top: 40px;
+}
+
+.dashboard-card {
+    padding: 30px;
+
+    background-color: #FAF5F2;
+    border: 1px solid #D8D1CA;
+    border-radius: 8px;
+}
+
+.dashboard-card-label {
+    display: block;
+    margin-bottom: 20px;
+
+    font-size: 14px;
+    font-weight: 500;
+
+    color: #555555;
+}
+
+.dashboard-card-value {
+    display: block;
+    margin-bottom: 10px;
+
+    font-size: 36px;
+    font-weight: 600;
+
+    color: #1A1A1A;
+}
+
+.dashboard-card-description {
+    display: block;
+
+    font-size: 13px;
+    font-weight: 300;
+
+    color: #777777;
+}
+.dashboard-recent {
+    margin-top: 40px;
+}
+
+.dashboard-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    margin-bottom: 20px;
+}
+
+.dashboard-section-header h2 {
+    margin: 0;
+
+    font-size: 22px;
+    font-weight: 500;
+}
+
+.dashboard-section-header span {
+    font-size: 13px;
+    color: #777777;
+}
+
+.dashboard-table {
+    overflow: hidden;
+
+    background-color: #FAF5F2;
+    border: 1px solid #D8D1CA;
+    border-radius: 8px;
+}
+
+.dashboard-table-header,
+.dashboard-table-row {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    gap: 20px;
+
+    padding: 17px 25px;
+}
+
+.dashboard-table-header {
+    background-color: #EEE8E2;
+
+    font-size: 13px;
+    font-weight: 600;
+
+    color: #555555;
+}
+
+.dashboard-table-row {
+    border-top: 1px solid #E0DAD4;
+
+    font-size: 14px;
+    color: #1A1A1A;
+}
+
+.dashboard-table-row:hover {
+    background-color: #F5F1EA;
+}
+.vehicle-status {
+    width: fit-content;
+    padding: 5px 10px;
+
+    border-radius: 20px;
+
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.vehicle-status-active {
+    background-color: #E4EFE6;
+    color: #365B3A;
+}
+
+.vehicle-status-maintenance {
+    background-color: #F3E8D5;
+    color: #795A28;
+}
+
+.vehicle-status-inactive {
+    background-color: #E8E8E8;
+    color: #666666;
+}
+@media (max-width: 1200px) {
+    .dashboard-content {
+        padding: 35px;
+        min-width: 0;
+    }
+
+    .dashboard-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    .dashboard-content {
+        padding: 25px;
+        min-width: 0;
+    }
+
+    .dashboard-content h1 {
+        font-size: 28px;
+    }
+
+    .dashboard-stats {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .dashboard-table {
+        overflow-x: auto;
+    }
+
+    .dashboard-table-header,
+    .dashboard-table-row {
+        min-width: 650px;
+    }
+}
