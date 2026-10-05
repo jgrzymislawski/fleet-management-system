@@ -12,6 +12,9 @@ import Dashboard from "./components/Dashboard";
 import EditVehiclePage from "./components/EditVehiclePage";
 import AddVehiclePage from "./components/AddVehiclePage";
 import VehicleDetailsPage from "./components/VehicleDetailsPage";
+import AddDriverPage from "./components/AddDriverPage";
+import DriverDetailsPage from "./components/DriverDetailsPage";
+import EditDriverPage from "./components/EditDriverPage";
 import "./App.css";
 
 function App() {
@@ -89,6 +92,36 @@ function App() {
         element={
           isLoggedIn ? (
             <VehiclesPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
+        path="/drivers/add"
+        element={
+          isLoggedIn ? (
+            <AddDriverPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
+        path="/drivers/:id"
+        element={
+          isLoggedIn ? (
+            <DriverDetailsPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
+        path="/drivers/:id/edit"
+        element={
+          isLoggedIn ? (
+            <EditDriverPage onLogout={handleLogout} />
           ) : (
             <Navigate to="/login" replace />
           )

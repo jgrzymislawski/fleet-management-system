@@ -1,0 +1,185 @@
+.drivers {
+    width: 100%;
+}
+
+.drivers-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 40px;
+}
+
+.drivers-header h1 {
+    margin: 0 0 10px;
+    font-size: 32px;
+    font-weight: 600;
+    color: #1A1A1A;
+}
+
+.drivers-header p {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 300;
+    color: #666666;
+}
+
+.add-driver-button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.add-driver-button:hover {
+    background-color: #333333;
+}
+
+.drivers-error {
+    margin-bottom: 20px;
+    color: #A33A3A;
+}
+
+.drivers-results-info {
+    margin-bottom: 15px;
+    font-size: 12px;
+    color: #777777;
+}
+
+.drivers-table {
+    background-color: #FAF5F2;
+    border: 1px solid #D8D1CA;
+    border-radius: 8px;
+}
+
+.drivers-table-header,
+.drivers-table-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1.2fr 1fr 1fr 70px;
+    gap: 20px;
+    align-items: center;
+    padding: 17px 25px;
+}
+
+.drivers-table-header {
+    background-color: #EEE8E2;
+    border-radius: 8px 8px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555555;
+}
+
+.drivers-table-row {
+    position: relative;
+    border-top: 1px solid #E0DAD4;
+    font-size: 14px;
+    color: #1A1A1A;
+}
+
+.drivers-table-row:hover {
+    background-color: #F5F1EA;
+}
+
+.driver-name {
+    font-weight: 500;
+}
+
+.driver-actions {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.driver-actions-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 36px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    font-size: 17px;
+    letter-spacing: 2px;
+    color: #555555;
+    cursor: pointer;
+}
+
+.driver-actions-button:hover {
+    background-color: #E8E3DE;
+    color: #1A1A1A;
+}
+
+.driver-actions-menu {
+    position: absolute;
+    top: 36px;
+    right: 0;
+    z-index: 10;
+    width: 150px;
+    padding: 6px;
+    background-color: #FFFFFF;
+    border: 1px solid #D8D1CA;
+    border-radius: 7px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+.driver-actions-menu button {
+    width: 100%;
+    padding: 9px 10px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    text-align: left;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    color: #1A1A1A;
+    cursor: pointer;
+}
+
+.driver-actions-menu button:hover {
+    background-color: #F5F1EA;
+}
+
+.driver-actions-divider {
+    height: 1px;
+    margin: 5px 4px;
+    background-color: #E8E3DE;
+}
+
+.driver-actions-menu .driver-actions-delete {
+    color: #A33A3A;
+}
+
+.driver-actions-menu .driver-actions-delete:hover {
+    background-color: #F3E1E1;
+}
+
+.drivers-empty {
+    padding: 35px 25px;
+    border-top: 1px solid #E0DAD4;
+    text-align: center;
+    font-size: 13px;
+    color: #777777;
+}
+
+@media (max-width: 900px) {
+    .drivers-header {
+        align-items: flex-start;
+        gap: 20px;
+    }
+
+    .drivers-table {
+        overflow-x: auto;
+    }
+
+    .drivers-table-header,
+    .drivers-table-row {
+        min-width: 750px;
+    }
+}

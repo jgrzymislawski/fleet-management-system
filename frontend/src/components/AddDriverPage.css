@@ -1,0 +1,123 @@
+.add-driver-header {
+    margin-bottom: 30px;
+}
+
+.add-driver-header h1 {
+    margin: 0 0 10px;
+    font-size: 32px;
+    font-weight: 600;
+    color: #1A1A1A;
+}
+
+.add-driver-header p {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 300;
+    color: #666666;
+}
+
+.driver-form {
+    padding: 28px;
+    background-color: #FAF5F2;
+    border: 1px solid #D8D1CA;
+    border-radius: 10px;
+}
+
+.driver-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px 30px;
+}
+
+.driver-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.driver-form-field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #666666;
+}
+
+.driver-form-field input {
+    width: 100%;
+    height: 44px;
+    padding: 0 12px;
+    box-sizing: border-box;
+    border: 1px solid #D8D1CA;
+    border-radius: 6px;
+    background-color: #FFFFFF;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+}
+
+.driver-form-field input:focus {
+    outline: none;
+    border-color: #1A1A1A;
+}
+
+.driver-form-error {
+    margin: 20px 0 0;
+    font-size: 13px;
+    color: #A33A3A;
+}
+
+.driver-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 30px;
+}
+
+.driver-form-cancel,
+.driver-form-submit {
+    padding: 11px 18px;
+    border-radius: 6px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.driver-form-cancel {
+    border: 1px solid #D8D1CA;
+    background-color: transparent;
+    color: #1A1A1A;
+}
+
+.driver-form-cancel:hover {
+    background-color: #EEE8E2;
+}
+
+.driver-form-submit {
+    border: none;
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.driver-form-submit:hover {
+    background-color: #333333;
+}
+
+@media (max-width: 900px) {
+    .driver-form {
+        padding: 20px;
+    }
+
+    .driver-form-grid {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+
+    .driver-form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .driver-form-cancel,
+    .driver-form-submit {
+        width: 100%;
+    }
+}
