@@ -6,15 +6,23 @@ import "./VehicleList.css";
 function VehicleList() {
   const [vehicles, setVehicles] = useState([]);
   const [error, setError] = useState(null);
+
   const [openMenuId, setOpenMenuId] = useState(null);
   const [openFilter, setOpenFilter] = useState(null);
+
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [selectedYears, setSelectedYears] = useState([]);
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [selectedStatuses, setSelectedStatuses] = useState([]);
 
+  const [searchText, setSearchText] = useState("");
+
+  const [sortField, setSortField] = useState(null);
+  const [sortDirection, setSortDirection] = useState("asc");
+
   const navigate = useNavigate();
   const filtersRef = useRef(null);
+
   useEffect(() => {
     apiClient
       .get("vehicles/")
@@ -26,6 +34,7 @@ function VehicleList() {
         setError("Nie udało się pobrać listy pojazdów");
       });
   }, []);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (filtersRef.current && !filtersRef.current.contains(event.target)) {
@@ -39,6 +48,7 @@ function VehicleList() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
   const handleMenuClick = (vehicleId) => {
     if (openMenuId === vehicleId) {
       setOpenMenuId(null);
@@ -149,12 +159,31 @@ function VehicleList() {
     return `${Number(mileage).toLocaleString("pl-PL")} km`;
   };
 
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const getSortArrow = (field) => {
+    if (sortField !== field) {
+      return "";
+    }
+
+    return sortDirection === "asc" ? "↑" : "↓";
+  };
+
   const brands = [...new Set(vehicles.map((vehicle) => vehicle.brand))].sort();
+
   const years = [
     ...new Set(vehicles.map((vehicle) => String(vehicle.year))),
   ].sort((a, b) => Number(b) - Number(a));
 
   const types = [...new Set(vehicles.map((vehicle) => vehicle.vehicle_type))];
+
   const statuses = [...new Set(vehicles.map((vehicle) => vehicle.status))];
 
   const filteredVehicles = vehicles.filter((vehicle) => {
@@ -173,7 +202,74 @@ function VehicleList() {
       selectedStatuses.length === 0 ||
       selectedStatuses.includes(vehicle.status);
 
-    return matchesBrand && matchesYear && matchesType && matchesStatus;
+    const normalizedSearchText = searchText.toLowerCase().trim();
+
+    const brand = vehicle.brand?.toLowerCase() || "";
+    const model = vehicle.model?.toLowerCase() || "";
+    const registrationNumber = vehicle.registration_number?.toLowerCase() || "";
+    const vin = vehicle.vin?.toLowerCase() || "";
+
+    const matchesSearch =
+      normalizedSearchText === "" ||
+      brand.includes(normalizedSearchText) ||
+      model.includes(normalizedSearchText) ||
+      registrationNumber.includes(normalizedSearchText) ||
+      vin.includes(normalizedSearchText);
+
+    return (
+      matchesBrand &&
+      matchesYear &&
+      matchesType &&
+      matchesStatus &&
+      matchesSearch
+    );
+  });
+
+  const sortedVehicles = [...filteredVehicles].sort((a, b) => {
+    if (!sortField) {
+      return 0;
+    }
+
+    let valueA;
+    let valueB;
+
+    if (sortField === "vehicle") {
+      valueA = `${a.brand} ${a.model}`;
+      valueB = `${b.brand} ${b.model}`;
+    } else if (sortField === "registration_number") {
+      valueA = a.registration_number;
+      valueB = b.registration_number;
+    } else if (sortField === "vehicle_type") {
+      valueA = getVehicleTypeName(a.vehicle_type);
+      valueB = getVehicleTypeName(b.vehicle_type);
+    } else if (sortField === "year") {
+      valueA = Number(a.year);
+      valueB = Number(b.year);
+    } else if (sortField === "mileage") {
+      valueA = Number(a.mileage);
+      valueB = Number(b.mileage);
+    } else if (sortField === "status") {
+      valueA = getStatusName(a.status);
+      valueB = getStatusName(b.status);
+    }
+
+    if (sortField === "year" || sortField === "mileage") {
+      if (sortDirection === "asc") {
+        return valueA - valueB;
+      }
+
+      return valueB - valueA;
+    }
+
+    const comparison = String(valueA).localeCompare(String(valueB), "pl", {
+      sensitivity: "base",
+    });
+
+    if (sortDirection === "asc") {
+      return comparison;
+    }
+
+    return -comparison;
   });
 
   const clearAllFilters = () => {
@@ -181,13 +277,15 @@ function VehicleList() {
     setSelectedYears([]);
     setSelectedTypes([]);
     setSelectedStatuses([]);
+    setSearchText("");
   };
 
   const filtersAreActive =
     selectedBrands.length > 0 ||
     selectedYears.length > 0 ||
     selectedTypes.length > 0 ||
-    selectedStatuses.length > 0;
+    selectedStatuses.length > 0 ||
+    searchText.trim() !== "";
 
   return (
     <div className="vehicles">
@@ -206,6 +304,25 @@ function VehicleList() {
       </div>
 
       {error && <p className="vehicles-error">{error}</p>}
+
+      <div className="vehicles-search">
+        <input
+          type="text"
+          placeholder="Szukaj po marce, modelu, rejestracji lub VIN..."
+          value={searchText}
+          onChange={(event) => setSearchText(event.target.value)}
+        />
+
+        {searchText && (
+          <button
+            className="vehicles-search-clear"
+            onClick={() => setSearchText("")}
+            title="Wyczyść wyszukiwanie"
+          >
+            ×
+          </button>
+        )}
+      </div>
 
       <div className="vehicles-filters" ref={filtersRef}>
         <div className="vehicles-filter">
@@ -496,16 +613,70 @@ function VehicleList() {
 
       <div className="vehicles-table">
         <div className="vehicles-table-header">
-          <span>Pojazd</span>
-          <span>Rejestracja</span>
-          <span>Typ</span>
-          <span>Rok</span>
-          <span>Przebieg</span>
-          <span>Status</span>
+          <button
+            className={`table-sort-button ${
+              sortField === "vehicle" ? "table-sort-active" : ""
+            }`}
+            onClick={() => handleSort("vehicle")}
+          >
+            Pojazd
+            <span>{getSortArrow("vehicle")}</span>
+          </button>
+
+          <button
+            className={`table-sort-button ${
+              sortField === "registration_number" ? "table-sort-active" : ""
+            }`}
+            onClick={() => handleSort("registration_number")}
+          >
+            Rejestracja
+            <span>{getSortArrow("registration_number")}</span>
+          </button>
+
+          <button
+            className={`table-sort-button ${
+              sortField === "vehicle_type" ? "table-sort-active" : ""
+            }`}
+            onClick={() => handleSort("vehicle_type")}
+          >
+            Typ
+            <span>{getSortArrow("vehicle_type")}</span>
+          </button>
+
+          <button
+            className={`table-sort-button ${
+              sortField === "year" ? "table-sort-active" : ""
+            }`}
+            onClick={() => handleSort("year")}
+          >
+            Rok
+            <span>{getSortArrow("year")}</span>
+          </button>
+
+          <button
+            className={`table-sort-button ${
+              sortField === "mileage" ? "table-sort-active" : ""
+            }`}
+            onClick={() => handleSort("mileage")}
+          >
+            Przebieg
+            <span>{getSortArrow("mileage")}</span>
+          </button>
+
+          <button
+            className={`table-sort-button ${
+              sortField === "status" ? "table-sort-active" : ""
+            }`}
+            onClick={() => handleSort("status")}
+          >
+            Status
+            <span>{getSortArrow("status")}</span>
+          </button>
+
           <span>Akcje</span>
         </div>
 
-        {filteredVehicles.map((vehicle) => (
+        {sortedVehicles.map((vehicle) => (
           <div className="vehicles-table-row" key={vehicle.id}>
             <span className="vehicle-name">
               {vehicle.brand} {vehicle.model}
@@ -557,7 +728,7 @@ function VehicleList() {
           </div>
         ))}
 
-        {filteredVehicles.length === 0 && (
+        {sortedVehicles.length === 0 && (
           <div className="vehicles-empty">
             Brak pojazdów spełniających wybrane kryteria.
           </div>

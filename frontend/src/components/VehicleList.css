@@ -6,41 +6,32 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-
     margin-bottom: 40px;
 }
 
 .vehicles-header h1 {
     margin: 0 0 10px;
-
     font-size: 32px;
     font-weight: 600;
-
     color: #1A1A1A;
 }
 
 .vehicles-header p {
     margin: 0;
-
     font-size: 14px;
     font-weight: 300;
-
     color: #666666;
 }
 
 .add-vehicle-button {
     padding: 12px 20px;
-
     border: none;
     border-radius: 6px;
-
     background-color: #1A1A1A;
     color: #FFFFFF;
-
     font-family: 'Poppins', sans-serif;
     font-size: 14px;
     font-weight: 500;
-
     cursor: pointer;
 }
 
@@ -50,8 +41,54 @@
 
 .vehicles-error {
     margin-bottom: 20px;
-
     color: #A33A3A;
+}
+
+.vehicles-search {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    margin-bottom: 20px;
+}
+
+.vehicles-search input {
+    width: 100%;
+    height: 44px;
+    padding: 0 42px 0 14px;
+    box-sizing: border-box;
+    border: 1px solid #D8D1CA;
+    border-radius: 7px;
+    background-color: #FAF5F2;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+}
+
+.vehicles-search input:focus {
+    outline: none;
+    border-color: #1A1A1A;
+}
+
+.vehicles-search input::placeholder {
+    color: #999999;
+}
+
+.vehicles-search-clear {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #777777;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.vehicles-search-clear:hover {
+    color: #1A1A1A;
 }
 
 .vehicles-filters {
@@ -59,7 +96,6 @@
     align-items: flex-end;
     flex-wrap: wrap;
     gap: 12px;
-
     margin-bottom: 10px;
 }
 
@@ -72,7 +108,6 @@
 .vehicles-filter-label {
     font-size: 12px;
     font-weight: 500;
-
     color: #666666;
 }
 
@@ -83,23 +118,17 @@
 .filter-dropdown-button {
     min-width: 170px;
     height: 42px;
-
     padding: 0 12px;
-
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 15px;
-
     border: 1px solid #D8D1CA;
     border-radius: 6px;
-
     background-color: #FAF5F2;
     color: #1A1A1A;
-
     font-family: 'Poppins', sans-serif;
     font-size: 13px;
-
     cursor: pointer;
 }
 
@@ -113,30 +142,21 @@
 
 .filter-arrow {
     font-size: 9px;
-
     color: #777777;
 }
 
 .filter-dropdown-menu {
     position: absolute;
-
     top: calc(100% + 6px);
     left: 0;
-
     z-index: 20;
-
     width: 230px;
     max-height: 300px;
-
     padding: 8px;
-
     overflow-y: auto;
-
     background-color: #FFFFFF;
-
     border: 1px solid #D8D1CA;
     border-radius: 7px;
-
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
 }
 
@@ -144,26 +164,19 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-
     padding: 6px 8px 10px;
-
     font-size: 12px;
     font-weight: 600;
-
     color: #555555;
 }
 
 .filter-clear-button {
     padding: 0;
-
     border: none;
     background: none;
-
     font-family: 'Poppins', sans-serif;
     font-size: 11px;
-
     color: #777777;
-
     cursor: pointer;
 }
 
@@ -175,15 +188,10 @@
     display: flex;
     align-items: center;
     gap: 9px;
-
     padding: 8px;
-
     border-radius: 5px;
-
     font-size: 13px;
-
     color: #1A1A1A;
-
     cursor: pointer;
 }
 
@@ -194,35 +202,25 @@
 .filter-checkbox-row input {
     width: 15px;
     height: 15px;
-
     accent-color: #1A1A1A;
-
     cursor: pointer;
 }
 
 .filter-divider {
     height: 1px;
-
     margin: 5px 4px;
-
     background-color: #E8E3DE;
 }
 
 .clear-all-filters-button {
     height: 42px;
-
     padding: 0 14px;
-
     border: none;
     border-radius: 6px;
-
     background: transparent;
-
     font-family: 'Poppins', sans-serif;
     font-size: 12px;
-
     color: #777777;
-
     cursor: pointer;
 }
 
@@ -233,15 +231,12 @@
 
 .vehicles-results-info {
     margin-bottom: 15px;
-
     font-size: 12px;
-
     color: #777777;
 }
 
 .vehicles-table {
     background-color: #FAF5F2;
-
     border: 1px solid #D8D1CA;
     border-radius: 8px;
 }
@@ -249,33 +244,52 @@
 .vehicles-table-header,
 .vehicles-table-row {
     display: grid;
-
     grid-template-columns: 1.5fr 1.1fr 1.1fr 0.6fr 1fr 1fr 70px;
-
     gap: 20px;
     align-items: center;
-
     padding: 17px 25px;
 }
 
 .vehicles-table-header {
     background-color: #EEE8E2;
-
     border-radius: 8px 8px 0 0;
-
     font-size: 13px;
     font-weight: 600;
-
     color: #555555;
+}
+
+.table-sort-button {
+    width: fit-content;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    background: transparent;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555555;
+    cursor: pointer;
+}
+
+.table-sort-button:hover {
+    color: #1A1A1A;
+}
+
+.table-sort-button span {
+    min-width: 10px;
+    font-size: 13px;
+}
+
+.table-sort-button.table-sort-active {
+    color: #1A1A1A;
 }
 
 .vehicles-table-row {
     position: relative;
-
     border-top: 1px solid #E0DAD4;
-
     font-size: 14px;
-
     color: #1A1A1A;
 }
 
@@ -289,11 +303,8 @@
 
 .vehicle-status {
     width: fit-content;
-
     padding: 5px 10px;
-
     border-radius: 20px;
-
     font-size: 12px;
     font-weight: 500;
 }
@@ -315,7 +326,6 @@
 
 .vehicle-actions {
     position: relative;
-
     display: flex;
     justify-content: center;
     align-items: center;
@@ -325,22 +335,15 @@
     display: flex;
     justify-content: center;
     align-items: center;
-
     width: 36px;
     height: 30px;
-
     padding: 0;
-
     border: none;
     border-radius: 5px;
-
     background: transparent;
-
     font-size: 17px;
     letter-spacing: 2px;
-
     color: #555555;
-
     cursor: pointer;
 }
 
@@ -351,41 +354,27 @@
 
 .vehicle-actions-menu {
     position: absolute;
-
     top: 36px;
     right: 0;
-
     z-index: 10;
-
     width: 150px;
-
     padding: 6px;
-
     background-color: #FFFFFF;
-
     border: 1px solid #D8D1CA;
     border-radius: 7px;
-
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
 }
 
 .vehicle-actions-menu button {
     width: 100%;
-
     padding: 9px 10px;
-
     border: none;
     border-radius: 5px;
-
     background: transparent;
-
     text-align: left;
-
     font-family: 'Poppins', sans-serif;
     font-size: 13px;
-
     color: #1A1A1A;
-
     cursor: pointer;
 }
 
@@ -395,9 +384,7 @@
 
 .vehicle-actions-divider {
     height: 1px;
-
     margin: 5px 4px;
-
     background-color: #E8E3DE;
 }
 
@@ -411,13 +398,9 @@
 
 .vehicles-empty {
     padding: 35px 25px;
-
     border-top: 1px solid #E0DAD4;
-
     text-align: center;
-
     font-size: 13px;
-
     color: #777777;
 }
 
@@ -425,6 +408,10 @@
     .vehicles-header {
         align-items: flex-start;
         gap: 20px;
+    }
+
+    .vehicles-search {
+        max-width: 100%;
     }
 
     .vehicles-filters {
