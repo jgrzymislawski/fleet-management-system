@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
 
 import HomePage from "./components/HomePage";
@@ -15,12 +15,15 @@ import VehicleDetailsPage from "./components/VehicleDetailsPage";
 import AddDriverPage from "./components/AddDriverPage";
 import DriverDetailsPage from "./components/DriverDetailsPage";
 import EditDriverPage from "./components/EditDriverPage";
+import useIdleLogout from "./hooks/useIdleLogout";
+
 import "./App.css";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(
     () => localStorage.getItem("access_token") !== null,
   );
+
   const navigate = useNavigate();
 
   const handleLoginSuccess = () => {
@@ -36,27 +39,31 @@ function App() {
     navigate("/");
   };
 
+  const handleIdleLogout = useCallback(() => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+
+    setIsLoggedIn(false);
+    navigate("/login", { replace: true });
+  }, [navigate]);
+
+  useIdleLogout(isLoggedIn, handleIdleLogout, 15 * 60 * 1000);
+
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+
       <Route path="/oferta" element={<OfferPage />} />
+
       <Route path="/podglad" element={<PreviewPage />} />
+
       <Route path="/dolacz" element={<JoinPage />} />
 
       <Route
         path="/login"
         element={<Login onLoginSuccess={handleLoginSuccess} />}
       />
-      <Route
-        path="/vehicles/add"
-        element={
-          isLoggedIn ? (
-            <AddVehiclePage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
+
       <Route
         path="/dashboard"
         element={
@@ -67,6 +74,18 @@ function App() {
           )
         }
       />
+
+      <Route
+        path="/vehicles/add"
+        element={
+          isLoggedIn ? (
+            <AddVehiclePage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
       <Route
         path="/vehicles/:id/edit"
         element={
@@ -77,6 +96,7 @@ function App() {
           )
         }
       />
+
       <Route
         path="/vehicles/:id"
         element={
@@ -87,6 +107,7 @@ function App() {
           )
         }
       />
+
       <Route
         path="/vehicles"
         element={
@@ -97,6 +118,7 @@ function App() {
           )
         }
       />
+
       <Route
         path="/drivers/add"
         element={
@@ -107,16 +129,7 @@ function App() {
           )
         }
       />
-      <Route
-        path="/drivers/:id"
-        element={
-          isLoggedIn ? (
-            <DriverDetailsPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
+
       <Route
         path="/drivers/:id/edit"
         element={
@@ -127,6 +140,18 @@ function App() {
           )
         }
       />
+
+      <Route
+        path="/drivers/:id"
+        element={
+          isLoggedIn ? (
+            <DriverDetailsPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
       <Route
         path="/drivers"
         element={
