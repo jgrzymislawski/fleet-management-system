@@ -5,6 +5,7 @@ function VehicleForm({
   onCancel,
   submitText,
   error,
+  drivers,
 }) {
   return (
     <form className="add-vehicle-form" onSubmit={onSubmit}>
@@ -130,6 +131,40 @@ function VehicleForm({
             <option value="maintenance">W serwisie</option>
             <option value="inactive">Nieaktywny</option>
           </select>
+        </div>
+
+        <div className="vehicle-form-field">
+          <label htmlFor="driver">Kierowca z bazy</label>
+
+          <select
+            id="driver"
+            name="driver"
+            value={formData.driver}
+            onChange={onChange}
+            disabled={formData.driver_name !== ""}
+          >
+            <option value="">Brak przypisanego kierowcy</option>
+
+            {drivers.map((driver) => (
+              <option key={driver.id} value={driver.id}>
+                {driver.first_name} {driver.last_name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="vehicle-form-field">
+          <label htmlFor="driver_name">Kierowca wpisany ręcznie</label>
+
+          <input
+            id="driver_name"
+            name="driver_name"
+            type="text"
+            value={formData.driver_name}
+            onChange={onChange}
+            disabled={formData.driver !== ""}
+            placeholder="Np. Jan Kowalski"
+          />
         </div>
       </div>
 

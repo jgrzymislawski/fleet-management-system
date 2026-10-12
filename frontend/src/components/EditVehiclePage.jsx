@@ -9,6 +9,8 @@ function EditVehiclePage({ onLogout }) {
   const navigate = useNavigate();
   const { id } = useParams();
 
+  const [drivers, setDrivers] = useState([]);
+
   const [formData, setFormData] = useState({
     brand: "",
     model: "",
@@ -19,12 +21,23 @@ function EditVehiclePage({ onLogout }) {
     fuel_type: "",
     mileage: "",
     status: "active",
+    driver: "",
+    driver_name: "",
   });
 
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    apiClient
+      .get("drivers/")
+      .then((response) => {
+        setDrivers(response.data);
+      })
+      .catch((err) => {
+        console.error("Błąd pobierania kierowców:", err);
+      });
+
     apiClient
       .get(`vehicles/${id}/`)
       .then((response) => {
@@ -40,6 +53,8 @@ function EditVehiclePage({ onLogout }) {
           fuel_type: vehicle.fuel_type || "",
           mileage: vehicle.mileage,
           status: vehicle.status,
+          driver: vehicle.driver || "",
+          driver_name: vehicle.driver_name || "",
         });
 
         setLoading(false);
@@ -71,12 +86,14 @@ function EditVehiclePage({ onLogout }) {
       ...formData,
       vin: formData.vin || null,
       fuel_type: formData.fuel_type || null,
+      driver: formData.driver || null,
+      driver_name: formData.driver_name || null,
     };
 
     apiClient
       .put(`vehicles/${id}/`, dataToSend)
       .then(() => {
-        navigate("/vehicles");
+        navigate(`/vehicles/${id}`);
       })
       .catch((err) => {
         console.error("Błąd zapisu:", err);
@@ -105,9 +122,10 @@ function EditVehiclePage({ onLogout }) {
             formData={formData}
             onChange={handleChange}
             onSubmit={handleSubmit}
-            onCancel={() => navigate("/vehicles")}
+            onCancel={() => navigate(`/vehicles/${id}`)}
             submitText="Zapisz zmiany"
             error={error}
+            drivers={drivers}
           />
         )}
       </main>

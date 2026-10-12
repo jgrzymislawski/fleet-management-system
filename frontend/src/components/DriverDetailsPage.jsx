@@ -9,22 +9,34 @@ function DriverDetailsPage({ onLogout }) {
   const { id } = useParams();
 
   const [driver, setDriver] = useState(null);
+  const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    apiClient
-      .get(`drivers/${id}/`)
-      .then((response) => {
-        setDriver(response.data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Błąd pobierania kierowcy:", err);
+    const loadDriverData = async () => {
+      try {
+        const driverResponse = await apiClient.get(`drivers/${id}/`);
+        setDriver(driverResponse.data);
+
+        const vehiclesResponse = await apiClient.get("vehicles/");
+
+        const driverVehicles = vehiclesResponse.data.filter(
+          (vehicle) => Number(vehicle.driver) === Number(id),
+        );
+
+        setVehicles(driverVehicles);
+      } catch (err) {
+        console.error("Błąd pobierania danych kierowcy:", err);
         console.error("Odpowiedź backendu:", err.response?.data);
+
         setError("Nie udało się pobrać danych kierowcy.");
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    loadDriverData();
   }, [id]);
 
   const formatDate = (date) => {
@@ -33,6 +45,14 @@ function DriverDetailsPage({ onLogout }) {
     }
 
     return new Date(date).toLocaleDateString("pl-PL");
+  };
+
+  const getStatusName = (status) => {
+    if (status === "active") return "Aktywny";
+    if (status === "maintenance") return "W serwisie";
+    if (status === "inactive") return "Nieaktywny";
+
+    return status;
   };
 
   if (loading) {
@@ -96,19 +116,16 @@ function DriverDetailsPage({ onLogout }) {
           <div className="driver-details-grid">
             <div className="driver-detail">
               <span className="driver-detail-label">Imię</span>
-
               <span className="driver-detail-value">{driver.first_name}</span>
             </div>
 
             <div className="driver-detail">
               <span className="driver-detail-label">Nazwisko</span>
-
               <span className="driver-detail-value">{driver.last_name}</span>
             </div>
 
             <div className="driver-detail">
               <span className="driver-detail-label">Numer prawa jazdy</span>
-
               <span className="driver-detail-value">
                 {driver.license_number}
               </span>
@@ -116,18 +133,56 @@ function DriverDetailsPage({ onLogout }) {
 
             <div className="driver-detail">
               <span className="driver-detail-label">Numer telefonu</span>
-
               <span className="driver-detail-value">{driver.phone_number}</span>
             </div>
 
             <div className="driver-detail">
               <span className="driver-detail-label">Data zatrudnienia</span>
-
               <span className="driver-detail-value">
                 {formatDate(driver.hired_at)}
               </span>
             </div>
           </div>
+        </div>
+
+        <div className="driver-vehicles-card">
+          <div className="driver-vehicles-header">
+            <h2>Przypisane pojazdy</h2>
+
+            <span>Liczba pojazdów: {vehicles.length}</span>
+          </div>
+
+          {vehicles.length > 0 ? (
+            <div className="driver-vehicles-list">
+              {vehicles.map((vehicle) => (
+                <button
+                  key={vehicle.id}
+                  className="driver-vehicle-item"
+                  onClick={() => navigate(`/vehicles/${vehicle.id}`)}
+                >
+                  <div>
+                    <span className="driver-vehicle-name">
+                      {vehicle.brand} {vehicle.model}
+                    </span>
+
+                    <span className="driver-vehicle-registration">
+                      {vehicle.registration_number}
+                    </span>
+                  </div>
+
+                  <span
+                    className={`vehicle-status vehicle-status-${vehicle.status}`}
+                  >
+                    {getStatusName(vehicle.status)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="driver-vehicles-empty">
+              Ten kierowca nie ma przypisanych pojazdów.
+            </p>
+          )}
         </div>
       </main>
     </div>

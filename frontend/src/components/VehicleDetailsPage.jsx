@@ -9,23 +9,40 @@ function VehicleDetailsPage({ onLogout }) {
   const { id } = useParams();
 
   const [vehicle, setVehicle] = useState(null);
+  const [driver, setDriver] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    apiClient
-      .get(`vehicles/${id}/`)
-      .then((response) => {
-        setVehicle(response.data);
-        setLoading(false);
-      })
-      .catch((err) => {
+    const loadVehicle = async () => {
+      try {
+        const vehicleResponse = await apiClient.get(`vehicles/${id}/`);
+        const vehicleData = vehicleResponse.data;
+
+        setVehicle(vehicleData);
+
+        if (vehicleData.driver) {
+          try {
+            const driverResponse = await apiClient.get(
+              `drivers/${vehicleData.driver}/`,
+            );
+
+            setDriver(driverResponse.data);
+          } catch (driverError) {
+            console.error("Błąd pobierania kierowcy:", driverError);
+          }
+        }
+      } catch (err) {
         console.error("Błąd pobierania pojazdu:", err);
         console.error("Odpowiedź backendu:", err.response?.data);
 
         setError("Nie udało się pobrać danych pojazdu.");
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    loadVehicle();
   }, [id]);
 
   const getStatusName = (status) => {
@@ -58,6 +75,18 @@ function VehicleDetailsPage({ onLogout }) {
 
   const formatMileage = (mileage) => {
     return `${Number(mileage).toLocaleString("pl-PL")} km`;
+  };
+
+  const getDriverName = () => {
+    if (driver) {
+      return `${driver.first_name} ${driver.last_name}`;
+    }
+
+    if (vehicle.driver_name) {
+      return vehicle.driver_name;
+    }
+
+    return "Brak przypisanego kierowcy";
   };
 
   if (loading) {
@@ -182,6 +211,21 @@ function VehicleDetailsPage({ onLogout }) {
               <span className="vehicle-detail-value">
                 {getStatusName(vehicle.status)}
               </span>
+            </div>
+
+            <div className="vehicle-detail">
+              <span className="vehicle-detail-label">Kierowca</span>
+
+              {driver ? (
+                <button
+                  className="vehicle-driver-link"
+                  onClick={() => navigate(`/drivers/${driver.id}`)}
+                >
+                  {getDriverName()}
+                </button>
+              ) : (
+                <span className="vehicle-detail-value">{getDriverName()}</span>
+              )}
             </div>
           </div>
         </div>

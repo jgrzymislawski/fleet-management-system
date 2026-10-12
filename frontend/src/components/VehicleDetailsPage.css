@@ -90,6 +90,23 @@
     color: #A33A3A;
 }
 
+.vehicle-driver-link {
+    width: fit-content;
+    padding: 0;
+    border: none;
+    background: none;
+    font-family: 'Poppins', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: #1A1A1A;
+    text-align: left;
+    cursor: pointer;
+}
+
+.vehicle-driver-link:hover {
+    text-decoration: underline;
+}
+
 @media (max-width: 900px) {
     .vehicle-details-grid {
         grid-template-columns: 1fr;

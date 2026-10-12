@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import VehicleForm from "./VehicleForm";
@@ -7,6 +7,8 @@ import "./AddVehiclePage.css";
 
 function AddVehiclePage({ onLogout }) {
   const navigate = useNavigate();
+
+  const [drivers, setDrivers] = useState([]);
 
   const [formData, setFormData] = useState({
     brand: "",
@@ -18,9 +20,22 @@ function AddVehiclePage({ onLogout }) {
     fuel_type: "",
     mileage: "",
     status: "active",
+    driver: "",
+    driver_name: "",
   });
 
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    apiClient
+      .get("drivers/")
+      .then((response) => {
+        setDrivers(response.data);
+      })
+      .catch((err) => {
+        console.error("Błąd pobierania kierowców:", err);
+      });
+  }, []);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -40,6 +55,8 @@ function AddVehiclePage({ onLogout }) {
       ...formData,
       vin: formData.vin || null,
       fuel_type: formData.fuel_type || null,
+      driver: formData.driver || null,
+      driver_name: formData.driver_name || null,
     };
 
     apiClient
@@ -74,6 +91,7 @@ function AddVehiclePage({ onLogout }) {
           onCancel={() => navigate("/vehicles")}
           submitText="Dodaj pojazd"
           error={error}
+          drivers={drivers}
         />
       </main>
     </div>
