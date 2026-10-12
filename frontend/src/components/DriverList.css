@@ -65,19 +65,13 @@
     padding: 17px 25px;
 }
 
-.drivers-table-header {
-    background-color: #EEE8E2;
-    border-radius: 8px 8px 0 0;
-    font-size: 13px;
-    font-weight: 600;
-    color: #555555;
-}
-
+.drivers-table-header,
 .drivers-table-row {
-    position: relative;
-    border-top: 1px solid #E0DAD4;
-    font-size: 14px;
-    color: #1A1A1A;
+    display: grid;
+    grid-template-columns: 1fr 1.2fr 1.4fr 1fr 1.1fr 70px;
+    gap: 20px;
+    align-items: center;
+    padding: 17px 25px;
 }
 
 .drivers-table-row:hover {
@@ -168,12 +162,58 @@
     color: #777777;
 }
 
+.drivers-toolbar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.drivers-search {
+    width: 320px;
+    height: 42px;
+    padding: 0 14px;
+    box-sizing: border-box;
+    border: 1px solid #D8D1CA;
+    border-radius: 7px;
+    background-color: #FAF5F2;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+}
+
+.drivers-search::placeholder {
+    color: #999999;
+}
+
+.drivers-search:focus {
+    outline: none;
+    border-color: #1A1A1A;
+}
+
+.drivers-sort-button {
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555555;
+    text-align: left;
+    cursor: pointer;
+}
+
+.drivers-sort-button:hover {
+    color: #1A1A1A;
+}
+
 @media (max-width: 900px) {
     .drivers-header {
         align-items: flex-start;
         gap: 20px;
     }
-
+    .drivers-search {
+        width: 100%;
+    }
     .drivers-table {
         overflow-x: auto;
     }
