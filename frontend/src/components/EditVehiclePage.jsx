@@ -21,6 +21,8 @@ function EditVehiclePage({ onLogout }) {
     fuel_type: "",
     mileage: "",
     status: "active",
+    inspection_expiry_date: "",
+    insurance_expiry_date: "",
     driver: "",
     driver_name: "",
   });
@@ -53,6 +55,8 @@ function EditVehiclePage({ onLogout }) {
           fuel_type: vehicle.fuel_type || "",
           mileage: vehicle.mileage,
           status: vehicle.status,
+          inspection_expiry_date: vehicle.inspection_expiry_date || "",
+          insurance_expiry_date: vehicle.insurance_expiry_date || "",
           driver: vehicle.driver || "",
           driver_name: vehicle.driver_name || "",
         });
@@ -86,6 +90,8 @@ function EditVehiclePage({ onLogout }) {
       ...formData,
       vin: formData.vin || null,
       fuel_type: formData.fuel_type || null,
+      inspection_expiry_date: formData.inspection_expiry_date || null,
+      insurance_expiry_date: formData.insurance_expiry_date || null,
       driver: formData.driver || null,
       driver_name: formData.driver_name || null,
     };

@@ -134,6 +134,32 @@ function VehicleForm({
         </div>
 
         <div className="vehicle-form-field">
+          <label htmlFor="inspection_expiry_date">
+            Ważność przeglądu technicznego
+          </label>
+
+          <input
+            id="inspection_expiry_date"
+            name="inspection_expiry_date"
+            type="date"
+            value={formData.inspection_expiry_date}
+            onChange={onChange}
+          />
+        </div>
+
+        <div className="vehicle-form-field">
+          <label htmlFor="insurance_expiry_date">Ważność polisy OC</label>
+
+          <input
+            id="insurance_expiry_date"
+            name="insurance_expiry_date"
+            type="date"
+            value={formData.insurance_expiry_date}
+            onChange={onChange}
+          />
+        </div>
+
+        <div className="vehicle-form-field">
           <label htmlFor="driver">Kierowca z bazy</label>
 
           <select
