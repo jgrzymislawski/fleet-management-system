@@ -16,6 +16,7 @@ import AddDriverPage from "./components/AddDriverPage";
 import DriverDetailsPage from "./components/DriverDetailsPage";
 import EditDriverPage from "./components/EditDriverPage";
 import useIdleLogout from "./hooks/useIdleLogout";
+import AlertsPage from "./components/AlertsPage";
 
 import "./App.css";
 
@@ -157,6 +158,16 @@ function App() {
         element={
           isLoggedIn ? (
             <DriversPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
+        path="/alerts"
+        element={
+          isLoggedIn ? (
+            <AlertsPage onLogout={handleLogout} />
           ) : (
             <Navigate to="/login" replace />
           )

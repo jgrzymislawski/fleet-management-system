@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import apiClient from "../api/client";
 import "./VehicleList.css";
 
@@ -21,6 +21,11 @@ function VehicleList() {
   const [sortDirection, setSortDirection] = useState("asc");
 
   const navigate = useNavigate();
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const recentOnly = searchParams.get("recent") === "1";
+
   const filtersRef = useRef(null);
 
   useEffect(() => {
@@ -205,8 +210,11 @@ function VehicleList() {
     const normalizedSearchText = searchText.toLowerCase().trim();
 
     const brand = vehicle.brand?.toLowerCase() || "";
+
     const model = vehicle.model?.toLowerCase() || "";
+
     const registrationNumber = vehicle.registration_number?.toLowerCase() || "";
+
     const vin = vehicle.vin?.toLowerCase() || "";
 
     const matchesSearch =
@@ -216,12 +224,23 @@ function VehicleList() {
       registrationNumber.includes(normalizedSearchText) ||
       vin.includes(normalizedSearchText);
 
+    const thirtyDaysAgo = new Date();
+
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+    const createdAt = new Date(vehicle.created_at);
+
+    const matchesRecent = !recentOnly || createdAt >= thirtyDaysAgo;
+
     return (
       matchesBrand &&
       matchesYear &&
       matchesType &&
       matchesStatus &&
-      matchesSearch
+      matchesSearch &&
+      matchesRecent
     );
   });
 
@@ -241,6 +260,7 @@ function VehicleList() {
       valueB = b.registration_number;
     } else if (sortField === "vehicle_type") {
       valueA = getVehicleTypeName(a.vehicle_type);
+
       valueB = getVehicleTypeName(b.vehicle_type);
     } else if (sortField === "year") {
       valueA = Number(a.year);
@@ -292,6 +312,7 @@ function VehicleList() {
       <div className="vehicles-header">
         <div>
           <h1>Pojazdy</h1>
+
           <p>Zarządzaj pojazdami znajdującymi się w Twojej flocie.</p>
         </div>
 
@@ -363,6 +384,7 @@ function VehicleList() {
                     checked={selectedBrands.length === 0}
                     onChange={() => setSelectedBrands([])}
                   />
+
                   <span>Wszystkie marki</span>
                 </label>
 
@@ -428,6 +450,7 @@ function VehicleList() {
                     checked={selectedYears.length === 0}
                     onChange={() => setSelectedYears([])}
                   />
+
                   <span>Wszystkie lata</span>
                 </label>
 
@@ -499,6 +522,7 @@ function VehicleList() {
                     checked={selectedTypes.length === 0}
                     onChange={() => setSelectedTypes([])}
                   />
+
                   <span>Wszystkie typy</span>
                 </label>
 
@@ -570,6 +594,7 @@ function VehicleList() {
                     checked={selectedStatuses.length === 0}
                     onChange={() => setSelectedStatuses([])}
                   />
+
                   <span>Wszystkie statusy</span>
                 </label>
 
@@ -606,6 +631,14 @@ function VehicleList() {
           </button>
         )}
       </div>
+
+      {recentOnly && (
+        <div className="vehicles-recent-filter">
+          <span>Pojazdy dodane w ostatnich 30 dniach</span>
+
+          <button onClick={() => setSearchParams({})}>Pokaż wszystkie</button>
+        </div>
+      )}
 
       <div className="vehicles-results-info">
         Wyświetlono {filteredVehicles.length} z {vehicles.length} pojazdów

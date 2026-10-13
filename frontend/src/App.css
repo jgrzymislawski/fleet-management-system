@@ -374,3 +374,16 @@
         min-width: 650px;
     }
 }
+
+.dashboard-card-button {
+    width: 100%;
+    border: none;
+    font-family: 'Poppins', sans-serif;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dashboard-card-button:hover {
+    transform: translateY(-2px);
+    transition: 0.2s;
+}

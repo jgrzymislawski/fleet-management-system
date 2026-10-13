@@ -1,0 +1,126 @@
+.alerts-header {
+    margin-bottom: 30px;
+}
+
+.alerts-header h1 {
+    margin: 12px 0 8px;
+    font-size: 32px;
+    color: #1A1A1A;
+}
+
+.alerts-header p {
+    margin: 0;
+    font-size: 14px;
+    color: #666666;
+}
+
+.alerts-back {
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    color: #777777;
+    cursor: pointer;
+}
+
+.alerts-back:hover {
+    color: #1A1A1A;
+}
+
+.alerts-error {
+    color: #A33A3A;
+}
+
+.alerts-count {
+    margin-bottom: 15px;
+    font-size: 12px;
+    color: #777777;
+}
+
+.alerts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.alert-item {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr auto;
+    gap: 20px;
+    align-items: center;
+    padding: 18px 22px;
+    border: 1px solid #D8D1CA;
+    border-radius: 8px;
+    background-color: #FAF5F2;
+    font-family: 'Poppins', sans-serif;
+    text-align: left;
+    cursor: pointer;
+}
+
+.alert-item:hover {
+    background-color: #F0EAE5;
+}
+
+.alert-item-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.alert-vehicle-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1A1A1A;
+}
+
+.alert-registration {
+    font-size: 12px;
+    color: #777777;
+}
+
+.alert-type {
+    font-size: 13px;
+    color: #1A1A1A;
+}
+
+.alert-date {
+    font-size: 13px;
+    color: #555555;
+}
+
+.alert-status {
+    width: fit-content;
+    padding: 5px 9px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.alert-status-warning {
+    background-color: #F4EBCF;
+    color: #8A6D1D;
+}
+
+.alert-status-expired {
+    background-color: #F3E1E1;
+    color: #A33A3A;
+}
+
+.alerts-empty {
+    padding: 35px;
+    border: 1px solid #D8D1CA;
+    border-radius: 8px;
+    background-color: #FAF5F2;
+    text-align: center;
+    font-size: 13px;
+    color: #777777;
+}
+
+@media (max-width: 900px) {
+    .alert-item {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}

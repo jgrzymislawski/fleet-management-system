@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
 
 function Dashboard({ onLogout }) {
+  const navigate = useNavigate();
+
   const [vehicleCount, setVehicleCount] = useState(0);
   const [driverCount, setDriverCount] = useState(0);
   const [attentionCount, setAttentionCount] = useState(0);
@@ -28,6 +31,7 @@ function Dashboard({ onLogout }) {
         vehicles.forEach((vehicle) => {
           if (vehicle.inspection_expiry_date) {
             const inspectionDate = new Date(vehicle.inspection_expiry_date);
+
             inspectionDate.setHours(0, 0, 0, 0);
 
             if (inspectionDate <= warningLimit) {
@@ -37,6 +41,7 @@ function Dashboard({ onLogout }) {
 
           if (vehicle.insurance_expiry_date) {
             const insuranceDate = new Date(vehicle.insurance_expiry_date);
+
             insuranceDate.setHours(0, 0, 0, 0);
 
             if (insuranceDate <= warningLimit) {
@@ -84,10 +89,14 @@ function Dashboard({ onLogout }) {
 
       <main className="dashboard-content">
         <h1>Dashboard</h1>
+
         <p>Witaj w panelu zarządzania flotą Flotivo.</p>
 
         <div className="dashboard-stats">
-          <div className="dashboard-card">
+          <button
+            className="dashboard-card dashboard-card-button"
+            onClick={() => navigate("/vehicles")}
+          >
             <span className="dashboard-card-label">Pojazdy</span>
 
             <strong className="dashboard-card-value">{vehicleCount}</strong>
@@ -95,9 +104,12 @@ function Dashboard({ onLogout }) {
             <span className="dashboard-card-description">
               Wszystkie pojazdy w systemie
             </span>
-          </div>
+          </button>
 
-          <div className="dashboard-card">
+          <button
+            className="dashboard-card dashboard-card-button"
+            onClick={() => navigate("/drivers")}
+          >
             <span className="dashboard-card-label">Kierowcy</span>
 
             <strong className="dashboard-card-value">{driverCount}</strong>
@@ -105,9 +117,12 @@ function Dashboard({ onLogout }) {
             <span className="dashboard-card-description">
               Kierowcy w systemie
             </span>
-          </div>
+          </button>
 
-          <div className="dashboard-card">
+          <button
+            className="dashboard-card dashboard-card-button"
+            onClick={() => navigate("/alerts")}
+          >
             <span className="dashboard-card-label">Wymagają uwagi</span>
 
             <strong className="dashboard-card-value">{attentionCount}</strong>
@@ -115,9 +130,12 @@ function Dashboard({ onLogout }) {
             <span className="dashboard-card-description">
               OC i przeglądy po terminie lub do 30 dni
             </span>
-          </div>
+          </button>
 
-          <div className="dashboard-card">
+          <button
+            className="dashboard-card dashboard-card-button"
+            onClick={() => navigate("/vehicles?recent=1")}
+          >
             <span className="dashboard-card-label">Ostatnio dodane</span>
 
             <strong className="dashboard-card-value">
@@ -127,12 +145,13 @@ function Dashboard({ onLogout }) {
             <span className="dashboard-card-description">
               Pojazdy dodane w ostatnich 30 dniach
             </span>
-          </div>
+          </button>
         </div>
 
         <section className="dashboard-recent">
           <div className="dashboard-section-header">
             <h2>Ostatnio dodane pojazdy</h2>
+
             <span>Ostatnie {recentVehicles.length} pojazdów</span>
           </div>
 
