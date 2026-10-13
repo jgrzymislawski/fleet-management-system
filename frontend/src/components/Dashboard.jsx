@@ -5,7 +5,8 @@ import apiClient from "../api/client";
 function Dashboard({ onLogout }) {
   const [vehicleCount, setVehicleCount] = useState(0);
   const [driverCount, setDriverCount] = useState(0);
-  const [activeVehicleCount, setActiveVehicleCount] = useState(0);
+  const [attentionCount, setAttentionCount] = useState(0);
+  const [recentVehicleCount, setRecentVehicleCount] = useState(0);
   const [recentVehicles, setRecentVehicles] = useState([]);
 
   useEffect(() => {
@@ -16,13 +17,50 @@ function Dashboard({ onLogout }) {
 
         setVehicleCount(vehicles.length);
 
-        const activeVehicles = vehicles.filter(
-          (vehicle) => vehicle.status === "active",
-        );
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-        setActiveVehicleCount(activeVehicles.length);
+        const warningLimit = new Date(today);
+        warningLimit.setDate(warningLimit.getDate() + 30);
 
-        const recent = [...vehicles].sort((a, b) => b.id - a.id).slice(0, 5);
+        let attentionItems = 0;
+
+        vehicles.forEach((vehicle) => {
+          if (vehicle.inspection_expiry_date) {
+            const inspectionDate = new Date(vehicle.inspection_expiry_date);
+            inspectionDate.setHours(0, 0, 0, 0);
+
+            if (inspectionDate <= warningLimit) {
+              attentionItems += 1;
+            }
+          }
+
+          if (vehicle.insurance_expiry_date) {
+            const insuranceDate = new Date(vehicle.insurance_expiry_date);
+            insuranceDate.setHours(0, 0, 0, 0);
+
+            if (insuranceDate <= warningLimit) {
+              attentionItems += 1;
+            }
+          }
+        });
+
+        setAttentionCount(attentionItems);
+
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const recentlyAdded = vehicles.filter((vehicle) => {
+          const createdAt = new Date(vehicle.created_at);
+
+          return createdAt >= thirtyDaysAgo;
+        });
+
+        setRecentVehicleCount(recentlyAdded.length);
+
+        const recent = [...vehicles]
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          .slice(0, 5);
 
         setRecentVehicles(recent);
       })
@@ -70,14 +108,24 @@ function Dashboard({ onLogout }) {
           </div>
 
           <div className="dashboard-card">
-            <span className="dashboard-card-label">Aktywne pojazdy</span>
+            <span className="dashboard-card-label">Wymagają uwagi</span>
+
+            <strong className="dashboard-card-value">{attentionCount}</strong>
+
+            <span className="dashboard-card-description">
+              OC i przeglądy po terminie lub do 30 dni
+            </span>
+          </div>
+
+          <div className="dashboard-card">
+            <span className="dashboard-card-label">Ostatnio dodane</span>
 
             <strong className="dashboard-card-value">
-              {activeVehicleCount}
+              {recentVehicleCount}
             </strong>
 
             <span className="dashboard-card-description">
-              Pojazdy ze statusem aktywnym
+              Pojazdy dodane w ostatnich 30 dniach
             </span>
           </div>
         </div>

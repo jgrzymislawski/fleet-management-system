@@ -107,6 +107,80 @@
     text-decoration: underline;
 }
 
+.vehicle-expiry-card {
+    margin-top: 25px;
+    padding: 28px;
+    border-radius: 10px;
+    background-color: #FAF5F2;
+}
+
+.vehicle-expiry-card h2 {
+    margin-top: 0;
+    margin-bottom: 25px;
+    font-size: 20px;
+    color: #1A1A1A;
+}
+
+.vehicle-expiry-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 25px;
+}
+
+.vehicle-expiry-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px;
+    border: 1px solid #E2DDD8;
+    border-radius: 8px;
+    background-color: #FFFFFF;
+}
+
+.vehicle-expiry-date {
+    font-size: 18px;
+    font-weight: 500;
+    color: #1A1A1A;
+}
+
+.expiry-status {
+    width: fit-content;
+    padding: 5px 9px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.expiry-status-valid {
+    background-color: #E4EFE6;
+    color: #3F6B48;
+}
+
+.expiry-status-warning {
+    background-color: #F4EBCF;
+    color: #8A6D1D;
+}
+
+.expiry-status-expired {
+    background-color: #F3E1E1;
+    color: #A33A3A;
+}
+
+.expiry-status-none {
+    background-color: #EAE6E2;
+    color: #777777;
+}
+
+@media (max-width: 900px) {
+    .vehicle-expiry-card {
+        padding: 20px;
+    }
+
+    .vehicle-expiry-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 900px) {
     .vehicle-details-grid {
         grid-template-columns: 1fr;

@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom';
-import './Sidebar.css';
+import { useNavigate } from "react-router-dom";
+import "./Sidebar.css";
 
 function Sidebar({ onLogout }) {
   const navigate = useNavigate();
@@ -12,35 +12,25 @@ function Sidebar({ onLogout }) {
         <nav className="sidebar-menu">
           <button
             className="sidebar-item"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate("/dashboard")}
           >
             Dashboard
           </button>
 
           <button
             className="sidebar-item"
-            onClick={() => navigate('/vehicles')}
+            onClick={() => navigate("/vehicles")}
           >
             Pojazdy
           </button>
 
-          <button
-              className="sidebar-item"
-                onClick={() => navigate('/drivers')}
-                >
-                Kierowcy
-          </button>
-
-          <button className="sidebar-item">
-            Przypisania
+          <button className="sidebar-item" onClick={() => navigate("/drivers")}>
+            Kierowcy
           </button>
         </nav>
       </div>
 
-      <button
-        className="sidebar-logout"
-        onClick={onLogout}
-      >
+      <button className="sidebar-logout" onClick={onLogout}>
         Wyloguj się
       </button>
     </aside>

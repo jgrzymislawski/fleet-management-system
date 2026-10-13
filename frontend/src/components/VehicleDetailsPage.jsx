@@ -77,6 +77,51 @@ function VehicleDetailsPage({ onLogout }) {
     return `${Number(mileage).toLocaleString("pl-PL")} km`;
   };
 
+  const formatDate = (date) => {
+    if (!date) {
+      return "Nie podano";
+    }
+
+    return new Date(date).toLocaleDateString("pl-PL");
+  };
+
+  const getExpiryStatus = (date) => {
+    if (!date) {
+      return {
+        text: "Brak terminu",
+        className: "expiry-status-none",
+      };
+    }
+
+    const today = new Date();
+    const expiryDate = new Date(date);
+
+    today.setHours(0, 0, 0, 0);
+    expiryDate.setHours(0, 0, 0, 0);
+
+    const difference = expiryDate - today;
+    const daysLeft = Math.ceil(difference / (1000 * 60 * 60 * 24));
+
+    if (daysLeft < 0) {
+      return {
+        text: "Po terminie",
+        className: "expiry-status-expired",
+      };
+    }
+
+    if (daysLeft <= 30) {
+      return {
+        text: `Wygasa za ${daysLeft} dni`,
+        className: "expiry-status-warning",
+      };
+    }
+
+    return {
+      text: "Ważne",
+      className: "expiry-status-valid",
+    };
+  };
+
   const getDriverName = () => {
     if (driver) {
       return `${driver.first_name} ${driver.last_name}`;
@@ -114,6 +159,10 @@ function VehicleDetailsPage({ onLogout }) {
       </div>
     );
   }
+
+  const inspectionStatus = getExpiryStatus(vehicle.inspection_expiry_date);
+
+  const insuranceStatus = getExpiryStatus(vehicle.insurance_expiry_date);
 
   return (
     <div className="dashboard-layout">
@@ -226,6 +275,36 @@ function VehicleDetailsPage({ onLogout }) {
               ) : (
                 <span className="vehicle-detail-value">{getDriverName()}</span>
               )}
+            </div>
+          </div>
+        </div>
+
+        <div className="vehicle-expiry-card">
+          <h2>Terminy</h2>
+
+          <div className="vehicle-expiry-grid">
+            <div className="vehicle-expiry-item">
+              <span className="vehicle-detail-label">Przegląd techniczny</span>
+
+              <span className="vehicle-expiry-date">
+                {formatDate(vehicle.inspection_expiry_date)}
+              </span>
+
+              <span className={`expiry-status ${inspectionStatus.className}`}>
+                {inspectionStatus.text}
+              </span>
+            </div>
+
+            <div className="vehicle-expiry-item">
+              <span className="vehicle-detail-label">Polisa OC</span>
+
+              <span className="vehicle-expiry-date">
+                {formatDate(vehicle.insurance_expiry_date)}
+              </span>
+
+              <span className={`expiry-status ${insuranceStatus.className}`}>
+                {insuranceStatus.text}
+              </span>
             </div>
           </div>
         </div>
