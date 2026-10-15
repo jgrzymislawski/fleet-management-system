@@ -9,6 +9,7 @@ class VehicleViewSet(viewsets.ModelViewSet):
 
 
 class ServiceRecordViewSet(viewsets.ModelViewSet):
+    queryset = ServiceRecord.objects.all()
     serializer_class = ServiceRecordSerializer
 
     def get_queryset(self):

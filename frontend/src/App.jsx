@@ -17,7 +17,9 @@ import DriverDetailsPage from "./components/DriverDetailsPage";
 import EditDriverPage from "./components/EditDriverPage";
 import useIdleLogout from "./hooks/useIdleLogout";
 import AlertsPage from "./components/AlertsPage";
-
+import ServiceHistoryPage from "./components/ServiceHistoryPage";
+import AddServiceRecordPage from "./components/AddServiceRecordPage";
+import EditServiceRecordPage from "./components/EditServiceRecordPage";
 import "./App.css";
 
 function App() {
@@ -59,7 +61,36 @@ function App() {
       <Route path="/podglad" element={<PreviewPage />} />
 
       <Route path="/dolacz" element={<JoinPage />} />
-
+      <Route
+        path="/service-history"
+        element={
+          isLoggedIn ? (
+            <ServiceHistoryPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
+        path="/service-history/add"
+        element={
+          isLoggedIn ? (
+            <AddServiceRecordPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
+        path="/service-history/:id/edit"
+        element={
+          isLoggedIn ? (
+            <EditServiceRecordPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
       <Route
         path="/login"
         element={<Login onLoginSuccess={handleLoginSuccess} />}

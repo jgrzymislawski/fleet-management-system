@@ -27,6 +27,12 @@ function Sidebar({ onLogout }) {
           <button className="sidebar-item" onClick={() => navigate("/drivers")}>
             Kierowcy
           </button>
+          <button
+            className="sidebar-item"
+            onClick={() => navigate("/service-history")}
+          >
+            Historia napraw
+          </button>
         </nav>
       </div>
 

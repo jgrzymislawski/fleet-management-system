@@ -10,6 +10,7 @@ function VehicleDetailsPage({ onLogout }) {
 
   const [vehicle, setVehicle] = useState(null);
   const [driver, setDriver] = useState(null);
+  const [serviceRecords, setServiceRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -31,6 +32,16 @@ function VehicleDetailsPage({ onLogout }) {
           } catch (driverError) {
             console.error("Błąd pobierania kierowcy:", driverError);
           }
+        }
+
+        try {
+          const serviceResponse = await apiClient.get(
+            `service-records/?vehicle=${id}`,
+          );
+
+          setServiceRecords(serviceResponse.data);
+        } catch (serviceError) {
+          console.error("Błąd pobierania historii serwisowej:", serviceError);
         }
       } catch (err) {
         console.error("Błąd pobierania pojazdu:", err);
@@ -74,6 +85,10 @@ function VehicleDetailsPage({ onLogout }) {
   };
 
   const formatMileage = (mileage) => {
+    if (mileage === null || mileage === undefined) {
+      return "Nie podano";
+    }
+
     return `${Number(mileage).toLocaleString("pl-PL")} km`;
   };
 
@@ -83,6 +98,13 @@ function VehicleDetailsPage({ onLogout }) {
     }
 
     return new Date(date).toLocaleDateString("pl-PL");
+  };
+
+  const formatCost = (cost) => {
+    return `${Number(cost).toLocaleString("pl-PL", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} zł`;
   };
 
   const getExpiryStatus = (date) => {
@@ -111,7 +133,7 @@ function VehicleDetailsPage({ onLogout }) {
 
     if (daysLeft <= 30) {
       return {
-        text: `Wygasa za ${daysLeft} dni`,
+        text: daysLeft === 0 ? "Wygasa dzisiaj" : `Wygasa za ${daysLeft} dni`,
         className: "expiry-status-warning",
       };
     }
@@ -132,6 +154,30 @@ function VehicleDetailsPage({ onLogout }) {
     }
 
     return "Brak przypisanego kierowcy";
+  };
+
+  const handleDeleteServiceRecord = async (record) => {
+    const confirmed = window.confirm(
+      `Czy na pewno chcesz usunąć wpis "${record.title}"?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await apiClient.delete(`service-records/${record.id}/`);
+
+      setServiceRecords((currentRecords) =>
+        currentRecords.filter(
+          (currentRecord) => currentRecord.id !== record.id,
+        ),
+      );
+    } catch (err) {
+      console.error("Błąd usuwania wpisu serwisowego:", err);
+
+      setError("Nie udało się usunąć wpisu serwisowego.");
+    }
   };
 
   if (loading) {
@@ -207,16 +253,19 @@ function VehicleDetailsPage({ onLogout }) {
           <div className="vehicle-details-grid">
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Marka</span>
+
               <span className="vehicle-detail-value">{vehicle.brand}</span>
             </div>
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Model</span>
+
               <span className="vehicle-detail-value">{vehicle.model}</span>
             </div>
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Numer rejestracyjny</span>
+
               <span className="vehicle-detail-value">
                 {vehicle.registration_number}
               </span>
@@ -224,6 +273,7 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">VIN</span>
+
               <span className="vehicle-detail-value">
                 {vehicle.vin || "Nie podano"}
               </span>
@@ -231,11 +281,13 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Rok produkcji</span>
+
               <span className="vehicle-detail-value">{vehicle.year}</span>
             </div>
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Typ pojazdu</span>
+
               <span className="vehicle-detail-value">
                 {getVehicleTypeName(vehicle.vehicle_type)}
               </span>
@@ -243,6 +295,7 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Rodzaj paliwa</span>
+
               <span className="vehicle-detail-value">
                 {getFuelTypeName(vehicle.fuel_type)}
               </span>
@@ -250,6 +303,7 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Przebieg</span>
+
               <span className="vehicle-detail-value">
                 {formatMileage(vehicle.mileage)}
               </span>
@@ -257,6 +311,7 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Status</span>
+
               <span className="vehicle-detail-value">
                 {getStatusName(vehicle.status)}
               </span>
@@ -307,6 +362,75 @@ function VehicleDetailsPage({ onLogout }) {
               </span>
             </div>
           </div>
+        </div>
+
+        <div className="vehicle-service-card">
+          <div className="vehicle-service-header">
+            <div>
+              <h2>Historia napraw</h2>
+
+              <p>Historia serwisów i napraw tego pojazdu.</p>
+            </div>
+
+            <button
+              className="vehicle-service-add"
+              onClick={() =>
+                navigate(`/service-history/add?vehicle=${vehicle.id}`)
+              }
+            >
+              + Dodaj wpis
+            </button>
+          </div>
+
+          {serviceRecords.length > 0 ? (
+            <div className="vehicle-service-list">
+              {serviceRecords.map((record) => (
+                <div className="vehicle-service-item" key={record.id}>
+                  <div className="vehicle-service-main">
+                    <span className="vehicle-service-title">
+                      {record.title}
+                    </span>
+
+                    <span className="vehicle-service-description">
+                      {record.description || "Brak dodatkowego opisu"}
+                    </span>
+                  </div>
+
+                  <div className="vehicle-service-data">
+                    <span>{formatDate(record.service_date)}</span>
+
+                    <span>{formatMileage(record.mileage)}</span>
+
+                    <strong>{formatCost(record.cost)}</strong>
+                  </div>
+
+                  <div className="vehicle-service-actions">
+                    <button
+                      type="button"
+                      className="vehicle-service-edit"
+                      onClick={() =>
+                        navigate(`/service-history/${record.id}/edit`)
+                      }
+                    >
+                      Edytuj
+                    </button>
+
+                    <button
+                      type="button"
+                      className="vehicle-service-delete"
+                      onClick={() => handleDeleteServiceRecord(record)}
+                    >
+                      Usuń
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="vehicle-service-empty">
+              Brak wpisów w historii napraw.
+            </div>
+          )}
         </div>
       </main>
     </div>

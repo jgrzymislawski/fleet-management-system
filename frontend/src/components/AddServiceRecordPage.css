@@ -1,0 +1,206 @@
+.service-record-form-header {
+    margin-bottom: 30px;
+}
+
+.service-record-form-header h1 {
+    margin: 12px 0 8px;
+    font-size: 32px;
+    color: #1A1A1A;
+}
+
+.service-record-form-header p {
+    margin: 0;
+    font-size: 14px;
+    color: #666666;
+}
+
+.service-record-back {
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    color: #777777;
+    cursor: pointer;
+}
+
+.service-record-back:hover {
+    color: #1A1A1A;
+}
+
+.service-record-form {
+    max-width: 850px;
+    padding: 25px;
+    border: 1px solid #D8D1CA;
+    border-radius: 8px;
+    background-color: #FAF5F2;
+}
+
+.service-record-error {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #A33A3A;
+    font-size: 13px;
+}
+
+.service-record-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.service-record-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin-bottom: 20px;
+}
+
+.service-record-field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #555555;
+}
+
+.service-record-field input,
+.service-record-field select,
+.service-record-field textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 12px;
+    border: 1px solid #D8D1CA;
+    border-radius: 7px;
+    background-color: #FFFFFF;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    color: #1A1A1A;
+}
+
+.service-record-field textarea {
+    resize: vertical;
+}
+
+.service-record-field input:focus,
+.service-record-field select:focus,
+.service-record-field textarea:focus {
+    outline: none;
+    border-color: #1A1A1A;
+}
+
+.service-record-field select:disabled {
+    background-color: #EFEAE6;
+    color: #777777;
+    cursor: not-allowed;
+}
+
+.service-record-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.service-record-cancel,
+.service-record-submit {
+    padding: 10px 17px;
+    border-radius: 7px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.service-record-cancel {
+    border: 1px solid #D8D1CA;
+    background-color: transparent;
+    color: #1A1A1A;
+}
+
+.service-record-submit {
+    border: none;
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.service-record-cancel:hover {
+    background-color: #EFEAE6;
+}
+
+.service-record-submit:hover {
+    opacity: 0.9;
+}
+
+@media (max-width: 900px) {
+    .service-record-form {
+        max-width: 100%;
+    }
+
+    .service-record-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .service-record-actions {
+        flex-direction: column-reverse;
+    }
+
+    .service-record-cancel,
+    .service-record-submit {
+        width: 100%;
+    }
+}
+.service-record-vehicle-search {
+    position: relative;
+}
+
+.service-record-vehicle-results {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    right: 0;
+    z-index: 20;
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid #D8D1CA;
+    border-radius: 7px;
+    background-color: #FFFFFF;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.service-record-vehicle-option {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding: 11px 13px;
+    border: none;
+    border-bottom: 1px solid #EEE8E3;
+    background-color: #FFFFFF;
+    font-family: 'Poppins', sans-serif;
+    text-align: left;
+    cursor: pointer;
+}
+
+.service-record-vehicle-option:last-child {
+    border-bottom: none;
+}
+
+.service-record-vehicle-option:hover {
+    background-color: #F5F1EA;
+}
+
+.service-record-vehicle-option span {
+    font-size: 13px;
+    color: #1A1A1A;
+}
+
+.service-record-vehicle-option strong {
+    font-size: 12px;
+    color: #555555;
+}
+
+.service-record-vehicle-empty {
+    padding: 15px;
+    font-size: 12px;
+    color: #777777;
+    text-align: center;
+}

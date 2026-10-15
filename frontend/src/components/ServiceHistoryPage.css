@@ -1,0 +1,171 @@
+.service-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.service-history-header h1 {
+    margin: 0 0 8px;
+    font-size: 32px;
+    color: #1A1A1A;
+}
+
+.service-history-header p {
+    margin: 0;
+    font-size: 14px;
+    color: #666666;
+}
+
+.service-history-add {
+    padding: 11px 17px;
+    border: none;
+    border-radius: 7px;
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.service-history-add:hover {
+    opacity: 0.9;
+}
+
+.service-history-error {
+    margin-bottom: 15px;
+    color: #A33A3A;
+    font-size: 13px;
+}
+
+.service-history-count {
+    margin-bottom: 15px;
+    font-size: 12px;
+    color: #777777;
+}
+
+.service-history-table {
+    border: 1px solid #D8D1CA;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #FAF5F2;
+}
+
+.service-history-table-header,
+.service-history-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1.8fr 1fr 1fr 1fr auto;
+    gap: 20px;
+    align-items: center;
+}
+
+.service-history-table-header {
+    padding: 14px 18px;
+    background-color: #EDE7E2;
+    font-size: 11px;
+    font-weight: 600;
+    color: #555555;
+}
+
+.service-history-row {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 16px 18px;
+    border-top: 1px solid #DED8D2;
+    background-color: #FFFFFF;
+    font-family: 'Poppins', sans-serif;
+    text-align: left;
+    cursor: pointer;
+}
+
+.service-history-row:hover {
+    background-color: #F7F3EF;
+}
+
+.service-history-vehicle,
+.service-history-repair {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.service-history-vehicle-name,
+.service-history-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1A1A1A;
+}
+
+.service-history-registration,
+.service-history-description {
+    font-size: 11px;
+    color: #777777;
+}
+
+.service-history-row > span,
+.service-history-row > strong {
+    font-size: 12px;
+}
+
+.service-history-row > strong {
+    color: #1A1A1A;
+}
+
+.service-history-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.service-history-actions button {
+    padding: 6px 10px;
+    border: 1px solid #D8D1CA;
+    border-radius: 6px;
+    background-color: #FFFFFF;
+    font-family: 'Poppins', sans-serif;
+    font-size: 11px;
+    color: #1A1A1A;
+    cursor: pointer;
+}
+
+.service-history-actions button:hover {
+    background-color: #F5F1EA;
+}
+
+.service-history-actions .service-history-delete {
+    color: #A33A3A;
+}
+
+.service-history-actions .service-history-delete:hover {
+    background-color: #F3E1E1;
+}
+
+.service-history-empty {
+    padding: 35px;
+    text-align: center;
+    font-size: 13px;
+    color: #777777;
+}
+
+@media (max-width: 1200px) {
+    .service-history-table {
+        overflow-x: auto;
+    }
+
+    .service-history-table-header,
+    .service-history-row {
+        min-width: 900px;
+    }
+}
+
+@media (max-width: 900px) {
+    .service-history-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .service-history-add {
+        width: 100%;
+    }
+}
