@@ -90,3 +90,26 @@ class Vehicle(models.Model):
 
     def __str__(self):
         return f"{self.brand} {self.model} ({self.registration_number})"
+
+class ServiceRecord(models.Model):
+    vehicle = models.ForeignKey(
+        Vehicle,
+        on_delete=models.CASCADE,
+        related_name="service_records"
+    )
+    service_date = models.DateField()
+    title = models.CharField(max_length=150)
+    description = models.TextField(blank=True)
+    mileage = models.PositiveIntegerField(null=True, blank=True)
+    cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-service_date", "-created_at"]
+
+    def __str__(self):
+        return f"{self.vehicle} - {self.title}"
