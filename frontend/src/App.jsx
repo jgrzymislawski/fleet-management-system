@@ -20,6 +20,8 @@ import AlertsPage from "./components/AlertsPage";
 import ServiceHistoryPage from "./components/ServiceHistoryPage";
 import AddServiceRecordPage from "./components/AddServiceRecordPage";
 import EditServiceRecordPage from "./components/EditServiceRecordPage";
+import StatisticsPage from "./components/StatisticsPage";
+
 import "./App.css";
 
 function App() {
@@ -86,6 +88,16 @@ function App() {
         element={
           isLoggedIn ? (
             <EditServiceRecordPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
+        path="/statistics"
+        element={
+          isLoggedIn ? (
+            <StatisticsPage onLogout={handleLogout} />
           ) : (
             <Navigate to="/login" replace />
           )

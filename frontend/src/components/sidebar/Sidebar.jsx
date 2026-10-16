@@ -33,6 +33,12 @@ function Sidebar({ onLogout }) {
           >
             Historia napraw
           </button>
+          <button
+            className="sidebar-item"
+            onClick={() => navigate("/statistics")}
+          >
+            Statystyki
+          </button>
         </nav>
       </div>
 
