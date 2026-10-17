@@ -1,4 +1,4 @@
-# Flotivo
+# Flotivo - fleet-management-system
 
 Flotivo is a web-based fleet management system developed as an engineering thesis project.
 
