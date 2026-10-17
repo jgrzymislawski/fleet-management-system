@@ -1,136 +1,137 @@
-# Fleet Management System
+# Flotivo
 
-System do zarządzania flotą pojazdów — praca dyplomowa.
+Flotivo is a web-based fleet management system developed as an engineering thesis project.
 
-## Stack technologiczny
+The application is designed to help manage vehicles, drivers, service history, important deadlines and fleet-related costs in a simple and organized way.
 
-- Backend: Django + Django REST Framework
-- Frontend: React (Vite)
-- Baza danych: PostgreSQL
-- Autoryzacja: JWT
-- Konteneryzacja: Docker
+## Tech Stack
 
-## Szybkie uruchomienie (zalecane — Docker)
+### Backend
 
-Najprostszy sposób na uruchomienie całego projektu.
+- Python
+- Django
+- Django REST Framework
+- PostgreSQL
+- JWT Authentication
 
-### Kroki
+### Frontend
 
-1. Sklonuj repozytorium:
+- React
+- Vite
+- JavaScript
+- CSS
+
+## Getting Started
+
+The recommended way to run the project is with Docker.
+
+### Requirements
+
+Make sure you have installed:
+
+- Docker
+- Git
+
+### 1. Clone the repository
+
 ```bash
-   git clone https://github.com/jgrzymislawski/fleet-management-system.git
-   cd fleet-management-system
+git clone https://github.com/jgrzymislawski/fleet-management-system.git
+cd fleet-management-system
 ```
 
-2. Skopiuj plik `.env.example` do `.env` w folderze `backend/`:
+### 2. Configure environment variables
+
+Create the backend environment file from the provided example.
+
+#### Windows
+
 ```bash
-   copy backend\.env.example backend\.env      # Windows
-   cp backend/.env.example backend/.env        # Mac/Linux
+copy backend\.env.example backend\.env
 ```
 
-3. Zbuduj i uruchom kontenery:
+#### Linux / macOS
+
 ```bash
-   docker compose up --build
+cp backend/.env.example backend/.env
 ```
 
-4. W nowym terminalu wykonaj migracje bazy danych i stwórz konto administratora:
-```bash
-   docker compose exec backend python manage.py migrate
-   docker compose exec backend python manage.py createsuperuser
+The environment file should contain:
+
+```env
+SECRET_KEY=change_this
+DEBUG=True
+
+POSTGRES_DB=fleet_db
+POSTGRES_USER=fleet_user
+POSTGRES_PASSWORD=change_this
+
+DB_HOST=localhost
+DB_PORT=5432
 ```
-   Podaj dowolną nazwę użytkownika, e-mail (opcjonalnie) i hasło.
 
-5. Aplikacja jest gotowa:
-   - Frontend: [http://localhost:5173](http://localhost:5173)
-   - Backend / API: [http://localhost:8000/api/](http://localhost:8000/api/)
-   - Panel administracyjny: [http://localhost:8000/admin/](http://localhost:8000/admin/)
+Change at least:
 
-### Zatrzymanie projektu
+```env
+SECRET_KEY=change_this
+POSTGRES_PASSWORD=change_this
+```
+
+When using Docker Compose, the backend automatically connects to the PostgreSQL container using:
+
+```text
+DB_HOST=db
+```
+
+Do not commit your real `.env` file to the repository.
+
+### 3. Build and start the application
+
+```bash
+docker compose up --build
+```
+
+### 4. Run database migrations
+
+Open another terminal and run:
+
+```bash
+docker compose exec backend python manage.py migrate
+```
+
+### 5. Create an administrator account
+
+```bash
+docker compose exec backend python manage.py createsuperuser
+```
+
+### 6. Open the application
+
+Frontend:
+
+```text
+http://localhost:5173
+```
+
+Backend API:
+
+```text
+http://localhost:8000/api/
+```
+
+Django Admin:
+
+```text
+http://localhost:8000/admin/
+```
+
+## Stopping the Application
 
 ```bash
 docker compose down
 ```
 
-Dane w bazie zostają zachowane między uruchomieniami. Aby usunąć również dane bazy danych:
+To also remove the local database volume:
+
 ```bash
 docker compose down -v
 ```
-
----
-
-## Uruchomienie bez Dockera (alternatywa)
-
-Jeśli nie chcesz korzystać z Dockera, projekt można uruchomić ręcznie.
-
-### Wymagania
-
-- [Python 3.13+](https://www.python.org/downloads/)
-- [Node.js 20+](https://nodejs.org/)
-- [PostgreSQL 17+](https://www.postgresql.org/download/)
-- [Git](https://git-scm.com/downloads)
-
-### Backend
-
-1. Przejdź do folderu backend:
-```bash
-   cd backend
-```
-
-2. Stwórz i aktywuj środowisko wirtualne:
-```bash
-   python -m venv venv
-   venv\Scripts\activate      # Windows
-   source venv/bin/activate   # Mac/Linux
-```
-
-3. Zainstaluj zależności:
-```bash
-   pip install -r requirements.txt
-```
-
-4. Stwórz plik `.env` na podstawie `.env.example`:
-```bash
-   copy .env.example .env      # Windows
-   cp .env.example .env        # Mac/Linux
-```
-
-5. Stwórz bazę danych w PostgreSQL (dane logowania muszą się zgadzać z tymi w `.env`):
-```sql
-   CREATE USER fleet_user WITH PASSWORD 'twoje_haslo';
-   CREATE DATABASE fleet_db OWNER fleet_user;
-   GRANT ALL PRIVILEGES ON DATABASE fleet_db TO fleet_user;
-```
-
-6. Zastosuj migracje i stwórz konto administratora:
-```bash
-   python manage.py migrate
-   python manage.py createsuperuser
-```
-
-7. Uruchom serwer:
-```bash
-   python manage.py runserver
-```
-   Backend dostępny pod `http://127.0.0.1:8000/`.
-
-### Frontend
-
-1. Przejdź do folderu frontend:
-```bash
-   cd ../frontend
-```
-
-2. Zainstaluj zależności:
-```bash
-   npm install
-```
-
-3. Uruchom serwer deweloperski:
-```bash
-   npm run dev
-```
-   Frontend dostępny pod `http://localhost:5173/`.
-
-## Status projektu
-
-🚧 W trakcie rozwoju — praca dyplomowa
