@@ -135,7 +135,3 @@ To also remove the local database volume:
 ```bash
 docker compose down -v
 ```
-
-## CI/CD
-
-Projekt wykorzystuje GitHub Actions do automatycznego sprawdzania frontendu React oraz backendu Django.
