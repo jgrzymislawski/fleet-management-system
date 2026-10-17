@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Pobierz kod
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Zainstaluj Node.js
         uses: actions/setup-node@v4
