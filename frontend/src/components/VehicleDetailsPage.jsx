@@ -11,8 +11,10 @@ function VehicleDetailsPage({ onLogout }) {
   const [vehicle, setVehicle] = useState(null);
   const [driver, setDriver] = useState(null);
   const [serviceRecords, setServiceRecords] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     const loadVehicle = async () => {
@@ -42,6 +44,16 @@ function VehicleDetailsPage({ onLogout }) {
           setServiceRecords(serviceResponse.data);
         } catch (serviceError) {
           console.error("Błąd pobierania historii serwisowej:", serviceError);
+        }
+
+        try {
+          const documentsResponse = await apiClient.get(
+            `vehicle-documents/?vehicle=${id}`,
+          );
+
+          setDocuments(documentsResponse.data);
+        } catch (documentsError) {
+          console.error("Błąd pobierania dokumentów:", documentsError);
         }
       } catch (err) {
         console.error("Błąd pobierania pojazdu:", err);
@@ -82,6 +94,19 @@ function VehicleDetailsPage({ onLogout }) {
     if (fuelType === "electric") return "Elektryczny";
 
     return "Nie podano";
+  };
+
+  const getDocumentTypeName = (type) => {
+    if (type === "oc") return "OC";
+    if (type === "ac") return "AC";
+    if (type === "registration") return "Dowód rejestracyjny";
+    if (type === "inspection") return "Przegląd techniczny";
+    if (type === "leasing") return "Umowa leasingowa";
+    if (type === "warranty") return "Gwarancja";
+    if (type === "assistance") return "Assistance";
+    if (type === "other") return "Inny";
+
+    return type;
   };
 
   const formatMileage = (mileage) => {
@@ -166,6 +191,8 @@ function VehicleDetailsPage({ onLogout }) {
     }
 
     try {
+      setActionError("");
+
       await apiClient.delete(`service-records/${record.id}/`);
 
       setServiceRecords((currentRecords) =>
@@ -175,8 +202,34 @@ function VehicleDetailsPage({ onLogout }) {
       );
     } catch (err) {
       console.error("Błąd usuwania wpisu serwisowego:", err);
+      setActionError("Nie udało się usunąć wpisu serwisowego.");
+    }
+  };
 
-      setError("Nie udało się usunąć wpisu serwisowego.");
+  const handleDeleteDocument = async (document) => {
+    const documentName = getDocumentTypeName(document.document_type);
+
+    const confirmed = window.confirm(
+      `Czy na pewno chcesz usunąć dokument "${documentName}"?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setActionError("");
+
+      await apiClient.delete(`vehicle-documents/${document.id}/`);
+
+      setDocuments((currentDocuments) =>
+        currentDocuments.filter(
+          (currentDocument) => currentDocument.id !== document.id,
+        ),
+      );
+    } catch (err) {
+      console.error("Błąd usuwania dokumentu:", err);
+      setActionError("Nie udało się usunąć dokumentu.");
     }
   };
 
@@ -207,7 +260,6 @@ function VehicleDetailsPage({ onLogout }) {
   }
 
   const inspectionStatus = getExpiryStatus(vehicle.inspection_expiry_date);
-
   const insuranceStatus = getExpiryStatus(vehicle.insurance_expiry_date);
 
   return (
@@ -247,25 +299,24 @@ function VehicleDetailsPage({ onLogout }) {
           </button>
         </div>
 
+        {actionError && <p className="vehicle-details-error">{actionError}</p>}
+
         <div className="vehicle-details-card">
           <h2>Dane pojazdu</h2>
 
           <div className="vehicle-details-grid">
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Marka</span>
-
               <span className="vehicle-detail-value">{vehicle.brand}</span>
             </div>
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Model</span>
-
               <span className="vehicle-detail-value">{vehicle.model}</span>
             </div>
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Numer rejestracyjny</span>
-
               <span className="vehicle-detail-value">
                 {vehicle.registration_number}
               </span>
@@ -273,7 +324,6 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">VIN</span>
-
               <span className="vehicle-detail-value">
                 {vehicle.vin || "Nie podano"}
               </span>
@@ -281,13 +331,11 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Rok produkcji</span>
-
               <span className="vehicle-detail-value">{vehicle.year}</span>
             </div>
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Typ pojazdu</span>
-
               <span className="vehicle-detail-value">
                 {getVehicleTypeName(vehicle.vehicle_type)}
               </span>
@@ -295,7 +343,6 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Rodzaj paliwa</span>
-
               <span className="vehicle-detail-value">
                 {getFuelTypeName(vehicle.fuel_type)}
               </span>
@@ -303,7 +350,6 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Przebieg</span>
-
               <span className="vehicle-detail-value">
                 {formatMileage(vehicle.mileage)}
               </span>
@@ -311,7 +357,6 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Status</span>
-
               <span className="vehicle-detail-value">
                 {getStatusName(vehicle.status)}
               </span>
@@ -368,7 +413,6 @@ function VehicleDetailsPage({ onLogout }) {
           <div className="vehicle-service-header">
             <div>
               <h2>Historia napraw</h2>
-
               <p>Historia serwisów i napraw tego pojazdu.</p>
             </div>
 
@@ -398,9 +442,7 @@ function VehicleDetailsPage({ onLogout }) {
 
                   <div className="vehicle-service-data">
                     <span>{formatDate(record.service_date)}</span>
-
                     <span>{formatMileage(record.mileage)}</span>
-
                     <strong>{formatCost(record.cost)}</strong>
                   </div>
 
@@ -429,6 +471,84 @@ function VehicleDetailsPage({ onLogout }) {
           ) : (
             <div className="vehicle-service-empty">
               Brak wpisów w historii napraw.
+            </div>
+          )}
+        </div>
+
+        <div className="vehicle-service-card">
+          <div className="vehicle-service-header">
+            <div>
+              <h2>Dokumenty pojazdu</h2>
+              <p>Dokumenty i polisy przypisane do tego pojazdu.</p>
+            </div>
+
+            <button
+              className="vehicle-service-add"
+              onClick={() =>
+                navigate(`/vehicle-documents/add?vehicle=${vehicle.id}`)
+              }
+            >
+              + Dodaj dokument
+            </button>
+          </div>
+
+          {documents.length > 0 ? (
+            <div className="vehicle-service-list">
+              {documents.map((document) => (
+                <div className="vehicle-service-item" key={document.id}>
+                  <div className="vehicle-service-main">
+                    <span className="vehicle-service-title">
+                      {getDocumentTypeName(document.document_type)}
+                    </span>
+
+                    <span className="vehicle-service-description">
+                      {document.document_number
+                        ? `Numer: ${document.document_number}`
+                        : "Brak numeru dokumentu"}
+                    </span>
+
+                    <span className="vehicle-service-description">
+                      {document.notes || "Brak dodatkowych notatek"}
+                    </span>
+                  </div>
+
+                  <div className="vehicle-service-data">
+                    <span>Wystawiono: {formatDate(document.issue_date)}</span>
+
+                    <span>Ważny do: {formatDate(document.expiry_date)}</span>
+
+                    <strong>
+                      {document.cost !== null
+                        ? formatCost(document.cost)
+                        : "Brak kosztu"}
+                    </strong>
+                  </div>
+
+                  <div className="vehicle-service-actions">
+                    <button
+                      type="button"
+                      className="vehicle-service-edit"
+                      onClick={() =>
+                        navigate(`/vehicle-documents/${document.id}/edit`)
+                      }
+                    >
+                      Edytuj
+                    </button>
+
+                    <button
+                      type="button"
+                      className="vehicle-service-delete"
+                      onClick={() => handleDeleteDocument(document)}
+                    >
+                      Usuń
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="vehicle-service-empty">
+              Brak dokumentów dla tego pojazdu.
             </div>
           )}
         </div>

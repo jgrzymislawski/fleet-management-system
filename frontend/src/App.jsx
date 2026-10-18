@@ -21,6 +21,8 @@ import ServiceHistoryPage from "./components/ServiceHistoryPage";
 import AddServiceRecordPage from "./components/AddServiceRecordPage";
 import EditServiceRecordPage from "./components/EditServiceRecordPage";
 import StatisticsPage from "./components/StatisticsPage";
+import AddVehicleDocumentPage from "./components/AddVehicleDocumentPage";
+import EditVehicleDocumentPage from "./components/EditVehicleDocumentPage";
 
 import "./App.css";
 
@@ -63,46 +65,7 @@ function App() {
       <Route path="/podglad" element={<PreviewPage />} />
 
       <Route path="/dolacz" element={<JoinPage />} />
-      <Route
-        path="/service-history"
-        element={
-          isLoggedIn ? (
-            <ServiceHistoryPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/service-history/add"
-        element={
-          isLoggedIn ? (
-            <AddServiceRecordPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/service-history/:id/edit"
-        element={
-          isLoggedIn ? (
-            <EditServiceRecordPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/statistics"
-        element={
-          isLoggedIn ? (
-            <StatisticsPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
+
       <Route
         path="/login"
         element={<Login onLoginSuccess={handleLoginSuccess} />}
@@ -113,6 +76,17 @@ function App() {
         element={
           isLoggedIn ? (
             <Dashboard onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      <Route
+        path="/vehicles"
+        element={
+          isLoggedIn ? (
+            <VehiclesPage onLogout={handleLogout} />
           ) : (
             <Navigate to="/login" replace />
           )
@@ -153,10 +127,10 @@ function App() {
       />
 
       <Route
-        path="/vehicles"
+        path="/drivers"
         element={
           isLoggedIn ? (
-            <VehiclesPage onLogout={handleLogout} />
+            <DriversPage onLogout={handleLogout} />
           ) : (
             <Navigate to="/login" replace />
           )
@@ -197,20 +171,76 @@ function App() {
       />
 
       <Route
-        path="/drivers"
+        path="/alerts"
         element={
           isLoggedIn ? (
-            <DriversPage onLogout={handleLogout} />
+            <AlertsPage onLogout={handleLogout} />
           ) : (
             <Navigate to="/login" replace />
           )
         }
       />
+
       <Route
-        path="/alerts"
+        path="/service-history"
         element={
           isLoggedIn ? (
-            <AlertsPage onLogout={handleLogout} />
+            <ServiceHistoryPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      <Route
+        path="/service-history/add"
+        element={
+          isLoggedIn ? (
+            <AddServiceRecordPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      <Route
+        path="/service-history/:id/edit"
+        element={
+          isLoggedIn ? (
+            <EditServiceRecordPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      <Route
+        path="/vehicle-documents/add"
+        element={
+          isLoggedIn ? (
+            <AddVehicleDocumentPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      <Route
+        path="/vehicle-documents/:id/edit"
+        element={
+          isLoggedIn ? (
+            <EditVehicleDocumentPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      <Route
+        path="/statistics"
+        element={
+          isLoggedIn ? (
+            <StatisticsPage onLogout={handleLogout} />
           ) : (
             <Navigate to="/login" replace />
           )

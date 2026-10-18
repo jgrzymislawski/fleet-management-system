@@ -1,0 +1,154 @@
+.document-form-header {
+  margin-bottom: 24px;
+}
+
+.document-form-header h1 {
+  margin: 12px 0 6px;
+  font-size: 30px;
+  color: #1a1a1a;
+}
+
+.document-form-header p {
+  margin: 0;
+  color: #6b6b6b;
+}
+
+.document-form-back {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: #666;
+  cursor: pointer;
+}
+
+.document-form-back:hover {
+  color: #1a1a1a;
+}
+
+.document-form-card {
+  max-width: 900px;
+  padding: 28px;
+  background: #ffffff;
+  border: 1px solid #e7e2de;
+  border-radius: 10px;
+}
+
+.document-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.document-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.document-form-full {
+  grid-column: 1 / -1;
+}
+
+.document-form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.document-form-group input,
+.document-form-group select,
+.document-form-group textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid #d8d3cf;
+  border-radius: 8px;
+  background: #ffffff;
+  font: inherit;
+  color: #1a1a1a;
+  outline: none;
+}
+
+.document-form-group input:focus,
+.document-form-group select:focus,
+.document-form-group textarea:focus {
+  border-color: #1a1a1a;
+}
+
+.document-form-group input:disabled {
+  background: #f5f1ea;
+  color: #555;
+}
+
+.document-form-group textarea {
+  resize: vertical;
+}
+
+.document-form-error {
+  margin-bottom: 20px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff0f0;
+  color: #a12626;
+}
+
+.document-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.document-form-cancel,
+.document-form-save {
+  padding: 11px 18px;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.document-form-cancel {
+  border: 1px solid #d8d3cf;
+  background: #ffffff;
+  color: #1a1a1a;
+}
+
+.document-form-save {
+  border: 1px solid #1a1a1a;
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+.document-form-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+  .document-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .document-form-full {
+    grid-column: auto;
+  }
+
+  .document-form-card {
+    padding: 20px;
+  }
+
+  .document-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .document-form-cancel,
+  .document-form-save {
+    width: 100%;
+  }
+}
+.document-form-file-info {
+  font-size: 13px;
+  color: #6b6b6b;
+}
