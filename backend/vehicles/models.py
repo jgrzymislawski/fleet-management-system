@@ -113,3 +113,68 @@ class ServiceRecord(models.Model):
 
     def __str__(self):
         return f"{self.vehicle} - {self.title}"
+
+class VehicleDocument(models.Model):
+    DOCUMENT_TYPES = [
+        ("oc", "OC"),
+        ("ac", "AC"),
+        ("registration", "Dowód rejestracyjny"),
+        ("inspection", "Przegląd techniczny"),
+        ("leasing", "Umowa leasingowa"),
+        ("warranty", "Gwarancja"),
+        ("assistance", "Assistance"),
+        ("other", "Inny"),
+    ]
+
+    vehicle = models.ForeignKey(
+        Vehicle,
+        on_delete=models.CASCADE,
+        related_name="documents"
+    )
+
+    document_type = models.CharField(
+        max_length=30,
+        choices=DOCUMENT_TYPES
+    )
+
+    document_number = models.CharField(
+        max_length=100,
+        blank=True
+    )
+
+    issue_date = models.DateField(
+        null=True,
+        blank=True
+    )
+
+    expiry_date = models.DateField(
+        null=True,
+        blank=True
+    )
+
+    cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+
+    notes = models.TextField(
+        blank=True
+    )
+
+    file = models.FileField(
+        upload_to="vehicle_documents/",
+        null=True,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.vehicle} - {self.get_document_type_display()}"

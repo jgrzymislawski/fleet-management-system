@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Vehicle, ServiceRecord
+from .models import Vehicle, ServiceRecord, VehicleDocument
 
 
 class VehicleSerializer(serializers.ModelSerializer):
@@ -21,4 +21,9 @@ class VehicleSerializer(serializers.ModelSerializer):
 class ServiceRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = ServiceRecord
+        fields = "__all__"
+
+class VehicleDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VehicleDocument
         fields = "__all__"
