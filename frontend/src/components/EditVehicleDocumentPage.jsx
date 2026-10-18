@@ -128,7 +128,13 @@ function EditVehicleDocumentPage({ onLogout }) {
       console.error("Błąd edycji dokumentu:", err);
       console.error("Odpowiedź backendu:", err.response?.data);
 
-      setError("Nie udało się zapisać zmian.");
+      const fileError = err.response?.data?.file?.[0];
+
+      if (fileError) {
+        setError(fileError);
+      } else {
+        setError("Nie udało się zapisać zmian.");
+      }
     } finally {
       setSaving(false);
     }
@@ -280,6 +286,11 @@ function EditVehicleDocumentPage({ onLogout }) {
                 accept=".pdf,.jpg,.jpeg,.png"
                 onChange={handleFileChange}
               />
+
+              <span className="document-form-file-info">
+                Dozwolone formaty: PDF, JPG, JPEG, PNG. Maksymalny rozmiar
+                pliku: 10 MB.
+              </span>
 
               {existingFile && (
                 <span className="document-form-file-info">

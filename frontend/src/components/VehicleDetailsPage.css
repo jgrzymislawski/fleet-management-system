@@ -368,3 +368,16 @@
         flex: 1;
     }
 }
+.vehicle-document-file {
+  width: fit-content;
+  margin-top: 6px;
+  color: #1a1a1a;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.vehicle-document-file:hover {
+  opacity: 0.7;
+}

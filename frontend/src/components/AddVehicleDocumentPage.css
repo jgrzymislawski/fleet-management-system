@@ -149,6 +149,8 @@
   }
 }
 .document-form-file-info {
+  margin-top: 4px;
   font-size: 13px;
   color: #6b6b6b;
+  line-height: 1.4;
 }

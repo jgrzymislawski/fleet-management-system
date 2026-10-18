@@ -121,7 +121,13 @@ function AddVehicleDocumentPage({ onLogout }) {
       console.error("Błąd dodawania dokumentu:", err);
       console.error("Odpowiedź backendu:", err.response?.data);
 
-      setError("Nie udało się dodać dokumentu.");
+      const fileError = err.response?.data?.file?.[0];
+
+      if (fileError) {
+        setError(fileError);
+      } else {
+        setError("Nie udało się dodać dokumentu.");
+      }
     } finally {
       setSaving(false);
     }
@@ -285,6 +291,11 @@ function AddVehicleDocumentPage({ onLogout }) {
                 accept=".pdf,.jpg,.jpeg,.png"
                 onChange={handleFileChange}
               />
+
+              <span className="document-form-file-info">
+                Dozwolone formaty: PDF, JPG, JPEG, PNG. Maksymalny rozmiar
+                pliku: 10 MB.
+              </span>
             </div>
 
             <div className="document-form-group document-form-full">

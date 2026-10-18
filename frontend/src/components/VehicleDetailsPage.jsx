@@ -510,6 +510,17 @@ function VehicleDetailsPage({ onLogout }) {
                     <span className="vehicle-service-description">
                       {document.notes || "Brak dodatkowych notatek"}
                     </span>
+
+                    {document.file && (
+                      <a
+                        className="vehicle-document-file"
+                        href={document.file}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Otwórz załącznik
+                      </a>
+                    )}
                   </div>
 
                   <div className="vehicle-service-data">
