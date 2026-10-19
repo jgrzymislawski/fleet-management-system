@@ -494,68 +494,78 @@ function VehicleDetailsPage({ onLogout }) {
 
           {documents.length > 0 ? (
             <div className="vehicle-service-list">
-              {documents.map((document) => (
-                <div className="vehicle-service-item" key={document.id}>
-                  <div className="vehicle-service-main">
-                    <span className="vehicle-service-title">
-                      {getDocumentTypeName(document.document_type)}
-                    </span>
+              {documents.map((document) => {
+                const documentStatus = getExpiryStatus(document.expiry_date);
 
-                    <span className="vehicle-service-description">
-                      {document.document_number
-                        ? `Numer: ${document.document_number}`
-                        : "Brak numeru dokumentu"}
-                    </span>
+                return (
+                  <div className="vehicle-service-item" key={document.id}>
+                    <div className="vehicle-service-main">
+                      <span className="vehicle-service-title">
+                        {getDocumentTypeName(document.document_type)}
+                      </span>
 
-                    <span className="vehicle-service-description">
-                      {document.notes || "Brak dodatkowych notatek"}
-                    </span>
+                      <span className="vehicle-service-description">
+                        {document.document_number
+                          ? `Numer: ${document.document_number}`
+                          : "Brak numeru dokumentu"}
+                      </span>
 
-                    {document.file && (
-                      <a
-                        className="vehicle-document-file"
-                        href={document.file}
-                        target="_blank"
-                        rel="noreferrer"
+                      <span className="vehicle-service-description">
+                        {document.notes || "Brak dodatkowych notatek"}
+                      </span>
+
+                      {document.file && (
+                        <a
+                          className="vehicle-document-file"
+                          href={document.file}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Otwórz załącznik
+                        </a>
+                      )}
+                    </div>
+
+                    <div className="vehicle-service-data">
+                      <span>Wystawiono: {formatDate(document.issue_date)}</span>
+
+                      <span>Ważny do: {formatDate(document.expiry_date)}</span>
+
+                      <span
+                        className={`expiry-status ${documentStatus.className}`}
                       >
-                        Otwórz załącznik
-                      </a>
-                    )}
+                        {documentStatus.text}
+                      </span>
+
+                      <strong>
+                        {document.cost !== null
+                          ? formatCost(document.cost)
+                          : "Brak kosztu"}
+                      </strong>
+                    </div>
+
+                    <div className="vehicle-service-actions">
+                      <button
+                        type="button"
+                        className="vehicle-service-edit"
+                        onClick={() =>
+                          navigate(`/vehicle-documents/${document.id}/edit`)
+                        }
+                      >
+                        Edytuj
+                      </button>
+
+                      <button
+                        type="button"
+                        className="vehicle-service-delete"
+                        onClick={() => handleDeleteDocument(document)}
+                      >
+                        Usuń
+                      </button>
+                    </div>
                   </div>
-
-                  <div className="vehicle-service-data">
-                    <span>Wystawiono: {formatDate(document.issue_date)}</span>
-
-                    <span>Ważny do: {formatDate(document.expiry_date)}</span>
-
-                    <strong>
-                      {document.cost !== null
-                        ? formatCost(document.cost)
-                        : "Brak kosztu"}
-                    </strong>
-                  </div>
-
-                  <div className="vehicle-service-actions">
-                    <button
-                      type="button"
-                      className="vehicle-service-edit"
-                      onClick={() =>
-                        navigate(`/vehicle-documents/${document.id}/edit`)
-                      }
-                    >
-                      Edytuj
-                    </button>
-
-                    <button
-                      type="button"
-                      className="vehicle-service-delete"
-                      onClick={() => handleDeleteDocument(document)}
-                    >
-                      Usuń
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="vehicle-service-empty">

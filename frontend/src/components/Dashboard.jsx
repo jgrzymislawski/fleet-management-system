@@ -13,12 +13,21 @@ function Dashboard({ onLogout }) {
   const [recentVehicles, setRecentVehicles] = useState([]);
 
   useEffect(() => {
-    apiClient
-      .get("vehicles/")
-      .then((response) => {
-        const vehicles = response.data;
+    const loadDashboard = async () => {
+      try {
+        const [vehiclesResponse, driversResponse, documentsResponse] =
+          await Promise.all([
+            apiClient.get("vehicles/"),
+            apiClient.get("drivers/"),
+            apiClient.get("vehicle-documents/"),
+          ]);
+
+        const vehicles = vehiclesResponse.data;
+        const drivers = driversResponse.data;
+        const documents = documentsResponse.data;
 
         setVehicleCount(vehicles.length);
+        setDriverCount(drivers.length);
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -50,6 +59,26 @@ function Dashboard({ onLogout }) {
           }
         });
 
+        documents.forEach((document) => {
+          if (!document.expiry_date) {
+            return;
+          }
+
+          if (
+            document.document_type === "oc" ||
+            document.document_type === "inspection"
+          ) {
+            return;
+          }
+
+          const expiryDate = new Date(document.expiry_date);
+          expiryDate.setHours(0, 0, 0, 0);
+
+          if (expiryDate <= warningLimit) {
+            attentionItems += 1;
+          }
+        });
+
         setAttentionCount(attentionItems);
 
         const thirtyDaysAgo = new Date(today);
@@ -68,19 +97,12 @@ function Dashboard({ onLogout }) {
           .slice(0, 5);
 
         setRecentVehicles(recent);
-      })
-      .catch((error) => {
-        console.error("Nie udało się pobrać pojazdów:", error);
-      });
+      } catch (error) {
+        console.error("Nie udało się pobrać danych dashboardu:", error);
+      }
+    };
 
-    apiClient
-      .get("drivers/")
-      .then((response) => {
-        setDriverCount(response.data.length);
-      })
-      .catch((error) => {
-        console.error("Nie udało się pobrać kierowców:", error);
-      });
+    loadDashboard();
   }, []);
 
   return (
@@ -128,7 +150,7 @@ function Dashboard({ onLogout }) {
             <strong className="dashboard-card-value">{attentionCount}</strong>
 
             <span className="dashboard-card-description">
-              OC i przeglądy po terminie lub do 30 dni
+              Terminy i dokumenty po terminie lub do 30 dni
             </span>
           </button>
 

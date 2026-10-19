@@ -10,11 +10,63 @@ function AlertsPage({ onLogout }) {
   const [alerts, setAlerts] = useState([]);
   const [error, setError] = useState(null);
 
+  const getDocumentTypeName = (type) => {
+    if (type === "oc") return "Polisa OC";
+    if (type === "ac") return "Polisa AC";
+    if (type === "registration") return "Dowód rejestracyjny";
+    if (type === "inspection") return "Przegląd techniczny";
+    if (type === "leasing") return "Umowa leasingowa";
+    if (type === "warranty") return "Gwarancja";
+    if (type === "assistance") return "Assistance";
+    if (type === "other") return "Inny dokument";
+
+    return type;
+  };
+
+  const getExpiryStatus = (date) => {
+    const today = new Date();
+    const expiryDate = new Date(date);
+
+    today.setHours(0, 0, 0, 0);
+    expiryDate.setHours(0, 0, 0, 0);
+
+    const difference = expiryDate - today;
+    const daysLeft = Math.ceil(difference / (1000 * 60 * 60 * 24));
+
+    if (daysLeft < 0) {
+      return {
+        text: "Po terminie",
+        className: "alert-status-expired",
+      };
+    }
+
+    if (daysLeft === 0) {
+      return {
+        text: "Wygasa dzisiaj",
+        className: "alert-status-warning",
+      };
+    }
+
+    return {
+      text: `Wygasa za ${daysLeft} dni`,
+      className: "alert-status-warning",
+    };
+  };
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString("pl-PL");
+  };
+
   useEffect(() => {
-    apiClient
-      .get("vehicles/")
-      .then((response) => {
-        const vehicles = response.data;
+    const loadAlerts = async () => {
+      try {
+        const [vehiclesResponse, documentsResponse] = await Promise.all([
+          apiClient.get("vehicles/"),
+          apiClient.get("vehicle-documents/"),
+        ]);
+
+        const vehicles = vehiclesResponse.data;
+        const documents = documentsResponse.data;
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -62,49 +114,57 @@ function AlertsPage({ onLogout }) {
           }
         });
 
+        documents.forEach((document) => {
+          if (!document.expiry_date) {
+            return;
+          }
+
+          if (
+            document.document_type === "oc" ||
+            document.document_type === "inspection"
+          ) {
+            return;
+          }
+
+          const expiryDate = new Date(document.expiry_date);
+
+          expiryDate.setHours(0, 0, 0, 0);
+
+          if (expiryDate > warningLimit) {
+            return;
+          }
+
+          const vehicle = vehicles.find(
+            (vehicleItem) =>
+              Number(vehicleItem.id) === Number(document.vehicle),
+          );
+
+          if (!vehicle) {
+            return;
+          }
+
+          generatedAlerts.push({
+            id: `document-${document.id}`,
+            vehicleId: vehicle.id,
+            vehicleName: `${vehicle.brand} ${vehicle.model}`,
+            registrationNumber: vehicle.registration_number,
+            type: getDocumentTypeName(document.document_type),
+            date: document.expiry_date,
+            status: getExpiryStatus(document.expiry_date),
+          });
+        });
+
         generatedAlerts.sort((a, b) => new Date(a.date) - new Date(b.date));
 
         setAlerts(generatedAlerts);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Błąd pobierania alertów:", err);
         setError("Nie udało się pobrać alertów.");
-      });
-  }, []);
-
-  const getExpiryStatus = (date) => {
-    const today = new Date();
-    const expiryDate = new Date(date);
-
-    today.setHours(0, 0, 0, 0);
-    expiryDate.setHours(0, 0, 0, 0);
-
-    const difference = expiryDate - today;
-    const daysLeft = Math.ceil(difference / (1000 * 60 * 60 * 24));
-
-    if (daysLeft < 0) {
-      return {
-        text: "Po terminie",
-        className: "alert-status-expired",
-      };
-    }
-
-    if (daysLeft === 0) {
-      return {
-        text: "Wygasa dzisiaj",
-        className: "alert-status-warning",
-      };
-    }
-
-    return {
-      text: `Wygasa za ${daysLeft} dni`,
-      className: "alert-status-warning",
+      }
     };
-  };
 
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString("pl-PL");
-  };
+    loadAlerts();
+  }, []);
 
   return (
     <div className="dashboard-layout">
@@ -123,8 +183,8 @@ function AlertsPage({ onLogout }) {
             <h1>Wymagają uwagi</h1>
 
             <p>
-              Przeglądy techniczne i polisy OC po terminie lub wygasające w
-              ciągu 30 dni.
+              Przeglądy, polisy i dokumenty po terminie lub wygasające w ciągu
+              30 dni.
             </p>
           </div>
         </div>
