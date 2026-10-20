@@ -1,4 +1,5 @@
 from django.db import models
+from organizations.models import Organization, Company
 
 
 class Vehicle(models.Model):
@@ -82,6 +83,22 @@ class Vehicle(models.Model):
     )
 
     insurance_expiry_date = models.DateField(
+        null=True,
+        blank=True
+    )
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="vehicles",
+        null=True,
+        blank=True
+    )
+
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.SET_NULL,
+        related_name="vehicles",
         null=True,
         blank=True
     )

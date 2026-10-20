@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "vehicles",
     "drivers",
     "assignments",
+    "organizations",
 ]
 
 
