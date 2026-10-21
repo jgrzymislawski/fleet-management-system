@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import "./VehicleDetailsPage.css";
 
 function VehicleDetailsPage({ onLogout }) {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { canEditCompany } = useAuth();
 
   const [vehicle, setVehicle] = useState(null);
   const [driver, setDriver] = useState(null);
@@ -202,6 +204,7 @@ function VehicleDetailsPage({ onLogout }) {
       );
     } catch (err) {
       console.error("Błąd usuwania wpisu serwisowego:", err);
+
       setActionError("Nie udało się usunąć wpisu serwisowego.");
     }
   };
@@ -229,6 +232,7 @@ function VehicleDetailsPage({ onLogout }) {
       );
     } catch (err) {
       console.error("Błąd usuwania dokumentu:", err);
+
       setActionError("Nie udało się usunąć dokumentu.");
     }
   };
@@ -259,7 +263,10 @@ function VehicleDetailsPage({ onLogout }) {
     );
   }
 
+  const canEditVehicle = canEditCompany(vehicle.company);
+
   const inspectionStatus = getExpiryStatus(vehicle.inspection_expiry_date);
+
   const insuranceStatus = getExpiryStatus(vehicle.insurance_expiry_date);
 
   return (
@@ -291,12 +298,14 @@ function VehicleDetailsPage({ onLogout }) {
             </div>
           </div>
 
-          <button
-            className="vehicle-details-edit"
-            onClick={() => navigate(`/vehicles/${vehicle.id}/edit`)}
-          >
-            Edytuj pojazd
-          </button>
+          {canEditVehicle && (
+            <button
+              className="vehicle-details-edit"
+              onClick={() => navigate(`/vehicles/${vehicle.id}/edit`)}
+            >
+              Edytuj pojazd
+            </button>
+          )}
         </div>
 
         {actionError && <p className="vehicle-details-error">{actionError}</p>}
@@ -307,16 +316,19 @@ function VehicleDetailsPage({ onLogout }) {
           <div className="vehicle-details-grid">
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Marka</span>
+
               <span className="vehicle-detail-value">{vehicle.brand}</span>
             </div>
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Model</span>
+
               <span className="vehicle-detail-value">{vehicle.model}</span>
             </div>
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Numer rejestracyjny</span>
+
               <span className="vehicle-detail-value">
                 {vehicle.registration_number}
               </span>
@@ -324,6 +336,7 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">VIN</span>
+
               <span className="vehicle-detail-value">
                 {vehicle.vin || "Nie podano"}
               </span>
@@ -331,11 +344,13 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Rok produkcji</span>
+
               <span className="vehicle-detail-value">{vehicle.year}</span>
             </div>
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Typ pojazdu</span>
+
               <span className="vehicle-detail-value">
                 {getVehicleTypeName(vehicle.vehicle_type)}
               </span>
@@ -343,6 +358,7 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Rodzaj paliwa</span>
+
               <span className="vehicle-detail-value">
                 {getFuelTypeName(vehicle.fuel_type)}
               </span>
@@ -350,6 +366,7 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Przebieg</span>
+
               <span className="vehicle-detail-value">
                 {formatMileage(vehicle.mileage)}
               </span>
@@ -357,8 +374,17 @@ function VehicleDetailsPage({ onLogout }) {
 
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Status</span>
+
               <span className="vehicle-detail-value">
                 {getStatusName(vehicle.status)}
+              </span>
+            </div>
+
+            <div className="vehicle-detail">
+              <span className="vehicle-detail-label">Spółka</span>
+
+              <span className="vehicle-detail-value">
+                {vehicle.company_name || "Bez przypisanej spółki"}
               </span>
             </div>
 
@@ -413,17 +439,20 @@ function VehicleDetailsPage({ onLogout }) {
           <div className="vehicle-service-header">
             <div>
               <h2>Historia napraw</h2>
+
               <p>Historia serwisów i napraw tego pojazdu.</p>
             </div>
 
-            <button
-              className="vehicle-service-add"
-              onClick={() =>
-                navigate(`/service-history/add?vehicle=${vehicle.id}`)
-              }
-            >
-              + Dodaj wpis
-            </button>
+            {canEditVehicle && (
+              <button
+                className="vehicle-service-add"
+                onClick={() =>
+                  navigate(`/service-history/add?vehicle=${vehicle.id}`)
+                }
+              >
+                + Dodaj wpis
+              </button>
+            )}
           </div>
 
           {serviceRecords.length > 0 ? (
@@ -442,29 +471,33 @@ function VehicleDetailsPage({ onLogout }) {
 
                   <div className="vehicle-service-data">
                     <span>{formatDate(record.service_date)}</span>
+
                     <span>{formatMileage(record.mileage)}</span>
+
                     <strong>{formatCost(record.cost)}</strong>
                   </div>
 
-                  <div className="vehicle-service-actions">
-                    <button
-                      type="button"
-                      className="vehicle-service-edit"
-                      onClick={() =>
-                        navigate(`/service-history/${record.id}/edit`)
-                      }
-                    >
-                      Edytuj
-                    </button>
+                  {canEditVehicle && (
+                    <div className="vehicle-service-actions">
+                      <button
+                        type="button"
+                        className="vehicle-service-edit"
+                        onClick={() =>
+                          navigate(`/service-history/${record.id}/edit`)
+                        }
+                      >
+                        Edytuj
+                      </button>
 
-                    <button
-                      type="button"
-                      className="vehicle-service-delete"
-                      onClick={() => handleDeleteServiceRecord(record)}
-                    >
-                      Usuń
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        className="vehicle-service-delete"
+                        onClick={() => handleDeleteServiceRecord(record)}
+                      >
+                        Usuń
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -479,17 +512,20 @@ function VehicleDetailsPage({ onLogout }) {
           <div className="vehicle-service-header">
             <div>
               <h2>Dokumenty pojazdu</h2>
+
               <p>Dokumenty i polisy przypisane do tego pojazdu.</p>
             </div>
 
-            <button
-              className="vehicle-service-add"
-              onClick={() =>
-                navigate(`/vehicle-documents/add?vehicle=${vehicle.id}`)
-              }
-            >
-              + Dodaj dokument
-            </button>
+            {canEditVehicle && (
+              <button
+                className="vehicle-service-add"
+                onClick={() =>
+                  navigate(`/vehicle-documents/add?vehicle=${vehicle.id}`)
+                }
+              >
+                + Dodaj dokument
+              </button>
+            )}
           </div>
 
           {documents.length > 0 ? (
@@ -544,25 +580,27 @@ function VehicleDetailsPage({ onLogout }) {
                       </strong>
                     </div>
 
-                    <div className="vehicle-service-actions">
-                      <button
-                        type="button"
-                        className="vehicle-service-edit"
-                        onClick={() =>
-                          navigate(`/vehicle-documents/${document.id}/edit`)
-                        }
-                      >
-                        Edytuj
-                      </button>
+                    {canEditVehicle && (
+                      <div className="vehicle-service-actions">
+                        <button
+                          type="button"
+                          className="vehicle-service-edit"
+                          onClick={() =>
+                            navigate(`/vehicle-documents/${document.id}/edit`)
+                          }
+                        >
+                          Edytuj
+                        </button>
 
-                      <button
-                        type="button"
-                        className="vehicle-service-delete"
-                        onClick={() => handleDeleteDocument(document)}
-                      >
-                        Usuń
-                      </button>
-                    </div>
+                        <button
+                          type="button"
+                          className="vehicle-service-delete"
+                          onClick={() => handleDeleteDocument(document)}
+                        >
+                          Usuń
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}

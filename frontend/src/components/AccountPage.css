@@ -1,0 +1,125 @@
+.account-header {
+  margin-bottom: 24px;
+}
+
+.account-header h1 {
+  margin: 0 0 6px;
+  font-size: 28px;
+  color: #1a1a1a;
+}
+
+.account-header p {
+  margin: 0;
+  color: #6b6b6b;
+}
+
+.account-card {
+  margin-bottom: 20px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #e7e2dc;
+  border-radius: 10px;
+}
+
+.account-card h2 {
+  margin: 0 0 20px;
+  font-size: 20px;
+  color: #1a1a1a;
+}
+
+.account-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.account-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.account-detail-label {
+  font-size: 13px;
+  color: #777777;
+}
+
+.account-detail-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.account-companies {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.account-company {
+  padding: 14px 16px;
+  background: #f8f6f3;
+  border-radius: 8px;
+}
+
+.account-company > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+}
+
+.account-company-name {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.account-company-role {
+  font-size: 14px;
+  color: #666666;
+}
+
+.account-card-description {
+  margin: -8px 0 18px;
+  color: #666666;
+}
+
+.account-primary-button {
+  border: none;
+  border-radius: 8px;
+  padding: 11px 18px;
+  background: #1a1a1a;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.account-primary-button:hover {
+  opacity: 0.85;
+}
+
+.account-admin-card {
+  background: #faf5f2;
+}
+
+.account-empty {
+  margin: 0;
+  color: #777777;
+}
+
+.account-error {
+  color: #b42318;
+}
+
+@media (max-width: 700px) {
+  .account-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-company > div {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

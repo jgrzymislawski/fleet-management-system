@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import apiClient from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import "./VehicleList.css";
 
 function VehicleList() {
@@ -22,11 +23,17 @@ function VehicleList() {
 
   const navigate = useNavigate();
 
+  const { user, canEditCompany } = useAuth();
+
   const [searchParams, setSearchParams] = useSearchParams();
 
   const recentOnly = searchParams.get("recent") === "1";
 
   const filtersRef = useRef(null);
+
+  const canAddVehicle =
+    user?.role === "admin" ||
+    user?.companies?.some((company) => company.role === "editor");
 
   useEffect(() => {
     apiClient
@@ -316,12 +323,14 @@ function VehicleList() {
           <p>Zarządzaj pojazdami znajdującymi się w Twojej flocie.</p>
         </div>
 
-        <button
-          className="add-vehicle-button"
-          onClick={() => navigate("/vehicles/add")}
-        >
-          + Dodaj pojazd
-        </button>
+        {canAddVehicle && (
+          <button
+            className="add-vehicle-button"
+            onClick={() => navigate("/vehicles/add")}
+          >
+            + Dodaj pojazd
+          </button>
+        )}
       </div>
 
       {error && <p className="vehicles-error">{error}</p>}
@@ -741,20 +750,24 @@ function VehicleList() {
                     Szczegóły
                   </button>
 
-                  <button
-                    onClick={() => navigate(`/vehicles/${vehicle.id}/edit`)}
-                  >
-                    Edytuj
-                  </button>
+                  {canEditCompany(vehicle.company) && (
+                    <>
+                      <button
+                        onClick={() => navigate(`/vehicles/${vehicle.id}/edit`)}
+                      >
+                        Edytuj
+                      </button>
 
-                  <div className="vehicle-actions-divider"></div>
+                      <div className="vehicle-actions-divider"></div>
 
-                  <button
-                    className="vehicle-actions-delete"
-                    onClick={() => handleDelete(vehicle)}
-                  >
-                    Usuń
-                  </button>
+                      <button
+                        className="vehicle-actions-delete"
+                        onClick={() => handleDelete(vehicle)}
+                      >
+                        Usuń
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>

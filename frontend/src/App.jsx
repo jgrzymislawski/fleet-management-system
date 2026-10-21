@@ -15,7 +15,6 @@ import VehicleDetailsPage from "./components/VehicleDetailsPage";
 import AddDriverPage from "./components/AddDriverPage";
 import DriverDetailsPage from "./components/DriverDetailsPage";
 import EditDriverPage from "./components/EditDriverPage";
-import useIdleLogout from "./hooks/useIdleLogout";
 import AlertsPage from "./components/AlertsPage";
 import ServiceHistoryPage from "./components/ServiceHistoryPage";
 import AddServiceRecordPage from "./components/AddServiceRecordPage";
@@ -23,6 +22,11 @@ import EditServiceRecordPage from "./components/EditServiceRecordPage";
 import StatisticsPage from "./components/StatisticsPage";
 import AddVehicleDocumentPage from "./components/AddVehicleDocumentPage";
 import EditVehicleDocumentPage from "./components/EditVehicleDocumentPage";
+import AccountPage from "./components/AccountPage";
+import AdminPanelPage from "./components/AdminPanelPage";
+
+import useIdleLogout from "./hooks/useIdleLogout";
+import { useAuth } from "./context/AuthContext";
 
 import "./App.css";
 
@@ -33,6 +37,8 @@ function App() {
 
   const navigate = useNavigate();
 
+  const { user, loadingUser, clearUser } = useAuth();
+
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);
     navigate("/dashboard");
@@ -42,7 +48,10 @@ function App() {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
 
+    clearUser();
+
     setIsLoggedIn(false);
+
     navigate("/");
   };
 
@@ -50,11 +59,40 @@ function App() {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
 
+    clearUser();
+
     setIsLoggedIn(false);
-    navigate("/login", { replace: true });
-  }, [navigate]);
+
+    navigate("/login", {
+      replace: true,
+    });
+  }, [navigate, clearUser]);
 
   useIdleLogout(isLoggedIn, handleIdleLogout, 15 * 60 * 1000);
+
+  const protectedElement = (element) => {
+    if (!isLoggedIn) {
+      return <Navigate to="/login" replace />;
+    }
+
+    return element;
+  };
+
+  const adminElement = (element) => {
+    if (!isLoggedIn) {
+      return <Navigate to="/login" replace />;
+    }
+
+    if (loadingUser) {
+      return <p>Ładowanie...</p>;
+    }
+
+    if (user?.role !== "admin") {
+      return <Navigate to="/account" replace />;
+    }
+
+    return element;
+  };
 
   return (
     <Routes>
@@ -73,178 +111,106 @@ function App() {
 
       <Route
         path="/dashboard"
-        element={
-          isLoggedIn ? (
-            <Dashboard onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(<Dashboard onLogout={handleLogout} />)}
       />
 
       <Route
         path="/vehicles"
-        element={
-          isLoggedIn ? (
-            <VehiclesPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(<VehiclesPage onLogout={handleLogout} />)}
       />
 
       <Route
         path="/vehicles/add"
-        element={
-          isLoggedIn ? (
-            <AddVehiclePage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(<AddVehiclePage onLogout={handleLogout} />)}
       />
 
       <Route
         path="/vehicles/:id/edit"
-        element={
-          isLoggedIn ? (
-            <EditVehiclePage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(<EditVehiclePage onLogout={handleLogout} />)}
       />
 
       <Route
         path="/vehicles/:id"
-        element={
-          isLoggedIn ? (
-            <VehicleDetailsPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(
+          <VehicleDetailsPage onLogout={handleLogout} />,
+        )}
       />
 
       <Route
         path="/drivers"
-        element={
-          isLoggedIn ? (
-            <DriversPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(<DriversPage onLogout={handleLogout} />)}
       />
 
       <Route
         path="/drivers/add"
-        element={
-          isLoggedIn ? (
-            <AddDriverPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(<AddDriverPage onLogout={handleLogout} />)}
       />
 
       <Route
         path="/drivers/:id/edit"
-        element={
-          isLoggedIn ? (
-            <EditDriverPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(<EditDriverPage onLogout={handleLogout} />)}
       />
 
       <Route
         path="/drivers/:id"
-        element={
-          isLoggedIn ? (
-            <DriverDetailsPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(
+          <DriverDetailsPage onLogout={handleLogout} />,
+        )}
       />
 
       <Route
         path="/alerts"
-        element={
-          isLoggedIn ? (
-            <AlertsPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(<AlertsPage onLogout={handleLogout} />)}
       />
 
       <Route
         path="/service-history"
-        element={
-          isLoggedIn ? (
-            <ServiceHistoryPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(
+          <ServiceHistoryPage onLogout={handleLogout} />,
+        )}
       />
 
       <Route
         path="/service-history/add"
-        element={
-          isLoggedIn ? (
-            <AddServiceRecordPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(
+          <AddServiceRecordPage onLogout={handleLogout} />,
+        )}
       />
 
       <Route
         path="/service-history/:id/edit"
-        element={
-          isLoggedIn ? (
-            <EditServiceRecordPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(
+          <EditServiceRecordPage onLogout={handleLogout} />,
+        )}
       />
 
       <Route
         path="/vehicle-documents/add"
-        element={
-          isLoggedIn ? (
-            <AddVehicleDocumentPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(
+          <AddVehicleDocumentPage onLogout={handleLogout} />,
+        )}
       />
 
       <Route
         path="/vehicle-documents/:id/edit"
-        element={
-          isLoggedIn ? (
-            <EditVehicleDocumentPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(
+          <EditVehicleDocumentPage onLogout={handleLogout} />,
+        )}
       />
 
       <Route
         path="/statistics"
-        element={
-          isLoggedIn ? (
-            <StatisticsPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={protectedElement(<StatisticsPage onLogout={handleLogout} />)}
+      />
+
+      <Route
+        path="/account"
+        element={protectedElement(<AccountPage onLogout={handleLogout} />)}
+      />
+
+      <Route
+        path="/admin-panel"
+        element={adminElement(<AdminPanelPage onLogout={handleLogout} />)}
       />
     </Routes>
   );

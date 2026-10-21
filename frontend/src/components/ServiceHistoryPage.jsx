@@ -2,14 +2,21 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import "./ServiceHistoryPage.css";
 
 function ServiceHistoryPage({ onLogout }) {
   const navigate = useNavigate();
 
+  const { user, canEditCompany } = useAuth();
+
   const [serviceRecords, setServiceRecords] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [error, setError] = useState(null);
+
+  const canAddServiceRecord =
+    user?.role === "admin" ||
+    user?.companies?.some((company) => company.role === "editor");
 
   useEffect(() => {
     const loadData = async () => {
@@ -96,12 +103,14 @@ function ServiceHistoryPage({ onLogout }) {
             </p>
           </div>
 
-          <button
-            className="service-history-add"
-            onClick={() => navigate("/service-history/add")}
-          >
-            + Dodaj wpis
-          </button>
+          {canAddServiceRecord && (
+            <button
+              className="service-history-add"
+              onClick={() => navigate("/service-history/add")}
+            >
+              + Dodaj wpis
+            </button>
+          )}
         </div>
 
         {error && <p className="service-history-error">{error}</p>}
@@ -122,6 +131,8 @@ function ServiceHistoryPage({ onLogout }) {
 
           {serviceRecords.map((record) => {
             const vehicle = getVehicle(record.vehicle);
+
+            const canEditRecord = vehicle && canEditCompany(vehicle.company);
 
             return (
               <div
@@ -156,28 +167,32 @@ function ServiceHistoryPage({ onLogout }) {
                 <strong>{formatCost(record.cost)}</strong>
 
                 <div className="service-history-actions">
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
+                  {canEditRecord && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
 
-                      navigate(`/service-history/${record.id}/edit`);
-                    }}
-                  >
-                    Edytuj
-                  </button>
+                          navigate(`/service-history/${record.id}/edit`);
+                        }}
+                      >
+                        Edytuj
+                      </button>
 
-                  <button
-                    type="button"
-                    className="service-history-delete"
-                    onClick={(event) => {
-                      event.stopPropagation();
+                      <button
+                        type="button"
+                        className="service-history-delete"
+                        onClick={(event) => {
+                          event.stopPropagation();
 
-                      handleDelete(record);
-                    }}
-                  >
-                    Usuń
-                  </button>
+                          handleDelete(record);
+                        }}
+                      >
+                        Usuń
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );

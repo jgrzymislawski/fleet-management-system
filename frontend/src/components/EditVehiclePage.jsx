@@ -3,13 +3,17 @@ import { useNavigate, useParams } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import VehicleForm from "./VehicleForm";
 import apiClient from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import "./AddVehiclePage.css";
 
 function EditVehiclePage({ onLogout }) {
   const navigate = useNavigate();
   const { id } = useParams();
 
+  const { user, loadingUser, canEditCompany } = useAuth();
+
   const [drivers, setDrivers] = useState([]);
+  const [companies, setCompanies] = useState([]);
 
   const [formData, setFormData] = useState({
     brand: "",
@@ -25,25 +29,49 @@ function EditVehiclePage({ onLogout }) {
     insurance_expiry_date: "",
     driver: "",
     driver_name: "",
+    company: "",
   });
 
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiClient
-      .get("drivers/")
-      .then((response) => {
-        setDrivers(response.data);
-      })
-      .catch((err) => {
-        console.error("Błąd pobierania kierowców:", err);
-      });
+    if (loadingUser) {
+      return;
+    }
 
-    apiClient
-      .get(`vehicles/${id}/`)
-      .then((response) => {
-        const vehicle = response.data;
+    const loadData = async () => {
+      try {
+        const [vehicleResponse, driversResponse, companiesResponse] =
+          await Promise.all([
+            apiClient.get(`vehicles/${id}/`),
+            apiClient.get("drivers/"),
+            apiClient.get("companies/"),
+          ]);
+
+        const vehicle = vehicleResponse.data;
+
+        if (user?.role !== "admin" && !canEditCompany(vehicle.company)) {
+          navigate(`/vehicles/${id}`);
+          return;
+        }
+
+        setDrivers(driversResponse.data);
+
+        if (user?.role === "admin") {
+          setCompanies(companiesResponse.data);
+        } else {
+          const editableCompanyIds =
+            user?.companies
+              ?.filter((company) => company.role === "editor")
+              .map((company) => Number(company.id)) || [];
+
+          const editableCompanies = companiesResponse.data.filter((company) =>
+            editableCompanyIds.includes(Number(company.id)),
+          );
+
+          setCompanies(editableCompanies);
+        }
 
         setFormData({
           brand: vehicle.brand,
@@ -59,18 +87,21 @@ function EditVehiclePage({ onLogout }) {
           insurance_expiry_date: vehicle.insurance_expiry_date || "",
           driver: vehicle.driver || "",
           driver_name: vehicle.driver_name || "",
+          company: vehicle.company || "",
         });
+      } catch (err) {
+        console.error("Błąd pobierania danych pojazdu:", err);
 
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Błąd pobierania pojazdu:", err);
         console.error("Odpowiedź backendu:", err.response?.data);
 
         setError("Nie udało się pobrać danych pojazdu.");
+      } finally {
         setLoading(false);
-      });
-  }, [id]);
+      }
+    };
+
+    loadData();
+  }, [id, user, loadingUser, canEditCompany, navigate]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -86,6 +117,12 @@ function EditVehiclePage({ onLogout }) {
 
     setError(null);
 
+    if (user?.role !== "admin" && !formData.company) {
+      setError("Wybierz spółkę, do której ma należeć pojazd.");
+
+      return;
+    }
+
     const dataToSend = {
       ...formData,
       vin: formData.vin || null,
@@ -94,6 +131,7 @@ function EditVehiclePage({ onLogout }) {
       insurance_expiry_date: formData.insurance_expiry_date || null,
       driver: formData.driver || null,
       driver_name: formData.driver_name || null,
+      company: formData.company || null,
     };
 
     apiClient
@@ -103,11 +141,29 @@ function EditVehiclePage({ onLogout }) {
       })
       .catch((err) => {
         console.error("Błąd zapisu:", err);
+
         console.error("Odpowiedź backendu:", err.response?.data);
 
-        setError("Nie udało się zapisać zmian.");
+        const backendError =
+          err.response?.data?.detail ||
+          err.response?.data?.company?.[0] ||
+          err.response?.data?.driver?.[0];
+
+        setError(backendError || "Nie udało się zapisać zmian.");
       });
   };
+
+  if (loadingUser || loading) {
+    return (
+      <div className="dashboard-layout">
+        <Sidebar onLogout={onLogout} />
+
+        <main className="dashboard-content">
+          <p>Ładowanie danych pojazdu...</p>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-layout">
@@ -117,23 +173,22 @@ function EditVehiclePage({ onLogout }) {
         <div className="add-vehicle-header">
           <div>
             <h1>Edytuj pojazd</h1>
+
             <p>Zmień dane wybranego pojazdu.</p>
           </div>
         </div>
 
-        {loading ? (
-          <p>Ładowanie danych pojazdu...</p>
-        ) : (
-          <VehicleForm
-            formData={formData}
-            onChange={handleChange}
-            onSubmit={handleSubmit}
-            onCancel={() => navigate(`/vehicles/${id}`)}
-            submitText="Zapisz zmiany"
-            error={error}
-            drivers={drivers}
-          />
-        )}
+        <VehicleForm
+          formData={formData}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+          onCancel={() => navigate(`/vehicles/${id}`)}
+          submitText="Zapisz zmiany"
+          error={error}
+          drivers={drivers}
+          companies={companies}
+          allowEmptyCompany={user?.role === "admin"}
+        />
       </main>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import "./DriverList.css";
 
 function DriverList() {
@@ -12,6 +13,10 @@ function DriverList() {
   const [sortDirection, setSortDirection] = useState("asc");
 
   const navigate = useNavigate();
+
+  const { user } = useAuth();
+
+  const canManageDrivers = user?.role === "admin";
 
   useEffect(() => {
     apiClient
@@ -55,7 +60,9 @@ function DriverList() {
       })
       .catch((err) => {
         console.error("Błąd usuwania kierowcy:", err);
+
         console.error("Odpowiedź backendu:", err.response?.data);
+
         setError("Nie udało się usunąć kierowcy.");
       });
   };
@@ -158,15 +165,18 @@ function DriverList() {
       <div className="drivers-header">
         <div>
           <h1>Kierowcy</h1>
+
           <p>Zarządzaj kierowcami znajdującymi się w Twojej flocie.</p>
         </div>
 
-        <button
-          className="add-driver-button"
-          onClick={() => navigate("/drivers/add")}
-        >
-          + Dodaj kierowcę
-        </button>
+        {canManageDrivers && (
+          <button
+            className="add-driver-button"
+            onClick={() => navigate("/drivers/add")}
+          >
+            + Dodaj kierowcę
+          </button>
+        )}
       </div>
 
       {error && <p className="drivers-error">{error}</p>}
@@ -191,35 +201,40 @@ function DriverList() {
             className="drivers-sort-button"
             onClick={() => handleSort("first_name")}
           >
-            Imię{getSortArrow("first_name")}
+            Imię
+            {getSortArrow("first_name")}
           </button>
 
           <button
             className="drivers-sort-button"
             onClick={() => handleSort("last_name")}
           >
-            Nazwisko{getSortArrow("last_name")}
+            Nazwisko
+            {getSortArrow("last_name")}
           </button>
 
           <button
             className="drivers-sort-button"
             onClick={() => handleSort("license_number")}
           >
-            Numer prawa jazdy{getSortArrow("license_number")}
+            Numer prawa jazdy
+            {getSortArrow("license_number")}
           </button>
 
           <button
             className="drivers-sort-button"
             onClick={() => handleSort("phone_number")}
           >
-            Telefon{getSortArrow("phone_number")}
+            Telefon
+            {getSortArrow("phone_number")}
           </button>
 
           <button
             className="drivers-sort-button"
             onClick={() => handleSort("hired_at")}
           >
-            Data zatrudnienia{getSortArrow("hired_at")}
+            Data zatrudnienia
+            {getSortArrow("hired_at")}
           </button>
 
           <span>Akcje</span>
@@ -251,20 +266,24 @@ function DriverList() {
                     Szczegóły
                   </button>
 
-                  <button
-                    onClick={() => navigate(`/drivers/${driver.id}/edit`)}
-                  >
-                    Edytuj
-                  </button>
+                  {canManageDrivers && (
+                    <>
+                      <button
+                        onClick={() => navigate(`/drivers/${driver.id}/edit`)}
+                      >
+                        Edytuj
+                      </button>
 
-                  <div className="driver-actions-divider"></div>
+                      <div className="driver-actions-divider"></div>
 
-                  <button
-                    className="driver-actions-delete"
-                    onClick={() => handleDelete(driver)}
-                  >
-                    Usuń
-                  </button>
+                      <button
+                        className="driver-actions-delete"
+                        onClick={() => handleDelete(driver)}
+                      >
+                        Usuń
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>

@@ -5,7 +5,9 @@ function VehicleForm({
   onCancel,
   submitText,
   error,
-  drivers,
+  drivers = [],
+  companies = [],
+  allowEmptyCompany = false,
 }) {
   return (
     <form className="add-vehicle-form" onSubmit={onSubmit}>
@@ -130,6 +132,30 @@ function VehicleForm({
             <option value="active">Aktywny</option>
             <option value="maintenance">W serwisie</option>
             <option value="inactive">Nieaktywny</option>
+          </select>
+        </div>
+
+        <div className="vehicle-form-field">
+          <label htmlFor="company">Spółka</label>
+
+          <select
+            id="company"
+            name="company"
+            value={formData.company}
+            onChange={onChange}
+            required={!allowEmptyCompany}
+          >
+            {allowEmptyCompany ? (
+              <option value="">Bez przypisanej spółki</option>
+            ) : (
+              <option value="">Wybierz spółkę</option>
+            )}
+
+            {companies.map((company) => (
+              <option key={company.id} value={company.id}>
+                {company.name}
+              </option>
+            ))}
           </select>
         </div>
 

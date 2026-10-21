@@ -2,16 +2,20 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import "./DriverDetailsPage.css";
 
 function DriverDetailsPage({ onLogout }) {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
 
   const [driver, setDriver] = useState(null);
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const canManageDrivers = user?.role === "admin";
 
   useEffect(() => {
     const loadDriverData = async () => {
@@ -102,12 +106,14 @@ function DriverDetailsPage({ onLogout }) {
             <p className="driver-details-subtitle">Kierowca</p>
           </div>
 
-          <button
-            className="driver-details-edit"
-            onClick={() => navigate(`/drivers/${driver.id}/edit`)}
-          >
-            Edytuj kierowcę
-          </button>
+          {canManageDrivers && (
+            <button
+              className="driver-details-edit"
+              onClick={() => navigate(`/drivers/${driver.id}/edit`)}
+            >
+              Edytuj kierowcę
+            </button>
+          )}
         </div>
 
         <div className="driver-details-card">
@@ -116,16 +122,19 @@ function DriverDetailsPage({ onLogout }) {
           <div className="driver-details-grid">
             <div className="driver-detail">
               <span className="driver-detail-label">Imię</span>
+
               <span className="driver-detail-value">{driver.first_name}</span>
             </div>
 
             <div className="driver-detail">
               <span className="driver-detail-label">Nazwisko</span>
+
               <span className="driver-detail-value">{driver.last_name}</span>
             </div>
 
             <div className="driver-detail">
               <span className="driver-detail-label">Numer prawa jazdy</span>
+
               <span className="driver-detail-value">
                 {driver.license_number}
               </span>
@@ -133,11 +142,13 @@ function DriverDetailsPage({ onLogout }) {
 
             <div className="driver-detail">
               <span className="driver-detail-label">Numer telefonu</span>
+
               <span className="driver-detail-value">{driver.phone_number}</span>
             </div>
 
             <div className="driver-detail">
               <span className="driver-detail-label">Data zatrudnienia</span>
+
               <span className="driver-detail-value">
                 {formatDate(driver.hired_at)}
               </span>
