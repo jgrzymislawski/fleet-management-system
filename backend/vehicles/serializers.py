@@ -1,28 +1,84 @@
-from rest_framework import serializers
-from .models import Vehicle, ServiceRecord, VehicleDocument
 import mimetypes
 from pathlib import Path
 
+from rest_framework import serializers
+
+from organizations.models import OrganizationMembership
+from .models import Vehicle, ServiceRecord, VehicleDocument
+
+
 class VehicleSerializer(serializers.ModelSerializer):
+    company_name = serializers.CharField(
+        source="company.name",
+        read_only=True,
+        allow_null=True,
+    )
+
     class Meta:
         model = Vehicle
-        fields = '__all__'
+        fields = "__all__"
+        read_only_fields = [
+            "organization",
+            "company_name",
+        ]
 
     def validate(self, attrs):
-        driver = attrs.get('driver')
-        driver_name = attrs.get('driver_name')
+        driver = attrs.get("driver")
+        driver_name = attrs.get("driver_name")
+
+        if self.instance:
+            if "driver" not in attrs:
+                driver = self.instance.driver
+
+            if "driver_name" not in attrs:
+                driver_name = self.instance.driver_name
 
         if driver and driver_name:
             raise serializers.ValidationError(
-                'Wybierz kierowcę z listy albo wpisz kierowcę ręcznie, nie można użyć obu opcji jednocześnie.'
+                "Wybierz kierowcę z listy albo wpisz kierowcę ręcznie, "
+                "nie można użyć obu opcji jednocześnie."
             )
 
+        request = self.context.get("request")
+
+        if request and driver:
+            user = request.user
+
+            if not getattr(user, "is_superuser", False):
+                membership = (
+                    OrganizationMembership.objects
+                    .filter(user=user)
+                    .first()
+                )
+
+                if membership is None:
+                    raise serializers.ValidationError(
+                        {
+                            "driver": (
+                                "Użytkownik nie jest przypisany "
+                                "do żadnej organizacji."
+                            )
+                        }
+                    )
+
+                if driver.organization_id != membership.organization_id:
+                    raise serializers.ValidationError(
+                        {
+                            "driver": (
+                                "Nie możesz przypisać kierowcy "
+                                "z innej organizacji."
+                            )
+                        }
+                    )
+
         return attrs
+
 
 class ServiceRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = ServiceRecord
         fields = "__all__"
+
 
 class VehicleDocumentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -66,7 +122,10 @@ class VehicleDocumentSerializer(serializers.ModelSerializer):
 
         guessed_mime_type, _ = mimetypes.guess_type(file.name)
 
-        if guessed_mime_type and guessed_mime_type not in allowed_mime_types:
+        if (
+            guessed_mime_type
+            and guessed_mime_type not in allowed_mime_types
+        ):
             raise serializers.ValidationError(
                 "Nieprawidłowe rozszerzenie lub typ pliku."
             )
