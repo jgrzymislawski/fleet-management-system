@@ -23,7 +23,14 @@ import StatisticsPage from "./components/StatisticsPage";
 import AddVehicleDocumentPage from "./components/AddVehicleDocumentPage";
 import EditVehicleDocumentPage from "./components/EditVehicleDocumentPage";
 import AccountPage from "./components/AccountPage";
+import ChangePasswordPage from "./components/ChangePasswordPage";
 import AdminPanelPage from "./components/AdminPanelPage";
+import AdminCompaniesPage from "./components/AdminCompaniesPage";
+import AddCompanyPage from "./components/AddCompanyPage";
+import EditCompanyPage from "./components/EditCompanyPage";
+import AdminUsersPage from "./components/AdminUsersPage";
+import AddUserPage from "./components/AddUserPage";
+import EditUserPage from "./components/EditUserPage";
 
 import useIdleLogout from "./hooks/useIdleLogout";
 import { useAuth } from "./context/AuthContext";
@@ -209,8 +216,44 @@ function App() {
       />
 
       <Route
+        path="/account/change-password"
+        element={protectedElement(
+          <ChangePasswordPage onLogout={handleLogout} />,
+        )}
+      />
+
+      <Route
         path="/admin-panel"
         element={adminElement(<AdminPanelPage onLogout={handleLogout} />)}
+      />
+
+      <Route
+        path="/admin-panel/companies"
+        element={adminElement(<AdminCompaniesPage onLogout={handleLogout} />)}
+      />
+
+      <Route
+        path="/admin-panel/companies/add"
+        element={adminElement(<AddCompanyPage onLogout={handleLogout} />)}
+      />
+
+      <Route
+        path="/admin-panel/companies/:id/edit"
+        element={adminElement(<EditCompanyPage onLogout={handleLogout} />)}
+      />
+
+      <Route
+        path="/admin-panel/users"
+        element={adminElement(<AdminUsersPage onLogout={handleLogout} />)}
+      />
+
+      <Route
+        path="/admin-panel/users/add"
+        element={adminElement(<AddUserPage onLogout={handleLogout} />)}
+      />
+      <Route
+        path="/admin-panel/users/:id/edit"
+        element={adminElement(<EditUserPage onLogout={handleLogout} />)}
       />
     </Routes>
   );

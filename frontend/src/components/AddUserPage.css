@@ -1,0 +1,224 @@
+.add-user-header {
+  margin-bottom: 24px;
+}
+
+.add-user-header h1 {
+  margin: 14px 0 6px;
+  font-size: 28px;
+  color: #1a1a1a;
+}
+
+.add-user-header p {
+  margin: 0;
+  color: #6b6b6b;
+}
+
+.add-user-back {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #555555;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.add-user-back:hover {
+  color: #1a1a1a;
+}
+
+.add-user-card {
+  padding: 24px;
+  border: 1px solid #e7e2dc;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.add-user-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.add-user-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.add-user-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.add-user-field label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.add-user-field input,
+.add-user-field select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid #d8d3cd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1a1a1a;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.add-user-field input:focus,
+.add-user-field select:focus {
+  border-color: #1a1a1a;
+}
+
+.add-user-companies {
+  padding-top: 20px;
+  border-top: 1px solid #ece8e3;
+}
+
+.add-user-section-header {
+  margin-bottom: 16px;
+}
+
+.add-user-section-header h2 {
+  margin: 0 0 5px;
+  font-size: 18px;
+  color: #1a1a1a;
+}
+
+.add-user-section-header p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b6b6b;
+}
+
+.add-user-company-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.add-user-company {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: #f8f6f3;
+}
+
+.add-user-company-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  cursor: pointer;
+}
+
+.add-user-company-checkbox input {
+  width: 16px;
+  height: 16px;
+}
+
+.add-user-company select {
+  min-width: 170px;
+  padding: 9px 10px;
+  border: 1px solid #d8d3cd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1a1a1a;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.add-user-admin-info {
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: #faf5f2;
+  color: #555555;
+  font-size: 14px;
+}
+
+.add-user-empty {
+  margin: 0;
+  color: #777777;
+}
+
+.add-user-error {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff1f0;
+  color: #b42318;
+  font-size: 14px;
+}
+
+.add-user-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.add-user-cancel,
+.add-user-submit {
+  padding: 11px 18px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.add-user-cancel {
+  border: 1px solid #d8d3cd;
+  background: #ffffff;
+  color: #1a1a1a;
+}
+
+.add-user-submit {
+  border: none;
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+.add-user-submit:hover {
+  opacity: 0.85;
+}
+
+.add-user-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@media (max-width: 700px) {
+  .add-user-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .add-user-company {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .add-user-company select {
+    width: 100%;
+  }
+
+  .add-user-actions {
+    flex-direction: column-reverse;
+  }
+
+  .add-user-cancel,
+  .add-user-submit {
+    width: 100%;
+  }
+}

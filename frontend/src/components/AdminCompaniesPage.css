@@ -1,0 +1,190 @@
+.admin-companies-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.admin-companies-header h1 {
+  margin: 14px 0 6px;
+  font-size: 28px;
+  color: #1a1a1a;
+}
+
+.admin-companies-header p {
+  margin: 0;
+  color: #6b6b6b;
+}
+
+.admin-companies-back {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #555555;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.admin-companies-back:hover {
+  color: #1a1a1a;
+}
+
+.admin-companies-add {
+  border: none;
+  border-radius: 8px;
+  padding: 11px 18px;
+  background: #1a1a1a;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-companies-add:hover {
+  opacity: 0.85;
+}
+
+.admin-companies-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-company-card {
+  padding: 20px;
+  border: 1px solid #e7e2dc;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.admin-company-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.admin-company-main h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: #1a1a1a;
+}
+
+.admin-company-main p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b6b6b;
+}
+
+.admin-company-status {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-company-status-active {
+  background: #eef8f1;
+  color: #287a43;
+}
+
+.admin-company-status-inactive {
+  background: #f2f2f2;
+  color: #707070;
+}
+
+.admin-company-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.admin-company-edit,
+.admin-company-toggle {
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-company-edit {
+  border: 1px solid #d8d3cd;
+  background: #ffffff;
+  color: #1a1a1a;
+}
+
+.admin-company-edit:hover {
+  background: #f7f5f2;
+}
+
+.admin-company-toggle {
+  border: none;
+}
+
+.admin-company-disable {
+  background: #fff1f0;
+  color: #b42318;
+}
+
+.admin-company-enable {
+  background: #eef8f1;
+  color: #287a43;
+}
+
+.admin-companies-error {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff1f0;
+  color: #b42318;
+  font-size: 14px;
+}
+
+.admin-companies-empty {
+  padding: 32px;
+  border: 1px solid #e7e2dc;
+  border-radius: 10px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.admin-companies-empty h2 {
+  margin: 0 0 8px;
+  color: #1a1a1a;
+}
+
+.admin-companies-empty p {
+  margin: 0;
+  color: #6b6b6b;
+}
+
+@media (max-width: 700px) {
+  .admin-companies-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-companies-add {
+    width: 100%;
+  }
+
+  .admin-company-main {
+    flex-direction: column;
+  }
+
+  .admin-company-actions {
+    flex-direction: column;
+  }
+
+  .admin-company-edit,
+  .admin-company-toggle {
+    width: 100%;
+  }
+}

@@ -79,11 +79,25 @@ function VehicleDetailsPage({ onLogout }) {
   };
 
   const getVehicleTypeName = (type) => {
-    if (type === "passenger") return "Samochód osobowy";
-    if (type === "van") return "Bus / samochód dostawczy";
-    if (type === "truck") return "Samochód ciężarowy";
-    if (type === "special") return "Pojazd specjalny";
-    if (type === "other") return "Inny";
+    if (type === "passenger") {
+      return "Samochód osobowy";
+    }
+
+    if (type === "van") {
+      return "Bus / samochód dostawczy";
+    }
+
+    if (type === "truck") {
+      return "Samochód ciężarowy";
+    }
+
+    if (type === "special") {
+      return "Pojazd specjalny";
+    }
+
+    if (type === "other") {
+      return "Inny";
+    }
 
     return type;
   };
@@ -101,12 +115,29 @@ function VehicleDetailsPage({ onLogout }) {
   const getDocumentTypeName = (type) => {
     if (type === "oc") return "OC";
     if (type === "ac") return "AC";
-    if (type === "registration") return "Dowód rejestracyjny";
-    if (type === "inspection") return "Przegląd techniczny";
-    if (type === "leasing") return "Umowa leasingowa";
-    if (type === "warranty") return "Gwarancja";
-    if (type === "assistance") return "Assistance";
-    if (type === "other") return "Inny";
+    if (type === "registration") {
+      return "Dowód rejestracyjny";
+    }
+
+    if (type === "inspection") {
+      return "Przegląd techniczny";
+    }
+
+    if (type === "leasing") {
+      return "Umowa leasingowa";
+    }
+
+    if (type === "warranty") {
+      return "Gwarancja";
+    }
+
+    if (type === "assistance") {
+      return "Assistance";
+    }
+
+    if (type === "other") {
+      return "Inny";
+    }
 
     return type;
   };
@@ -149,6 +180,7 @@ function VehicleDetailsPage({ onLogout }) {
     expiryDate.setHours(0, 0, 0, 0);
 
     const difference = expiryDate - today;
+
     const daysLeft = Math.ceil(difference / (1000 * 60 * 60 * 24));
 
     if (daysLeft < 0) {
@@ -385,6 +417,11 @@ function VehicleDetailsPage({ onLogout }) {
 
               <span className="vehicle-detail-value">
                 {vehicle.company_name || "Bez przypisanej spółki"}
+
+                {vehicle.company_name &&
+                  vehicle.company_is_active === false && (
+                    <span className="vehicle-company-inactive">Nieaktywna</span>
+                  )}
               </span>
             </div>
 

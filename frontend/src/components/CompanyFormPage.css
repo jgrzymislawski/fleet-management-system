@@ -1,0 +1,142 @@
+.company-form-header {
+  margin-bottom: 24px;
+}
+
+.company-form-header h1 {
+  margin: 14px 0 6px;
+  font-size: 28px;
+  color: #1a1a1a;
+}
+
+.company-form-header p {
+  margin: 0;
+  color: #6b6b6b;
+}
+
+.company-form-back {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #555555;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.company-form-back:hover {
+  color: #1a1a1a;
+}
+
+.company-form-card {
+  max-width: 650px;
+  padding: 24px;
+  border: 1px solid #e7e2dc;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.company-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+
+.company-form-field label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.company-form-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid #d8d3cd;
+  border-radius: 8px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+  color: #1a1a1a;
+  outline: none;
+}
+
+.company-form-field input:focus {
+  border-color: #1a1a1a;
+}
+
+.company-form-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: #1a1a1a;
+  cursor: pointer;
+}
+
+.company-form-checkbox input {
+  width: 16px;
+  height: 16px;
+}
+
+.company-form-error {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff1f0;
+  color: #b42318;
+  font-size: 14px;
+}
+
+.company-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.company-form-cancel,
+.company-form-submit {
+  padding: 11px 18px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.company-form-cancel {
+  border: 1px solid #d8d3cd;
+  background: #ffffff;
+  color: #1a1a1a;
+}
+
+.company-form-submit {
+  border: none;
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+.company-form-submit:hover {
+  opacity: 0.85;
+}
+
+.company-form-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@media (max-width: 700px) {
+  .company-form-card {
+    max-width: none;
+  }
+
+  .company-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .company-form-cancel,
+  .company-form-submit {
+    width: 100%;
+  }
+}
