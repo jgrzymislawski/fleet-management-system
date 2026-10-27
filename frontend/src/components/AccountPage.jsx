@@ -147,6 +147,22 @@ function AccountPage({ onLogout }) {
           </button>
         </div>
 
+        <div className="account-card">
+          <h2>Powiadomienia</h2>
+
+          <p className="account-card-description">
+            Zarządzaj wiadomościami e-mail dotyczącymi polis OC, przeglądów
+            technicznych i dokumentów pojazdów.
+          </p>
+
+          <button
+            className="account-primary-button"
+            onClick={() => navigate("/account/notifications")}
+          >
+            Ustawienia powiadomień
+          </button>
+        </div>
+
         {user.role === "admin" && (
           <div className="account-card account-admin-card">
             <h2>Administracja</h2>

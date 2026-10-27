@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "drivers",
     "assignments",
     "organizations",
+    "notifications",
 ]
 
 

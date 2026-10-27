@@ -31,6 +31,7 @@ import EditCompanyPage from "./components/EditCompanyPage";
 import AdminUsersPage from "./components/AdminUsersPage";
 import AddUserPage from "./components/AddUserPage";
 import EditUserPage from "./components/EditUserPage";
+import NotificationPreferencesPage from "./components/NotificationPreferencesPage";
 
 import useIdleLogout from "./hooks/useIdleLogout";
 import { useAuth } from "./context/AuthContext";
@@ -221,7 +222,12 @@ function App() {
           <ChangePasswordPage onLogout={handleLogout} />,
         )}
       />
-
+      <Route
+        path="/account/notifications"
+        element={protectedElement(
+          <NotificationPreferencesPage onLogout={handleLogout} />,
+        )}
+      />
       <Route
         path="/admin-panel"
         element={adminElement(<AdminPanelPage onLogout={handleLogout} />)}
