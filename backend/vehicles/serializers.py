@@ -14,12 +14,19 @@ class VehicleSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
 
+    company_is_active = serializers.BooleanField(
+        source="company.is_active",
+        read_only=True,
+        allow_null=True,
+    )
+
     class Meta:
         model = Vehicle
         fields = "__all__"
         read_only_fields = [
             "organization",
             "company_name",
+            "company_is_active",
         ]
 
     def validate(self, attrs):
