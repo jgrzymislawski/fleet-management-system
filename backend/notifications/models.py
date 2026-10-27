@@ -123,6 +123,16 @@ class NotificationLog(models.Model):
         related_name="notification_logs",
     )
 
+    source_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    expiry_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
     days_before = models.PositiveIntegerField()
 
     recipient_email = models.EmailField()
@@ -145,10 +155,11 @@ class NotificationLog(models.Model):
                 fields=[
                     "notification_type",
                     "user",
-                    "vehicle",
+                    "source_id",
+                    "expiry_date",
                     "days_before",
                 ],
-                name="unique_vehicle_notification",
+                name="unique_notification_event",
             )
         ]
 
