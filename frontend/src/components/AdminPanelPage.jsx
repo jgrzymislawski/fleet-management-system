@@ -45,6 +45,18 @@ function AdminPanelPage({ onLogout }) {
               Zarządzaj kontami użytkowników i ich uprawnieniami.
             </span>
           </button>
+
+          <button
+            className="admin-panel-card"
+            onClick={() => navigate("/admin-panel/notifications")}
+          >
+            <span className="admin-panel-card-title">Powiadomienia</span>
+
+            <span className="admin-panel-card-description">
+              Ustaw rodzaje przypomnień oraz terminy wysyłania wiadomości
+              e-mail.
+            </span>
+          </button>
         </div>
       </main>
     </div>

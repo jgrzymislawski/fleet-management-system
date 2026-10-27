@@ -32,6 +32,7 @@ import AdminUsersPage from "./components/AdminUsersPage";
 import AddUserPage from "./components/AddUserPage";
 import EditUserPage from "./components/EditUserPage";
 import NotificationPreferencesPage from "./components/NotificationPreferencesPage";
+import AdminNotificationSettingsPage from "./components/AdminNotificationSettingsPage";
 
 import useIdleLogout from "./hooks/useIdleLogout";
 import { useAuth } from "./context/AuthContext";
@@ -241,6 +242,12 @@ function App() {
       <Route
         path="/admin-panel/companies/add"
         element={adminElement(<AddCompanyPage onLogout={handleLogout} />)}
+      />
+      <Route
+        path="/admin-panel/notifications"
+        element={adminElement(
+          <AdminNotificationSettingsPage onLogout={handleLogout} />,
+        )}
       />
 
       <Route
