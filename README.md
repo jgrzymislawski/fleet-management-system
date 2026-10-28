@@ -135,3 +135,11 @@ To also remove the local database volume:
 ```bash
 docker compose down -v
 ```
+## Email Notifications
+
+Email notifications are sent based on vehicle insurance expiry dates, technical inspection dates, and vehicle document expiry dates.
+
+To manually run the notification process:
+
+```bash
+docker compose exec backend python manage.py send_notifications
