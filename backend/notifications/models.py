@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 
+from drivers.models import Driver
 from organizations.models import Organization
 from vehicles.models import Vehicle
 
@@ -21,6 +22,14 @@ class NotificationSettings(models.Model):
     )
 
     documents_enabled = models.BooleanField(
+        default=True,
+    )
+
+    driver_license_enabled = models.BooleanField(
+        default=True,
+    )
+
+    medical_exam_enabled = models.BooleanField(
         default=True,
     )
 
@@ -78,6 +87,14 @@ class NotificationPreference(models.Model):
         default=True,
     )
 
+    driver_license_enabled = models.BooleanField(
+        default=True,
+    )
+
+    medical_exam_enabled = models.BooleanField(
+        default=True,
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
@@ -95,9 +112,26 @@ class NotificationPreference(models.Model):
 
 class NotificationLog(models.Model):
     TYPE_CHOICES = [
-        ("insurance", "Polisa OC"),
-        ("inspection", "Przegląd techniczny"),
-        ("document", "Dokument pojazdu"),
+        (
+            "insurance",
+            "Polisa OC",
+        ),
+        (
+            "inspection",
+            "Przegląd techniczny",
+        ),
+        (
+            "document",
+            "Dokument pojazdu",
+        ),
+        (
+            "driver_license",
+            "Prawo jazdy kierowcy",
+        ),
+        (
+            "medical_exam",
+            "Badania lekarskie kierowcy",
+        ),
     ]
 
     notification_type = models.CharField(
@@ -121,6 +155,16 @@ class NotificationLog(models.Model):
         Vehicle,
         on_delete=models.CASCADE,
         related_name="notification_logs",
+        null=True,
+        blank=True,
+    )
+
+    driver = models.ForeignKey(
+        Driver,
+        on_delete=models.CASCADE,
+        related_name="notification_logs",
+        null=True,
+        blank=True,
     )
 
     source_id = models.PositiveIntegerField(
@@ -164,8 +208,16 @@ class NotificationLog(models.Model):
         ]
 
     def __str__(self):
+        subject_name = ""
+
+        if self.vehicle:
+            subject_name = str(self.vehicle)
+
+        elif self.driver:
+            subject_name = str(self.driver)
+
         return (
             f"{self.get_notification_type_display()} - "
-            f"{self.vehicle} - "
+            f"{subject_name} - "
             f"{self.user.username}"
         )

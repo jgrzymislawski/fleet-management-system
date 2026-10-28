@@ -6,9 +6,7 @@ from .models import (
 )
 
 
-class NotificationPreferenceSerializer(
-    serializers.ModelSerializer
-):
+class NotificationPreferenceSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
         source="user.email",
         read_only=True,
@@ -22,18 +20,20 @@ class NotificationPreferenceSerializer(
             "insurance_enabled",
             "inspection_enabled",
             "documents_enabled",
+            "driver_license_enabled",
+            "medical_exam_enabled",
         ]
 
 
-class NotificationSettingsSerializer(
-    serializers.ModelSerializer
-):
+class NotificationSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = NotificationSettings
         fields = [
             "insurance_enabled",
             "inspection_enabled",
             "documents_enabled",
+            "driver_license_enabled",
+            "medical_exam_enabled",
             "notify_30_days",
             "notify_14_days",
             "notify_7_days",
@@ -41,10 +41,12 @@ class NotificationSettingsSerializer(
         ]
 
     def validate(self, attrs):
+        instance = self.instance
+
         notify_30_days = attrs.get(
             "notify_30_days",
             getattr(
-                self.instance,
+                instance,
                 "notify_30_days",
                 True,
             ),
@@ -53,7 +55,7 @@ class NotificationSettingsSerializer(
         notify_14_days = attrs.get(
             "notify_14_days",
             getattr(
-                self.instance,
+                instance,
                 "notify_14_days",
                 True,
             ),
@@ -62,7 +64,7 @@ class NotificationSettingsSerializer(
         notify_7_days = attrs.get(
             "notify_7_days",
             getattr(
-                self.instance,
+                instance,
                 "notify_7_days",
                 True,
             ),
@@ -71,7 +73,7 @@ class NotificationSettingsSerializer(
         notify_1_day = attrs.get(
             "notify_1_day",
             getattr(
-                self.instance,
+                instance,
                 "notify_1_day",
                 True,
             ),
@@ -86,7 +88,12 @@ class NotificationSettingsSerializer(
             ]
         ):
             raise serializers.ValidationError(
-                "Musi być włączony przynajmniej jeden termin powiadomienia."
+                {
+                    "notification_days": (
+                        "Musi być włączony przynajmniej "
+                        "jeden termin powiadomienia."
+                    )
+                }
             )
 
         return attrs

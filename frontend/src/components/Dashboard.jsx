@@ -2,15 +2,27 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
+import { useAuth } from "../context/AuthContext";
 
 function Dashboard({ onLogout }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [vehicleCount, setVehicleCount] = useState(0);
   const [driverCount, setDriverCount] = useState(0);
   const [attentionCount, setAttentionCount] = useState(0);
   const [recentVehicleCount, setRecentVehicleCount] = useState(0);
   const [recentVehicles, setRecentVehicles] = useState([]);
+
+  const canViewDriverAlerts = user?.role === "admin";
+
+  const getResponseData = (response) => {
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+
+    return response.data.results || [];
+  };
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -22,17 +34,21 @@ function Dashboard({ onLogout }) {
             apiClient.get("vehicle-documents/"),
           ]);
 
-        const vehicles = vehiclesResponse.data;
-        const drivers = driversResponse.data;
-        const documents = documentsResponse.data;
+        const vehicles = getResponseData(vehiclesResponse);
+
+        const drivers = getResponseData(driversResponse);
+
+        const documents = getResponseData(documentsResponse);
 
         setVehicleCount(vehicles.length);
         setDriverCount(drivers.length);
 
         const today = new Date();
+
         today.setHours(0, 0, 0, 0);
 
         const warningLimit = new Date(today);
+
         warningLimit.setDate(warningLimit.getDate() + 30);
 
         let attentionItems = 0;
@@ -72,6 +88,7 @@ function Dashboard({ onLogout }) {
           }
 
           const expiryDate = new Date(document.expiry_date);
+
           expiryDate.setHours(0, 0, 0, 0);
 
           if (expiryDate <= warningLimit) {
@@ -79,9 +96,34 @@ function Dashboard({ onLogout }) {
           }
         });
 
+        if (canViewDriverAlerts) {
+          drivers.forEach((driver) => {
+            if (driver.license_expiry_date) {
+              const licenseDate = new Date(driver.license_expiry_date);
+
+              licenseDate.setHours(0, 0, 0, 0);
+
+              if (licenseDate <= warningLimit) {
+                attentionItems += 1;
+              }
+            }
+
+            if (driver.medical_exam_expiry_date) {
+              const medicalDate = new Date(driver.medical_exam_expiry_date);
+
+              medicalDate.setHours(0, 0, 0, 0);
+
+              if (medicalDate <= warningLimit) {
+                attentionItems += 1;
+              }
+            }
+          });
+        }
+
         setAttentionCount(attentionItems);
 
         const thirtyDaysAgo = new Date(today);
+
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
         const recentlyAdded = vehicles.filter((vehicle) => {
@@ -103,7 +145,7 @@ function Dashboard({ onLogout }) {
     };
 
     loadDashboard();
-  }, []);
+  }, [canViewDriverAlerts]);
 
   return (
     <div className="dashboard-layout">
@@ -150,7 +192,7 @@ function Dashboard({ onLogout }) {
             <strong className="dashboard-card-value">{attentionCount}</strong>
 
             <span className="dashboard-card-description">
-              Terminy i dokumenty po terminie lub do 30 dni
+              Terminy pojazdów i kierowców po terminie lub do 30 dni
             </span>
           </button>
 
@@ -199,7 +241,9 @@ function Dashboard({ onLogout }) {
                   className={`vehicle-status vehicle-status-${vehicle.status}`}
                 >
                   {vehicle.status === "active" && "Aktywny"}
+
                   {vehicle.status === "maintenance" && "W serwisie"}
+
                   {vehicle.status === "inactive" && "Nieaktywny"}
                 </span>
               </div>
