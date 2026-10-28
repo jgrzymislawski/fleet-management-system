@@ -13,6 +13,9 @@ function EditDriverPage({ onLogout }) {
     first_name: "",
     last_name: "",
     license_number: "",
+    license_categories: [],
+    license_expiry_date: "",
+    medical_exam_expiry_date: "",
     phone_number: "",
     hired_at: "",
   });
@@ -21,54 +24,67 @@ function EditDriverPage({ onLogout }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiClient
-      .get(`drivers/${id}/`)
-      .then((response) => {
+    const loadDriver = async () => {
+      try {
+        const response = await apiClient.get(`drivers/${id}/`);
+
         const driver = response.data;
 
         setFormData({
-          first_name: driver.first_name,
-          last_name: driver.last_name,
-          license_number: driver.license_number,
-          phone_number: driver.phone_number,
-          hired_at: driver.hired_at,
+          first_name: driver.first_name || "",
+          last_name: driver.last_name || "",
+          license_number: driver.license_number || "",
+          license_categories: driver.license_categories || [],
+          license_expiry_date: driver.license_expiry_date || "",
+          medical_exam_expiry_date: driver.medical_exam_expiry_date || "",
+          phone_number: driver.phone_number || "",
+          hired_at: driver.hired_at || "",
         });
-
-        setLoading(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Błąd pobierania kierowcy:", err);
+
         console.error("Odpowiedź backendu:", err.response?.data);
 
         setError("Nie udało się pobrać danych kierowcy.");
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    loadDriver();
   }, [id]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
 
-    setFormData({
-      ...formData,
+    setFormData((currentData) => ({
+      ...currentData,
       [name]: value,
-    });
+    }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+
     setError(null);
 
-    apiClient
-      .put(`drivers/${id}/`, formData)
-      .then(() => {
-        navigate(`/drivers/${id}`);
-      })
-      .catch((err) => {
-        console.error("Błąd zapisu kierowcy:", err);
-        console.error("Odpowiedź backendu:", err.response?.data);
+    try {
+      const payload = {
+        ...formData,
+        license_expiry_date: formData.license_expiry_date || null,
+        medical_exam_expiry_date: formData.medical_exam_expiry_date || null,
+      };
 
-        setError("Nie udało się zapisać zmian.");
-      });
+      await apiClient.put(`drivers/${id}/`, payload);
+
+      navigate(`/drivers/${id}`);
+    } catch (err) {
+      console.error("Błąd zapisu kierowcy:", err);
+
+      console.error("Odpowiedź backendu:", err.response?.data);
+
+      setError("Nie udało się zapisać zmian.");
+    }
   };
 
   return (
@@ -79,6 +95,7 @@ function EditDriverPage({ onLogout }) {
         <div className="add-driver-header">
           <div>
             <h1>Edytuj kierowcę</h1>
+
             <p>Zmień dane wybranego kierowcy.</p>
           </div>
         </div>

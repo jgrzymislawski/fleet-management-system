@@ -12,6 +12,7 @@ function DriverDetailsPage({ onLogout }) {
 
   const [driver, setDriver] = useState(null);
   const [vehicles, setVehicles] = useState([]);
+  const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -21,17 +22,44 @@ function DriverDetailsPage({ onLogout }) {
     const loadDriverData = async () => {
       try {
         const driverResponse = await apiClient.get(`drivers/${id}/`);
+
         setDriver(driverResponse.data);
 
         const vehiclesResponse = await apiClient.get("vehicles/");
 
-        const driverVehicles = vehiclesResponse.data.filter(
+        const vehiclesData = Array.isArray(vehiclesResponse.data)
+          ? vehiclesResponse.data
+          : vehiclesResponse.data.results || [];
+
+        const driverVehicles = vehiclesData.filter(
           (vehicle) => Number(vehicle.driver) === Number(id),
         );
 
         setVehicles(driverVehicles);
+
+        try {
+          const assignmentsResponse = await apiClient.get(
+            "driver-assignments/",
+          );
+
+          const assignmentsData = Array.isArray(assignmentsResponse.data)
+            ? assignmentsResponse.data
+            : assignmentsResponse.data.results || [];
+
+          const driverAssignments = assignmentsData.filter(
+            (assignment) => Number(assignment.driver) === Number(id),
+          );
+
+          setAssignments(driverAssignments);
+        } catch (assignmentsError) {
+          console.error(
+            "Błąd pobierania historii przypisań:",
+            assignmentsError,
+          );
+        }
       } catch (err) {
         console.error("Błąd pobierania danych kierowcy:", err);
+
         console.error("Odpowiedź backendu:", err.response?.data);
 
         setError("Nie udało się pobrać danych kierowcy.");
@@ -52,11 +80,64 @@ function DriverDetailsPage({ onLogout }) {
   };
 
   const getStatusName = (status) => {
-    if (status === "active") return "Aktywny";
-    if (status === "maintenance") return "W serwisie";
-    if (status === "inactive") return "Nieaktywny";
+    if (status === "active") {
+      return "Aktywny";
+    }
+
+    if (status === "maintenance") {
+      return "W serwisie";
+    }
+
+    if (status === "inactive") {
+      return "Nieaktywny";
+    }
 
     return status;
+  };
+
+  const getExpiryStatus = (date) => {
+    if (!date) {
+      return {
+        text: "Brak terminu",
+        className: "driver-expiry-none",
+      };
+    }
+
+    const today = new Date();
+    const expiryDate = new Date(date);
+
+    today.setHours(0, 0, 0, 0);
+    expiryDate.setHours(0, 0, 0, 0);
+
+    const difference = expiryDate - today;
+
+    const daysLeft = Math.ceil(difference / (1000 * 60 * 60 * 24));
+
+    if (daysLeft < 0) {
+      return {
+        text: "Po terminie",
+        className: "driver-expiry-expired",
+      };
+    }
+
+    if (daysLeft === 0) {
+      return {
+        text: "Wygasa dzisiaj",
+        className: "driver-expiry-warning",
+      };
+    }
+
+    if (daysLeft <= 30) {
+      return {
+        text: `Wygasa za ${daysLeft} dni`,
+        className: "driver-expiry-warning",
+      };
+    }
+
+    return {
+      text: "Ważne",
+      className: "driver-expiry-valid",
+    };
   };
 
   if (loading) {
@@ -85,6 +166,22 @@ function DriverDetailsPage({ onLogout }) {
     );
   }
 
+  const licenseStatus = getExpiryStatus(driver.license_expiry_date);
+
+  const medicalStatus = getExpiryStatus(driver.medical_exam_expiry_date);
+
+  const activeAssignments = assignments.filter(
+    (assignment) => assignment.is_active,
+  );
+
+  const historicalAssignments = assignments.filter(
+    (assignment) => !assignment.is_active,
+  );
+
+  const uniqueVehicleIds = new Set(
+    assignments.map((assignment) => assignment.vehicle),
+  );
+
   return (
     <div className="dashboard-layout">
       <Sidebar onLogout={onLogout} />
@@ -103,7 +200,19 @@ function DriverDetailsPage({ onLogout }) {
               {driver.first_name} {driver.last_name}
             </h1>
 
-            <p className="driver-details-subtitle">Kierowca</p>
+            <div className="driver-details-subtitle">
+              <span>Kierowca</span>
+
+              {activeAssignments.length > 0 ? (
+                <span className="driver-profile-active">
+                  Aktualnie przypisany
+                </span>
+              ) : (
+                <span className="driver-profile-inactive">
+                  Brak aktualnego pojazdu
+                </span>
+              )}
+            </div>
           </div>
 
           {canManageDrivers && (
@@ -133,14 +242,6 @@ function DriverDetailsPage({ onLogout }) {
             </div>
 
             <div className="driver-detail">
-              <span className="driver-detail-label">Numer prawa jazdy</span>
-
-              <span className="driver-detail-value">
-                {driver.license_number}
-              </span>
-            </div>
-
-            <div className="driver-detail">
               <span className="driver-detail-label">Numer telefonu</span>
 
               <span className="driver-detail-value">{driver.phone_number}</span>
@@ -156,9 +257,109 @@ function DriverDetailsPage({ onLogout }) {
           </div>
         </div>
 
+        <div className="driver-license-card">
+          <div className="driver-license-header">
+            <div>
+              <h2>Prawo jazdy i uprawnienia</h2>
+
+              <p>
+                Informacje o prawie jazdy oraz badaniach lekarskich kierowcy.
+              </p>
+            </div>
+          </div>
+
+          <div className="driver-details-grid">
+            <div className="driver-detail">
+              <span className="driver-detail-label">Numer prawa jazdy</span>
+
+              <span className="driver-detail-value">
+                {driver.license_number}
+              </span>
+            </div>
+
+            <div className="driver-detail">
+              <span className="driver-detail-label">Kategorie</span>
+
+              {driver.license_categories?.length > 0 ? (
+                <div className="driver-license-categories">
+                  {driver.license_categories.map((category) => (
+                    <span className="driver-license-category" key={category}>
+                      {category}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="driver-detail-value">Nie podano</span>
+              )}
+            </div>
+
+            <div className="driver-detail">
+              <span className="driver-detail-label">Prawo jazdy ważne do</span>
+
+              <span className="driver-detail-value">
+                {formatDate(driver.license_expiry_date)}
+              </span>
+
+              <span
+                className={`driver-expiry-status ${licenseStatus.className}`}
+              >
+                {licenseStatus.text}
+              </span>
+            </div>
+
+            <div className="driver-detail">
+              <span className="driver-detail-label">
+                Badania lekarskie ważne do
+              </span>
+
+              <span className="driver-detail-value">
+                {formatDate(driver.medical_exam_expiry_date)}
+              </span>
+
+              <span
+                className={`driver-expiry-status ${medicalStatus.className}`}
+              >
+                {medicalStatus.text}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="driver-stats-grid">
+          <div className="driver-stat-card">
+            <span className="driver-stat-label">
+              Aktualnie przypisane pojazdy
+            </span>
+
+            <strong className="driver-stat-value">
+              {activeAssignments.length}
+            </strong>
+          </div>
+
+          <div className="driver-stat-card">
+            <span className="driver-stat-label">Pojazdy w historii</span>
+
+            <strong className="driver-stat-value">
+              {uniqueVehicleIds.size}
+            </strong>
+          </div>
+
+          <div className="driver-stat-card">
+            <span className="driver-stat-label">Zakończone przypisania</span>
+
+            <strong className="driver-stat-value">
+              {historicalAssignments.length}
+            </strong>
+          </div>
+        </div>
+
         <div className="driver-vehicles-card">
           <div className="driver-vehicles-header">
-            <h2>Przypisane pojazdy</h2>
+            <div>
+              <h2>Aktualnie przypisane pojazdy</h2>
+
+              <p>Pojazdy, do których kierowca jest aktualnie przypisany.</p>
+            </div>
 
             <span>Liczba pojazdów: {vehicles.length}</span>
           </div>
@@ -191,7 +392,77 @@ function DriverDetailsPage({ onLogout }) {
             </div>
           ) : (
             <p className="driver-vehicles-empty">
-              Ten kierowca nie ma przypisanych pojazdów.
+              Ten kierowca nie ma aktualnie przypisanego pojazdu.
+            </p>
+          )}
+        </div>
+
+        <div className="driver-history-card">
+          <div className="driver-history-header">
+            <div>
+              <h2>Historia pojazdów</h2>
+
+              <p>Historia przypisań kierowcy do pojazdów.</p>
+            </div>
+
+            <span>Wpisy: {assignments.length}</span>
+          </div>
+
+          {assignments.length > 0 ? (
+            <div className="driver-history-list">
+              {assignments.map((assignment) => (
+                <button
+                  key={assignment.id}
+                  className="driver-history-item"
+                  onClick={() => navigate(`/vehicles/${assignment.vehicle}`)}
+                >
+                  <div className="driver-history-main">
+                    <div className="driver-history-title-row">
+                      <span className="driver-history-name">
+                        {assignment.vehicle_name}
+                      </span>
+
+                      {assignment.is_active && (
+                        <span className="driver-history-active">Aktualne</span>
+                      )}
+                    </div>
+
+                    <span className="driver-history-registration">
+                      {assignment.vehicle_registration_number}
+                    </span>
+
+                    {assignment.notes && (
+                      <span className="driver-history-notes">
+                        {assignment.notes}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="driver-history-dates">
+                    <div>
+                      <span className="driver-history-date-label">Od</span>
+
+                      <strong>{formatDate(assignment.start_date)}</strong>
+                    </div>
+
+                    <span className="driver-history-arrow">→</span>
+
+                    <div>
+                      <span className="driver-history-date-label">Do</span>
+
+                      <strong>
+                        {assignment.end_date
+                          ? formatDate(assignment.end_date)
+                          : "Obecnie"}
+                      </strong>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="driver-vehicles-empty">
+              Brak historii przypisań tego kierowcy.
             </p>
           )}
         </div>

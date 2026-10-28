@@ -12,6 +12,9 @@ function AddDriverPage({ onLogout }) {
     first_name: "",
     last_name: "",
     license_number: "",
+    license_categories: [],
+    license_expiry_date: "",
+    medical_exam_expiry_date: "",
     phone_number: "",
     hired_at: "",
   });
@@ -21,27 +24,34 @@ function AddDriverPage({ onLogout }) {
   const handleChange = (event) => {
     const { name, value } = event.target;
 
-    setFormData({
-      ...formData,
+    setFormData((currentData) => ({
+      ...currentData,
       [name]: value,
-    });
+    }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+
     setError(null);
 
-    apiClient
-      .post("drivers/", formData)
-      .then(() => {
-        navigate("/drivers");
-      })
-      .catch((err) => {
-        console.error("Błąd dodawania kierowcy:", err);
-        console.error("Odpowiedź backendu:", err.response?.data);
+    try {
+      const payload = {
+        ...formData,
+        license_expiry_date: formData.license_expiry_date || null,
+        medical_exam_expiry_date: formData.medical_exam_expiry_date || null,
+      };
 
-        setError("Nie udało się dodać kierowcy.");
-      });
+      await apiClient.post("drivers/", payload);
+
+      navigate("/drivers");
+    } catch (err) {
+      console.error("Błąd dodawania kierowcy:", err);
+
+      console.error("Odpowiedź backendu:", err.response?.data);
+
+      setError("Nie udało się dodać kierowcy.");
+    }
   };
 
   return (
@@ -52,6 +62,7 @@ function AddDriverPage({ onLogout }) {
         <div className="add-driver-header">
           <div>
             <h1>Dodaj kierowcę</h1>
+
             <p>Wprowadź dane nowego kierowcy.</p>
           </div>
         </div>

@@ -27,6 +27,21 @@ class Driver(models.Model):
         unique=True,
     )
 
+    license_categories = models.JSONField(
+        default=list,
+        blank=True,
+    )
+
+    license_expiry_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    medical_exam_expiry_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
     phone_number = models.CharField(
         max_length=20,
     )
