@@ -6,11 +6,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from auditlog.context import set_actor
+
 from .models import (
     OrganizationMembership,
     CompanyAccess,
     Company,
 )
+
 from .serializers import (
     CompanySerializer,
     AdminUserSerializer,
@@ -166,9 +169,11 @@ class ChangePasswordView(APIView):
         current_password = request.data.get(
             "current_password"
         )
+
         new_password = request.data.get(
             "new_password"
         )
+
         confirm_password = request.data.get(
             "confirm_password"
         )
@@ -236,7 +241,9 @@ class ChangePasswordView(APIView):
             )
 
         user.set_password(new_password)
-        user.save()
+
+        with set_actor(request.user):
+            user.save()
 
         update_session_auth_hash(
             request,
@@ -285,9 +292,10 @@ class AdminCompanyListCreateView(APIView):
             raise_exception=True
         )
 
-        serializer.save(
-            organization=membership.organization
-        )
+        with set_actor(request.user):
+            serializer.save(
+                organization=membership.organization
+            )
 
         return Response(
             serializer.data,
@@ -346,7 +354,8 @@ class AdminCompanyDetailView(APIView):
             raise_exception=True
         )
 
-        serializer.save()
+        with set_actor(request.user):
+            serializer.save()
 
         return Response(serializer.data)
 
@@ -370,7 +379,8 @@ class AdminCompanyDetailView(APIView):
             raise_exception=True
         )
 
-        serializer.save()
+        with set_actor(request.user):
+            serializer.save()
 
         return Response(serializer.data)
 
@@ -420,7 +430,8 @@ class AdminUserListView(APIView):
             raise_exception=True
         )
 
-        created_membership = serializer.save()
+        with set_actor(request.user):
+            created_membership = serializer.save()
 
         response_serializer = AdminUserSerializer(
             created_membership
@@ -500,7 +511,8 @@ class AdminUserDetailView(APIView):
             raise_exception=True
         )
 
-        updated_membership = serializer.save()
+        with set_actor(request.user):
+            updated_membership = serializer.save()
 
         response_serializer = AdminUserSerializer(
             updated_membership
@@ -535,7 +547,8 @@ class AdminUserDetailView(APIView):
             raise_exception=True
         )
 
-        updated_membership = serializer.save()
+        with set_actor(request.user):
+            updated_membership = serializer.save()
 
         response_serializer = AdminUserSerializer(
             updated_membership

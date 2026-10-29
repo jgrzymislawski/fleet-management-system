@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from auditlog.registry import auditlog
 
 class Organization(models.Model):
     name = models.CharField(max_length=200)
@@ -100,3 +101,15 @@ class CompanyAccess(models.Model):
             f"{self.membership.user.username} - "
             f"{self.company.name} - {self.role}"
         )
+
+auditlog.register(Organization)
+auditlog.register(Company)
+auditlog.register(OrganizationMembership)
+auditlog.register(CompanyAccess)
+auditlog.register(
+    User,
+    exclude_fields=[
+        "password",
+        "last_login",
+    ],
+)
