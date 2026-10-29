@@ -1,6 +1,6 @@
 from django.db import models
 from organizations.models import Organization, Company
-
+from auditlog.registry import auditlog
 
 class Vehicle(models.Model):
     STATUS_CHOICES = [
@@ -199,3 +199,7 @@ class VehicleDocument(models.Model):
 
     def __str__(self):
         return f"{self.vehicle} - {self.get_document_type_display()}"
+
+auditlog.register(Vehicle)
+auditlog.register(ServiceRecord)
+auditlog.register(VehicleDocument)

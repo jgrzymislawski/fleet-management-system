@@ -1,6 +1,8 @@
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 
+from auditlog.context import set_actor
+
 from organizations.models import (
     OrganizationMembership,
     CompanyAccess,
@@ -190,7 +192,9 @@ class VehicleViewSet(viewsets.ModelViewSet):
         if user_is_superuser(
             self.request.user
         ):
-            serializer.save()
+            with set_actor(self.request.user):
+                serializer.save()
+
             return
 
         membership = get_membership(
@@ -213,9 +217,10 @@ class VehicleViewSet(viewsets.ModelViewSet):
             company,
         )
 
-        serializer.save(
-            organization=membership.organization
-        )
+        with set_actor(self.request.user):
+            serializer.save(
+                organization=membership.organization
+            )
 
     def perform_update(self, serializer):
         vehicle = self.get_object()
@@ -228,7 +233,9 @@ class VehicleViewSet(viewsets.ModelViewSet):
         if user_is_superuser(
             self.request.user
         ):
-            serializer.save()
+            with set_actor(self.request.user):
+                serializer.save()
+
             return
 
         membership = get_membership(
@@ -268,9 +275,10 @@ class VehicleViewSet(viewsets.ModelViewSet):
                 "Nie możesz przypisać pojazdu do spółki z innej organizacji."
             )
 
-        serializer.save(
-            organization=membership.organization
-        )
+        with set_actor(self.request.user):
+            serializer.save(
+                organization=membership.organization
+            )
 
     def perform_destroy(self, instance):
         ensure_vehicle_edit_permission(
@@ -278,7 +286,8 @@ class VehicleViewSet(viewsets.ModelViewSet):
             instance,
         )
 
-        instance.delete()
+        with set_actor(self.request.user):
+            instance.delete()
 
 
 class ServiceRecordViewSet(
@@ -324,7 +333,8 @@ class ServiceRecordViewSet(
             vehicle,
         )
 
-        serializer.save()
+        with set_actor(self.request.user):
+            serializer.save()
 
     def perform_update(self, serializer):
         service_record = self.get_object()
@@ -348,7 +358,8 @@ class ServiceRecordViewSet(
             new_vehicle,
         )
 
-        serializer.save()
+        with set_actor(self.request.user):
+            serializer.save()
 
     def perform_destroy(self, instance):
         ensure_vehicle_edit_permission(
@@ -356,7 +367,8 @@ class ServiceRecordViewSet(
             instance.vehicle,
         )
 
-        instance.delete()
+        with set_actor(self.request.user):
+            instance.delete()
 
 
 class VehicleDocumentViewSet(
@@ -402,7 +414,8 @@ class VehicleDocumentViewSet(
             vehicle,
         )
 
-        serializer.save()
+        with set_actor(self.request.user):
+            serializer.save()
 
     def perform_update(self, serializer):
         document = self.get_object()
@@ -426,7 +439,8 @@ class VehicleDocumentViewSet(
             new_vehicle,
         )
 
-        serializer.save()
+        with set_actor(self.request.user):
+            serializer.save()
 
     def perform_destroy(self, instance):
         ensure_vehicle_edit_permission(
@@ -434,4 +448,5 @@ class VehicleDocumentViewSet(
             instance.vehicle,
         )
 
-        instance.delete()
+        with set_actor(self.request.user):
+            instance.delete()
