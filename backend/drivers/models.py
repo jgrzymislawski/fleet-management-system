@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
-
+from auditlog.registry import auditlog
 from organizations.models import Organization
 
 
@@ -179,3 +179,6 @@ class DriverVehicleAssignment(models.Model):
             f"{self.driver_display_name} - "
             f"{status}"
         )
+
+auditlog.register(Driver)
+auditlog.register(DriverVehicleAssignment)
