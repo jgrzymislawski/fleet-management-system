@@ -30,6 +30,7 @@ function EditVehiclePage({ onLogout }) {
     driver: "",
     driver_name: "",
     company: "",
+    branch: "",
   });
 
   const [error, setError] = useState(null);
@@ -88,6 +89,7 @@ function EditVehiclePage({ onLogout }) {
           driver: vehicle.driver || "",
           driver_name: vehicle.driver_name || "",
           company: vehicle.company || "",
+          branch: vehicle.branch || "",
         });
       } catch (err) {
         console.error("Błąd pobierania danych pojazdu:", err);
@@ -132,6 +134,7 @@ function EditVehiclePage({ onLogout }) {
       driver: formData.driver || null,
       driver_name: formData.driver_name || null,
       company: formData.company || null,
+      branch: formData.branch.trim(),
     };
 
     apiClient

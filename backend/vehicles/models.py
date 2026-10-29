@@ -102,6 +102,10 @@ class Vehicle(models.Model):
         null=True,
         blank=True
     )
+    branch = models.CharField(
+        max_length=150,
+        blank=True,
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -477,7 +477,13 @@ function VehicleDetailsPage({ onLogout }) {
                   )}
               </span>
             </div>
+            <div className="vehicle-detail">
+              <span className="vehicle-detail-label">Oddział</span>
 
+              <span className="vehicle-detail-value">
+                {vehicle.branch || "Nie podano"}
+              </span>
+            </div>
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Kierowca</span>
 

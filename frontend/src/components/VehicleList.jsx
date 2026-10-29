@@ -15,6 +15,7 @@ function VehicleList() {
   const [selectedYears, setSelectedYears] = useState([]);
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [selectedStatuses, setSelectedStatuses] = useState([]);
+  const [selectedBranches, setSelectedBranches] = useState([]);
 
   const [searchText, setSearchText] = useState("");
 
@@ -39,7 +40,11 @@ function VehicleList() {
     apiClient
       .get("vehicles/")
       .then((response) => {
-        setVehicles(response.data);
+        const data = Array.isArray(response.data)
+          ? response.data
+          : response.data.results || [];
+
+        setVehicles(data);
       })
       .catch((err) => {
         console.error(err);
@@ -99,6 +104,7 @@ function VehicleList() {
       })
       .catch((err) => {
         console.error("Błąd usuwania pojazdu:", err);
+
         console.error("Odpowiedź backendu:", err.response?.data);
 
         setError("Nie udało się usunąć pojazdu.");
@@ -167,6 +173,16 @@ function VehicleList() {
     return type;
   };
 
+  const getBranchName = (branch) => {
+    const normalizedBranch = branch?.trim();
+
+    if (!normalizedBranch) {
+      return "Brak oddziału";
+    }
+
+    return normalizedBranch;
+  };
+
   const formatMileage = (mileage) => {
     return `${Number(mileage).toLocaleString("pl-PL")} km`;
   };
@@ -188,7 +204,12 @@ function VehicleList() {
     return sortDirection === "asc" ? "↑" : "↓";
   };
 
-  const brands = [...new Set(vehicles.map((vehicle) => vehicle.brand))].sort();
+  const brands = [...new Set(vehicles.map((vehicle) => vehicle.brand))].sort(
+    (a, b) =>
+      a.localeCompare(b, "pl", {
+        sensitivity: "base",
+      }),
+  );
 
   const years = [
     ...new Set(vehicles.map((vehicle) => String(vehicle.year))),
@@ -197,6 +218,14 @@ function VehicleList() {
   const types = [...new Set(vehicles.map((vehicle) => vehicle.vehicle_type))];
 
   const statuses = [...new Set(vehicles.map((vehicle) => vehicle.status))];
+
+  const branches = [
+    ...new Set(vehicles.map((vehicle) => getBranchName(vehicle.branch))),
+  ].sort((a, b) =>
+    a.localeCompare(b, "pl", {
+      sensitivity: "base",
+    }),
+  );
 
   const filteredVehicles = vehicles.filter((vehicle) => {
     const matchesBrand =
@@ -214,6 +243,11 @@ function VehicleList() {
       selectedStatuses.length === 0 ||
       selectedStatuses.includes(vehicle.status);
 
+    const vehicleBranch = getBranchName(vehicle.branch);
+
+    const matchesBranch =
+      selectedBranches.length === 0 || selectedBranches.includes(vehicleBranch);
+
     const normalizedSearchText = searchText.toLowerCase().trim();
 
     const brand = vehicle.brand?.toLowerCase() || "";
@@ -224,12 +258,15 @@ function VehicleList() {
 
     const vin = vehicle.vin?.toLowerCase() || "";
 
+    const branch = vehicle.branch?.toLowerCase().trim() || "";
+
     const matchesSearch =
       normalizedSearchText === "" ||
       brand.includes(normalizedSearchText) ||
       model.includes(normalizedSearchText) ||
       registrationNumber.includes(normalizedSearchText) ||
-      vin.includes(normalizedSearchText);
+      vin.includes(normalizedSearchText) ||
+      branch.includes(normalizedSearchText);
 
     const thirtyDaysAgo = new Date();
 
@@ -246,6 +283,7 @@ function VehicleList() {
       matchesYear &&
       matchesType &&
       matchesStatus &&
+      matchesBranch &&
       matchesSearch &&
       matchesRecent
     );
@@ -269,6 +307,10 @@ function VehicleList() {
       valueA = getVehicleTypeName(a.vehicle_type);
 
       valueB = getVehicleTypeName(b.vehicle_type);
+    } else if (sortField === "branch") {
+      valueA = getBranchName(a.branch);
+
+      valueB = getBranchName(b.branch);
     } else if (sortField === "year") {
       valueA = Number(a.year);
       valueB = Number(b.year);
@@ -277,6 +319,7 @@ function VehicleList() {
       valueB = Number(b.mileage);
     } else if (sortField === "status") {
       valueA = getStatusName(a.status);
+
       valueB = getStatusName(b.status);
     }
 
@@ -304,6 +347,7 @@ function VehicleList() {
     setSelectedYears([]);
     setSelectedTypes([]);
     setSelectedStatuses([]);
+    setSelectedBranches([]);
     setSearchText("");
   };
 
@@ -312,6 +356,7 @@ function VehicleList() {
     selectedYears.length > 0 ||
     selectedTypes.length > 0 ||
     selectedStatuses.length > 0 ||
+    selectedBranches.length > 0 ||
     searchText.trim() !== "";
 
   return (
@@ -338,7 +383,7 @@ function VehicleList() {
       <div className="vehicles-search">
         <input
           type="text"
-          placeholder="Szukaj po marce, modelu, rejestracji lub VIN..."
+          placeholder="Szukaj po marce, modelu, rejestracji, VIN lub oddziale..."
           value={searchText}
           onChange={(event) => setSearchText(event.target.value)}
         />
@@ -560,6 +605,74 @@ function VehicleList() {
         </div>
 
         <div className="vehicles-filter">
+          <span className="vehicles-filter-label">Oddział</span>
+
+          <div className="filter-dropdown">
+            <button
+              className={`filter-dropdown-button ${
+                selectedBranches.length > 0 ? "filter-active" : ""
+              }`}
+              onClick={() => handleFilterClick("branch")}
+            >
+              <span>
+                {getFilterText(selectedBranches, "Wszystkie oddziały")}
+              </span>
+
+              <span className="filter-arrow">
+                {openFilter === "branch" ? "▲" : "▼"}
+              </span>
+            </button>
+
+            {openFilter === "branch" && (
+              <div className="filter-dropdown-menu">
+                <div className="filter-dropdown-header">
+                  <span>Wybierz oddziały</span>
+
+                  {selectedBranches.length > 0 && (
+                    <button
+                      className="filter-clear-button"
+                      onClick={() => setSelectedBranches([])}
+                    >
+                      Wyczyść
+                    </button>
+                  )}
+                </div>
+
+                <label className="filter-checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={selectedBranches.length === 0}
+                    onChange={() => setSelectedBranches([])}
+                  />
+
+                  <span>Wszystkie oddziały</span>
+                </label>
+
+                <div className="filter-divider"></div>
+
+                {branches.map((branch) => (
+                  <label className="filter-checkbox-row" key={branch}>
+                    <input
+                      type="checkbox"
+                      checked={selectedBranches.includes(branch)}
+                      onChange={() =>
+                        toggleSelectedValue(
+                          branch,
+                          selectedBranches,
+                          setSelectedBranches,
+                        )
+                      }
+                    />
+
+                    <span>{branch}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="vehicles-filter">
           <span className="vehicles-filter-label">Status</span>
 
           <div className="filter-dropdown">
@@ -687,6 +800,16 @@ function VehicleList() {
 
           <button
             className={`table-sort-button ${
+              sortField === "branch" ? "table-sort-active" : ""
+            }`}
+            onClick={() => handleSort("branch")}
+          >
+            Oddział
+            <span>{getSortArrow("branch")}</span>
+          </button>
+
+          <button
+            className={`table-sort-button ${
               sortField === "year" ? "table-sort-active" : ""
             }`}
             onClick={() => handleSort("year")}
@@ -727,6 +850,8 @@ function VehicleList() {
             <span>{vehicle.registration_number}</span>
 
             <span>{getVehicleTypeName(vehicle.vehicle_type)}</span>
+
+            <span>{getBranchName(vehicle.branch)}</span>
 
             <span>{vehicle.year}</span>
 

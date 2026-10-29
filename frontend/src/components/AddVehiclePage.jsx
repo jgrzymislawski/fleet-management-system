@@ -29,6 +29,7 @@ function AddVehiclePage({ onLogout }) {
     driver: "",
     driver_name: "",
     company: "",
+    branch: "",
   });
 
   const [error, setError] = useState(null);
@@ -113,6 +114,7 @@ function AddVehiclePage({ onLogout }) {
       driver: formData.driver || null,
       driver_name: formData.driver_name || null,
       company: formData.company || null,
+      branch: formData.branch.trim(),
     };
 
     apiClient
