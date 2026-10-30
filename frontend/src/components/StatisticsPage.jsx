@@ -10,6 +10,7 @@ function StatisticsPage({ onLogout }) {
   const [vehicleSearch, setVehicleSearch] = useState("");
   const [showVehicleFilter, setShowVehicleFilter] = useState(false);
   const [error, setError] = useState(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const vehicleFilterRef = useRef(null);
 
@@ -21,8 +22,16 @@ function StatisticsPage({ onLogout }) {
           apiClient.get("service-records/"),
         ]);
 
-        setVehicles(vehiclesResponse.data);
-        setServiceRecords(serviceResponse.data);
+        const vehiclesData = Array.isArray(vehiclesResponse.data)
+          ? vehiclesResponse.data
+          : vehiclesResponse.data.results || [];
+
+        const serviceData = Array.isArray(serviceResponse.data)
+          ? serviceResponse.data
+          : serviceResponse.data.results || [];
+
+        setVehicles(vehiclesData);
+        setServiceRecords(serviceData);
       } catch (err) {
         console.error("Błąd pobierania danych statystyk:", err);
         setError("Nie udało się pobrać danych do statystyk.");
@@ -155,6 +164,66 @@ function StatisticsPage({ onLogout }) {
     return new Date(date).toLocaleDateString("pl-PL");
   };
 
+  const getExportFilename = (response) => {
+    const contentDisposition = response.headers["content-disposition"];
+
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+
+      if (filenameMatch && filenameMatch[1]) {
+        return filenameMatch[1];
+      }
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    return `flotivo-raport-statystyczny-${today}.pdf`;
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      setExportingPdf(true);
+      setError(null);
+
+      const response = await apiClient.post(
+        "vehicles/statistics-pdf/",
+        {
+          vehicle_ids: selectedVehicleIds,
+        },
+        {
+          responseType: "blob",
+        },
+      );
+
+      const blob = new Blob([response.data], {
+        type: "application/pdf",
+      });
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+      link.download = getExportFilename(response);
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error("Błąd eksportu statystyk:", err);
+
+      console.error("Odpowiedź backendu:", err.response?.data);
+
+      setError("Nie udało się wygenerować raportu statystycznego.");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   return (
     <div className="dashboard-layout">
       <Sidebar onLogout={onLogout} />
@@ -166,6 +235,15 @@ function StatisticsPage({ onLogout }) {
 
             <p>Analiza kosztów napraw i serwisów pojazdów.</p>
           </div>
+
+          <button
+            type="button"
+            className="statistics-export-button"
+            onClick={handleExportPdf}
+            disabled={exportingPdf}
+          >
+            {exportingPdf ? "Generowanie..." : "Eksportuj raport PDF"}
+          </button>
         </div>
 
         {error && <p className="statistics-error">{error}</p>}
@@ -258,16 +336,19 @@ function StatisticsPage({ onLogout }) {
         <div className="statistics-cards">
           <div className="statistics-card">
             <span>Łączny koszt napraw</span>
+
             <strong>{formatCost(totalCost)}</strong>
           </div>
 
           <div className="statistics-card">
             <span>Liczba napraw</span>
+
             <strong>{filteredRecords.length}</strong>
           </div>
 
           <div className="statistics-card">
             <span>Średni koszt naprawy</span>
+
             <strong>{formatCost(averageCost)}</strong>
           </div>
 

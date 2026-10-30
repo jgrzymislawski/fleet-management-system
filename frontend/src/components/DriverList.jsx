@@ -11,6 +11,7 @@ function DriverList() {
   const [searchText, setSearchText] = useState("");
   const [sortField, setSortField] = useState(null);
   const [sortDirection, setSortDirection] = useState("asc");
+  const [exporting, setExporting] = useState(false);
 
   const navigate = useNavigate();
 
@@ -22,7 +23,11 @@ function DriverList() {
     apiClient
       .get("drivers/")
       .then((response) => {
-        setDrivers(response.data);
+        const data = Array.isArray(response.data)
+          ? response.data
+          : response.data.results || [];
+
+        setDrivers(data);
       })
       .catch((err) => {
         console.error(err);
@@ -60,7 +65,6 @@ function DriverList() {
       })
       .catch((err) => {
         console.error("Błąd usuwania kierowcy:", err);
-
         console.error("Odpowiedź backendu:", err.response?.data);
 
         setError("Nie udało się usunąć kierowcy.");
@@ -101,14 +105,19 @@ function DriverList() {
       return true;
     }
 
-    const fullName = `${driver.first_name} ${driver.last_name}`.toLowerCase();
+    const firstName = driver.first_name?.toLowerCase() || "";
+    const lastName = driver.last_name?.toLowerCase() || "";
+    const licenseNumber = driver.license_number?.toLowerCase() || "";
+    const phoneNumber = driver.phone_number?.toLowerCase() || "";
+
+    const fullName = `${firstName} ${lastName}`;
 
     return (
       fullName.includes(normalizedSearchText) ||
-      driver.first_name.toLowerCase().includes(normalizedSearchText) ||
-      driver.last_name.toLowerCase().includes(normalizedSearchText) ||
-      driver.license_number.toLowerCase().includes(normalizedSearchText) ||
-      driver.phone_number.toLowerCase().includes(normalizedSearchText)
+      firstName.includes(normalizedSearchText) ||
+      lastName.includes(normalizedSearchText) ||
+      licenseNumber.includes(normalizedSearchText) ||
+      phoneNumber.includes(normalizedSearchText)
     );
   });
 
@@ -121,28 +130,29 @@ function DriverList() {
     let valueB;
 
     if (sortField === "first_name") {
-      valueA = a.first_name;
-      valueB = b.first_name;
+      valueA = a.first_name || "";
+      valueB = b.first_name || "";
     }
 
     if (sortField === "last_name") {
-      valueA = a.last_name;
-      valueB = b.last_name;
+      valueA = a.last_name || "";
+      valueB = b.last_name || "";
     }
 
     if (sortField === "license_number") {
-      valueA = a.license_number;
-      valueB = b.license_number;
+      valueA = a.license_number || "";
+      valueB = b.license_number || "";
     }
 
     if (sortField === "phone_number") {
-      valueA = a.phone_number;
-      valueB = b.phone_number;
+      valueA = a.phone_number || "";
+      valueB = b.phone_number || "";
     }
 
     if (sortField === "hired_at") {
-      valueA = new Date(a.hired_at);
-      valueB = new Date(b.hired_at);
+      valueA = a.hired_at ? new Date(a.hired_at) : new Date(0);
+
+      valueB = b.hired_at ? new Date(b.hired_at) : new Date(0);
     }
 
     if (sortField === "hired_at") {
@@ -160,6 +170,74 @@ function DriverList() {
     return sortDirection === "asc" ? comparison : -comparison;
   });
 
+  const getExportFilename = (response) => {
+    const contentDisposition = response.headers["content-disposition"];
+
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+
+      if (filenameMatch && filenameMatch[1]) {
+        return filenameMatch[1];
+      }
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    return `flotivo-kierowcy-${today}.xlsx`;
+  };
+
+  const handleExport = async () => {
+    if (sortedDrivers.length === 0) {
+      setError("Brak kierowców do wyeksportowania.");
+
+      return;
+    }
+
+    try {
+      setExporting(true);
+      setError(null);
+
+      const driverIds = sortedDrivers.map((driver) => driver.id);
+
+      const response = await apiClient.post(
+        "drivers/export/",
+        {
+          driver_ids: driverIds,
+        },
+        {
+          responseType: "blob",
+        },
+      );
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+      link.download = getExportFilename(response);
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error("Błąd eksportu kierowców:", err);
+
+      console.error("Odpowiedź backendu:", err.response?.data);
+
+      setError("Nie udało się wyeksportować kierowców.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="drivers">
       <div className="drivers-header">
@@ -169,14 +247,24 @@ function DriverList() {
           <p>Zarządzaj kierowcami znajdującymi się w Twojej flocie.</p>
         </div>
 
-        {canManageDrivers && (
+        <div className="drivers-header-actions">
           <button
-            className="add-driver-button"
-            onClick={() => navigate("/drivers/add")}
+            className="export-drivers-button"
+            onClick={handleExport}
+            disabled={exporting || sortedDrivers.length === 0}
           >
-            + Dodaj kierowcę
+            {exporting ? "Eksportowanie..." : "Eksportuj"}
           </button>
-        )}
+
+          {canManageDrivers && (
+            <button
+              className="add-driver-button"
+              onClick={() => navigate("/drivers/add")}
+            >
+              + Dodaj kierowcę
+            </button>
+          )}
+        </div>
       </div>
 
       {error && <p className="drivers-error">{error}</p>}
@@ -248,7 +336,7 @@ function DriverList() {
 
             <span>{driver.license_number}</span>
 
-            <span>{driver.phone_number}</span>
+            <span>{driver.phone_number || "Nie podano"}</span>
 
             <span>{formatDate(driver.hired_at)}</span>
 

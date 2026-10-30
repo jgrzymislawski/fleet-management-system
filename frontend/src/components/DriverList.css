@@ -205,7 +205,34 @@
 .drivers-sort-button:hover {
     color: #1A1A1A;
 }
+.drivers-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 
+.export-drivers-button {
+    padding: 12px 20px;
+    border: 1px solid #1A1A1A;
+    border-radius: 6px;
+    background-color: transparent;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.export-drivers-button:hover:not(:disabled) {
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.export-drivers-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 @media (max-width: 900px) {
     .drivers-header {
         align-items: flex-start;
@@ -222,4 +249,13 @@
     .drivers-table-row {
         min-width: 750px;
     }
+    .drivers-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+}
+
+.export-drivers-button,
+.add-driver-button {
+    flex: 1;
+}
 }

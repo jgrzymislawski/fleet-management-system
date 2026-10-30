@@ -147,10 +147,41 @@
     font-size: 13px;
     color: #777777;
 }
+.service-history-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 
+.service-history-export {
+    padding: 12px 20px;
+    border: 1px solid #1A1A1A;
+    border-radius: 6px;
+    background-color: transparent;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.service-history-export:hover:not(:disabled) {
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.service-history-export:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 @media (max-width: 1200px) {
     .service-history-table {
         overflow-x: auto;
+    }
+
+    .service-history-header-actions {
+        flex-wrap: wrap;
     }
 
     .service-history-table-header,

@@ -15,14 +15,18 @@ function VehicleDetailsPage({ onLogout }) {
   const [serviceRecords, setServiceRecords] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [driverAssignments, setDriverAssignments] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionError, setActionError] = useState("");
+
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   useEffect(() => {
     const loadVehicle = async () => {
       try {
         const vehicleResponse = await apiClient.get(`vehicles/${id}/`);
+
         const vehicleData = vehicleResponse.data;
 
         setVehicle(vehicleData);
@@ -46,7 +50,11 @@ function VehicleDetailsPage({ onLogout }) {
             `service-records/?vehicle=${id}`,
           );
 
-          setServiceRecords(serviceResponse.data);
+          const serviceData = Array.isArray(serviceResponse.data)
+            ? serviceResponse.data
+            : serviceResponse.data.results || [];
+
+          setServiceRecords(serviceData);
         } catch (serviceError) {
           console.error("Błąd pobierania historii serwisowej:", serviceError);
         }
@@ -56,7 +64,11 @@ function VehicleDetailsPage({ onLogout }) {
             `vehicle-documents/?vehicle=${id}`,
           );
 
-          setDocuments(documentsResponse.data);
+          const documentsData = Array.isArray(documentsResponse.data)
+            ? documentsResponse.data
+            : documentsResponse.data.results || [];
+
+          setDocuments(documentsData);
         } catch (documentsError) {
           console.error("Błąd pobierania dokumentów:", documentsError);
         }
@@ -261,7 +273,7 @@ function VehicleDetailsPage({ onLogout }) {
       return `${driver.first_name} ${driver.last_name}`;
     }
 
-    if (vehicle.driver_name) {
+    if (vehicle?.driver_name) {
       return vehicle.driver_name;
     }
 
@@ -319,6 +331,60 @@ function VehicleDetailsPage({ onLogout }) {
       console.error("Błąd usuwania dokumentu:", err);
 
       setActionError("Nie udało się usunąć dokumentu.");
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!vehicle) {
+      return;
+    }
+
+    try {
+      setExportingPdf(true);
+      setActionError("");
+
+      const response = await apiClient.get(`vehicles/${id}/card-pdf/`, {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data], {
+        type: "application/pdf",
+      });
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      const contentDisposition = response.headers["content-disposition"];
+
+      let filename = `flotivo-karta-${vehicle.registration_number}.pdf`;
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      link.href = downloadUrl;
+      link.download = filename;
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error("Błąd eksportu karty pojazdu:", err);
+
+      console.error("Odpowiedź backendu:", err.response?.data);
+
+      setActionError("Nie udało się wygenerować karty pojazdu.");
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -383,14 +449,24 @@ function VehicleDetailsPage({ onLogout }) {
             </div>
           </div>
 
-          {canEditVehicle && (
+          <div className="vehicle-details-header-actions">
             <button
-              className="vehicle-details-edit"
-              onClick={() => navigate(`/vehicles/${vehicle.id}/edit`)}
+              className="vehicle-details-export"
+              onClick={handleExportPdf}
+              disabled={exportingPdf}
             >
-              Edytuj pojazd
+              {exportingPdf ? "Generowanie..." : "Eksportuj kartę PDF"}
             </button>
-          )}
+
+            {canEditVehicle && (
+              <button
+                className="vehicle-details-edit"
+                onClick={() => navigate(`/vehicles/${vehicle.id}/edit`)}
+              >
+                Edytuj pojazd
+              </button>
+            )}
+          </div>
         </div>
 
         {actionError && <p className="vehicle-details-error">{actionError}</p>}
@@ -477,6 +553,7 @@ function VehicleDetailsPage({ onLogout }) {
                   )}
               </span>
             </div>
+
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Oddział</span>
 
@@ -484,6 +561,7 @@ function VehicleDetailsPage({ onLogout }) {
                 {vehicle.branch || "Nie podano"}
               </span>
             </div>
+
             <div className="vehicle-detail">
               <span className="vehicle-detail-label">Kierowca</span>
 

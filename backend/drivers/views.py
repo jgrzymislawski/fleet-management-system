@@ -1,6 +1,13 @@
-from rest_framework import viewsets
+from io import BytesIO
+
+from django.http import HttpResponse
+from django.utils import timezone
+
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from auditlog.context import set_actor
 
@@ -13,6 +20,7 @@ from .models import (
 
 from .serializers import DriverSerializer
 from .assignment_serializers import DriverVehicleAssignmentSerializer
+from .export_utils import create_driver_workbook
 
 
 def user_is_superuser(user):
@@ -77,6 +85,96 @@ class DriverViewSet(viewsets.ModelViewSet):
         return Driver.objects.filter(
             organization=membership.organization
         )
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="export",
+    )
+    def export(self, request):
+        driver_ids = request.data.get(
+            "driver_ids",
+            [],
+        )
+
+        if not isinstance(driver_ids, list):
+            return Response(
+                {
+                    "detail": "driver_ids musi być listą."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            driver_ids = [
+                int(driver_id)
+                for driver_id in driver_ids
+            ]
+        except (TypeError, ValueError):
+            return Response(
+                {
+                    "detail": "Nieprawidłowe ID kierowcy."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        queryset = self.get_queryset()
+
+        if driver_ids:
+            queryset = queryset.filter(
+                id__in=driver_ids
+            )
+
+        drivers_by_id = {
+            driver.id: driver
+            for driver in queryset
+        }
+
+        if driver_ids:
+            drivers = [
+                drivers_by_id[driver_id]
+                for driver_id in driver_ids
+                if driver_id in drivers_by_id
+            ]
+        else:
+            drivers = list(
+                queryset.order_by(
+                    "last_name",
+                    "first_name",
+                )
+            )
+
+        workbook = create_driver_workbook(
+            drivers
+        )
+
+        output = BytesIO()
+
+        workbook.save(output)
+
+        output.seek(0)
+
+        filename = (
+            "flotivo-kierowcy-"
+            f"{timezone.localdate()}.xlsx"
+        )
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type=(
+                "application/"
+                "vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+        )
+
+        response[
+            "Content-Disposition"
+        ] = (
+            f'attachment; filename="{filename}"'
+        )
+
+        return response
 
     def perform_create(self, serializer):
         user = self.request.user

@@ -1,5 +1,9 @@
 .statistics-header {
     margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
 }
 
 .statistics-header h1 {
@@ -292,6 +296,29 @@
     text-align: center;
     font-size: 13px;
     color: #777777;
+}
+
+.statistics-export-button {
+    padding: 12px 20px;
+    border: 1px solid #1A1A1A;
+    border-radius: 6px;
+    background-color: transparent;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.statistics-export-button:hover:not(:disabled) {
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.statistics-export-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 @media (max-width: 1200px) {

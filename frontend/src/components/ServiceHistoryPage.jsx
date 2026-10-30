@@ -13,6 +13,7 @@ function ServiceHistoryPage({ onLogout }) {
   const [serviceRecords, setServiceRecords] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [error, setError] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const canAddServiceRecord =
     user?.role === "admin" ||
@@ -26,8 +27,16 @@ function ServiceHistoryPage({ onLogout }) {
           apiClient.get("vehicles/"),
         ]);
 
-        setServiceRecords(serviceResponse.data);
-        setVehicles(vehiclesResponse.data);
+        const serviceData = Array.isArray(serviceResponse.data)
+          ? serviceResponse.data
+          : serviceResponse.data.results || [];
+
+        const vehiclesData = Array.isArray(vehiclesResponse.data)
+          ? vehiclesResponse.data
+          : vehiclesResponse.data.results || [];
+
+        setServiceRecords(serviceData);
+        setVehicles(vehiclesData);
       } catch (err) {
         console.error("Błąd pobierania historii napraw:", err);
 
@@ -89,6 +98,74 @@ function ServiceHistoryPage({ onLogout }) {
     }
   };
 
+  const getExportFilename = (response) => {
+    const contentDisposition = response.headers["content-disposition"];
+
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+
+      if (filenameMatch && filenameMatch[1]) {
+        return filenameMatch[1];
+      }
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    return `flotivo-historia-serwisowa-${today}.xlsx`;
+  };
+
+  const handleExport = async () => {
+    if (serviceRecords.length === 0) {
+      setError("Brak wpisów do wyeksportowania.");
+
+      return;
+    }
+
+    try {
+      setExporting(true);
+      setError(null);
+
+      const serviceRecordIds = serviceRecords.map((record) => record.id);
+
+      const response = await apiClient.post(
+        "service-records/export/",
+        {
+          service_record_ids: serviceRecordIds,
+        },
+        {
+          responseType: "blob",
+        },
+      );
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+      link.download = getExportFilename(response);
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error("Błąd eksportu historii napraw:", err);
+
+      console.error("Odpowiedź backendu:", err.response?.data);
+
+      setError("Nie udało się wyeksportować historii napraw.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="dashboard-layout">
       <Sidebar onLogout={onLogout} />
@@ -103,14 +180,24 @@ function ServiceHistoryPage({ onLogout }) {
             </p>
           </div>
 
-          {canAddServiceRecord && (
+          <div className="service-history-header-actions">
             <button
-              className="service-history-add"
-              onClick={() => navigate("/service-history/add")}
+              className="service-history-export"
+              onClick={handleExport}
+              disabled={exporting || serviceRecords.length === 0}
             >
-              + Dodaj wpis
+              {exporting ? "Eksportowanie..." : "Eksportuj"}
             </button>
-          )}
+
+            {canAddServiceRecord && (
+              <button
+                className="service-history-add"
+                onClick={() => navigate("/service-history/add")}
+              >
+                + Dodaj wpis
+              </button>
+            )}
+          </div>
         </div>
 
         {error && <p className="service-history-error">{error}</p>}

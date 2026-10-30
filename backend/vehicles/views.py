@@ -1,5 +1,12 @@
-from rest_framework import viewsets
+from io import BytesIO
+
+from django.http import HttpResponse
+from django.utils import timezone
+
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
 
 from auditlog.context import set_actor
 
@@ -7,6 +14,8 @@ from organizations.models import (
     OrganizationMembership,
     CompanyAccess,
 )
+
+from drivers.models import DriverVehicleAssignment
 
 from .models import (
     Vehicle,
@@ -19,6 +28,14 @@ from .serializers import (
     ServiceRecordSerializer,
     VehicleDocumentSerializer,
 )
+
+from .export_utils import (
+    create_vehicle_workbook,
+    create_service_workbook,
+)
+
+from .pdf_utils import create_vehicle_card_pdf
+from .statistics_pdf_utils import create_statistics_pdf
 
 
 def user_is_superuser(user):
@@ -188,6 +205,287 @@ class VehicleViewSet(viewsets.ModelViewSet):
             self.request.user
         )
 
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="export",
+    )
+    def export(self, request):
+        vehicle_ids = request.data.get(
+            "vehicle_ids",
+            [],
+        )
+
+        if not isinstance(vehicle_ids, list):
+            return Response(
+                {
+                    "detail": "vehicle_ids musi być listą."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            vehicle_ids = [
+                int(vehicle_id)
+                for vehicle_id in vehicle_ids
+            ]
+        except (TypeError, ValueError):
+            return Response(
+                {
+                    "detail": "Nieprawidłowe ID pojazdu."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        queryset = (
+            self.get_queryset()
+            .select_related(
+                "company",
+                "driver",
+            )
+        )
+
+        if vehicle_ids:
+            queryset = queryset.filter(
+                id__in=vehicle_ids
+            )
+
+        vehicles_by_id = {
+            vehicle.id: vehicle
+            for vehicle in queryset
+        }
+
+        if vehicle_ids:
+            vehicles = [
+                vehicles_by_id[vehicle_id]
+                for vehicle_id in vehicle_ids
+                if vehicle_id in vehicles_by_id
+            ]
+        else:
+            vehicles = list(
+                queryset.order_by(
+                    "brand",
+                    "model",
+                )
+            )
+
+        workbook = create_vehicle_workbook(
+            vehicles
+        )
+
+        output = BytesIO()
+
+        workbook.save(output)
+
+        output.seek(0)
+
+        filename = (
+            "flotivo-pojazdy-"
+            f"{timezone.localdate()}.xlsx"
+        )
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type=(
+                "application/"
+                "vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+        )
+
+        response[
+            "Content-Disposition"
+        ] = (
+            f'attachment; filename="{filename}"'
+        )
+
+        return response
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="card-pdf",
+    )
+    def card_pdf(
+        self,
+        request,
+        pk=None,
+    ):
+        vehicle = (
+            self.get_queryset()
+            .select_related(
+                "company",
+                "driver",
+            )
+            .filter(pk=pk)
+            .first()
+        )
+
+        if vehicle is None:
+            return Response(
+                {
+                    "detail": "Nie znaleziono pojazdu."
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        service_records = (
+            ServiceRecord.objects
+            .filter(
+                vehicle=vehicle
+            )
+            .order_by(
+                "-service_date",
+                "-created_at",
+            )
+        )
+
+        documents = (
+            VehicleDocument.objects
+            .filter(
+                vehicle=vehicle
+            )
+            .order_by(
+                "-created_at",
+            )
+        )
+
+        assignments = (
+            DriverVehicleAssignment.objects
+            .filter(
+                vehicle=vehicle
+            )
+            .select_related(
+                "driver"
+            )
+            .order_by(
+                "-start_date",
+                "-created_at",
+            )
+        )
+
+        pdf = create_vehicle_card_pdf(
+            vehicle=vehicle,
+            service_records=service_records,
+            documents=documents,
+            assignments=assignments,
+        )
+
+        filename = (
+            "flotivo-karta-"
+            f"{vehicle.registration_number}-"
+            f"{timezone.localdate()}.pdf"
+        )
+
+        response = HttpResponse(
+            pdf.getvalue(),
+            content_type="application/pdf",
+        )
+
+        response[
+            "Content-Disposition"
+        ] = (
+            f'attachment; filename="{filename}"'
+        )
+
+        return response
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="statistics-pdf",
+    )
+    def statistics_pdf(
+        self,
+        request,
+    ):
+        vehicle_ids = request.data.get(
+            "vehicle_ids",
+            [],
+        )
+
+        if not isinstance(vehicle_ids, list):
+            return Response(
+                {
+                    "detail": "vehicle_ids musi być listą."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            vehicle_ids = [
+                int(vehicle_id)
+                for vehicle_id in vehicle_ids
+            ]
+        except (TypeError, ValueError):
+            return Response(
+                {
+                    "detail": "Nieprawidłowe ID pojazdu."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        queryset = (
+            self.get_queryset()
+            .select_related(
+                "company",
+                "driver",
+            )
+            .order_by(
+                "brand",
+                "model",
+            )
+        )
+
+        if vehicle_ids:
+            queryset = queryset.filter(
+                id__in=vehicle_ids
+            )
+
+        vehicles = list(queryset)
+
+        accessible_vehicle_ids = [
+            vehicle.id
+            for vehicle in vehicles
+        ]
+
+        service_records = (
+            ServiceRecord.objects
+            .filter(
+                vehicle_id__in=accessible_vehicle_ids
+            )
+            .select_related(
+                "vehicle"
+            )
+            .order_by(
+                "-service_date",
+                "-created_at",
+            )
+        )
+
+        pdf = create_statistics_pdf(
+            vehicles=vehicles,
+            service_records=service_records,
+        )
+
+        filename = (
+            "flotivo-raport-statystyczny-"
+            f"{timezone.localdate()}.pdf"
+        )
+
+        response = HttpResponse(
+            pdf.getvalue(),
+            content_type="application/pdf",
+        )
+
+        response[
+            "Content-Disposition"
+        ] = (
+            f'attachment; filename="{filename}"'
+        )
+
+        return response
+
     def perform_create(self, serializer):
         if user_is_superuser(
             self.request.user
@@ -320,6 +618,106 @@ class ServiceRecordViewSet(
             )
 
         return queryset
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="export",
+    )
+    def export(self, request):
+        service_record_ids = request.data.get(
+            "service_record_ids",
+            [],
+        )
+
+        if not isinstance(
+            service_record_ids,
+            list,
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "service_record_ids musi być listą."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            service_record_ids = [
+                int(record_id)
+                for record_id in service_record_ids
+            ]
+        except (TypeError, ValueError):
+            return Response(
+                {
+                    "detail": (
+                        "Nieprawidłowe ID wpisu serwisowego."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        queryset = (
+            self.get_queryset()
+            .select_related("vehicle")
+        )
+
+        if service_record_ids:
+            queryset = queryset.filter(
+                id__in=service_record_ids
+            )
+
+        records_by_id = {
+            record.id: record
+            for record in queryset
+        }
+
+        if service_record_ids:
+            service_records = [
+                records_by_id[record_id]
+                for record_id in service_record_ids
+                if record_id in records_by_id
+            ]
+        else:
+            service_records = list(
+                queryset.order_by(
+                    "-service_date",
+                    "-created_at",
+                )
+            )
+
+        workbook = create_service_workbook(
+            service_records
+        )
+
+        output = BytesIO()
+
+        workbook.save(output)
+
+        output.seek(0)
+
+        filename = (
+            "flotivo-historia-serwisowa-"
+            f"{timezone.localdate()}.xlsx"
+        )
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type=(
+                "application/"
+                "vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+        )
+
+        response[
+            "Content-Disposition"
+        ] = (
+            f'attachment; filename="{filename}"'
+        )
+
+        return response
 
     def perform_create(self, serializer):
         vehicle = (

@@ -22,6 +22,8 @@ function VehicleList() {
   const [sortField, setSortField] = useState(null);
   const [sortDirection, setSortDirection] = useState("asc");
 
+  const [exporting, setExporting] = useState(false);
+
   const navigate = useNavigate();
 
   const { user, canEditCompany } = useAuth();
@@ -104,7 +106,6 @@ function VehicleList() {
       })
       .catch((err) => {
         console.error("Błąd usuwania pojazdu:", err);
-
         console.error("Odpowiedź backendu:", err.response?.data);
 
         setError("Nie udało się usunąć pojazdu.");
@@ -309,7 +310,6 @@ function VehicleList() {
       valueB = getVehicleTypeName(b.vehicle_type);
     } else if (sortField === "branch") {
       valueA = getBranchName(a.branch);
-
       valueB = getBranchName(b.branch);
     } else if (sortField === "year") {
       valueA = Number(a.year);
@@ -319,7 +319,6 @@ function VehicleList() {
       valueB = Number(b.mileage);
     } else if (sortField === "status") {
       valueA = getStatusName(a.status);
-
       valueB = getStatusName(b.status);
     }
 
@@ -359,6 +358,75 @@ function VehicleList() {
     selectedBranches.length > 0 ||
     searchText.trim() !== "";
 
+  const getExportFilename = (response) => {
+    const contentDisposition = response.headers["content-disposition"];
+
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+
+      if (filenameMatch && filenameMatch[1]) {
+        return filenameMatch[1];
+      }
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    return `flotivo-pojazdy-${today}.xlsx`;
+  };
+
+  const handleExport = async () => {
+    if (sortedVehicles.length === 0) {
+      setError("Brak pojazdów do wyeksportowania.");
+
+      return;
+    }
+
+    try {
+      setExporting(true);
+      setError(null);
+
+      const vehicleIds = sortedVehicles.map((vehicle) => vehicle.id);
+
+      const response = await apiClient.post(
+        "vehicles/export/",
+        {
+          vehicle_ids: vehicleIds,
+        },
+        {
+          responseType: "blob",
+        },
+      );
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+
+      link.download = getExportFilename(response);
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error("Błąd eksportu pojazdów:", err);
+
+      console.error("Odpowiedź backendu:", err.response?.data);
+
+      setError("Nie udało się wyeksportować pojazdów.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="vehicles">
       <div className="vehicles-header">
@@ -368,14 +436,24 @@ function VehicleList() {
           <p>Zarządzaj pojazdami znajdującymi się w Twojej flocie.</p>
         </div>
 
-        {canAddVehicle && (
+        <div className="vehicles-header-actions">
           <button
-            className="add-vehicle-button"
-            onClick={() => navigate("/vehicles/add")}
+            className="export-vehicles-button"
+            onClick={handleExport}
+            disabled={exporting || sortedVehicles.length === 0}
           >
-            + Dodaj pojazd
+            {exporting ? "Eksportowanie..." : "Eksportuj"}
           </button>
-        )}
+
+          {canAddVehicle && (
+            <button
+              className="add-vehicle-button"
+              onClick={() => navigate("/vehicles/add")}
+            >
+              + Dodaj pojazd
+            </button>
+          )}
+        </div>
       </div>
 
       {error && <p className="vehicles-error">{error}</p>}
