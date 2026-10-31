@@ -1,3 +1,4 @@
+from datetime import timedelta
 from io import BytesIO
 
 from django.http import HttpResponse
@@ -15,7 +16,10 @@ from organizations.models import (
     CompanyAccess,
 )
 
-from drivers.models import DriverVehicleAssignment
+from drivers.models import (
+    Driver,
+    DriverVehicleAssignment,
+)
 
 from .models import (
     Vehicle,
@@ -35,7 +39,15 @@ from .export_utils import (
 )
 
 from .pdf_utils import create_vehicle_card_pdf
-from .statistics_pdf_utils import create_statistics_pdf
+
+from .statistics_pdf_utils import (
+    create_statistics_pdf,
+)
+
+from .alerts_export_utils import (
+    create_alerts_workbook,
+    create_alerts_pdf,
+)
 
 
 def user_is_superuser(user):
@@ -196,7 +208,247 @@ def validate_company_for_vehicle(
             )
 
 
-class VehicleViewSet(viewsets.ModelViewSet):
+def get_alert_status(
+    expiry_date,
+    today,
+):
+    days_left = (
+        expiry_date - today
+    ).days
+
+    if days_left < 0:
+        days_after = abs(days_left)
+
+        if days_after == 1:
+            return "1 dzień po terminie"
+
+        return (
+            f"{days_after} dni po terminie"
+        )
+
+    if days_left == 0:
+        return "Wygasa dzisiaj"
+
+    if days_left == 1:
+        return "Wygasa za 1 dzień"
+
+    return (
+        f"Wygasa za {days_left} dni"
+    )
+
+
+def build_alerts_for_user(
+    user,
+    category="all",
+):
+    today = timezone.localdate()
+
+    warning_limit = (
+        today
+        + timedelta(days=30)
+    )
+
+    alerts = []
+
+    vehicles = (
+        get_accessible_vehicles(user)
+        .select_related(
+            "company"
+        )
+    )
+
+    vehicle_ids = list(
+        vehicles.values_list(
+            "id",
+            flat=True,
+        )
+    )
+
+    if category in (
+        "all",
+        "vehicles",
+    ):
+        for vehicle in vehicles:
+            vehicle_dates = [
+                (
+                    "Przegląd techniczny",
+                    vehicle.inspection_expiry_date,
+                ),
+                (
+                    "Polisa OC",
+                    vehicle.insurance_expiry_date,
+                ),
+            ]
+
+            for (
+                alert_type,
+                expiry_date,
+            ) in vehicle_dates:
+                if not expiry_date:
+                    continue
+
+                if (
+                    expiry_date
+                    > warning_limit
+                ):
+                    continue
+
+                alerts.append(
+                    {
+                        "category": "vehicle",
+                        "name": (
+                            f"{vehicle.brand} "
+                            f"{vehicle.model}"
+                        ),
+                        "secondary": (
+                            vehicle.registration_number
+                        ),
+                        "type": alert_type,
+                        "date": expiry_date,
+                        "status": get_alert_status(
+                            expiry_date,
+                            today,
+                        ),
+                    }
+                )
+
+        documents = (
+            VehicleDocument.objects
+            .filter(
+                vehicle_id__in=vehicle_ids,
+                expiry_date__isnull=False,
+                expiry_date__lte=warning_limit,
+            )
+            .exclude(
+                document_type__in=[
+                    "oc",
+                    "inspection",
+                ]
+            )
+            .select_related(
+                "vehicle"
+            )
+        )
+
+        for vehicle_document in documents:
+            vehicle = (
+                vehicle_document.vehicle
+            )
+
+            expiry_date = (
+                vehicle_document.expiry_date
+            )
+
+            alerts.append(
+                {
+                    "category": "vehicle",
+                    "name": (
+                        f"{vehicle.brand} "
+                        f"{vehicle.model}"
+                    ),
+                    "secondary": (
+                        vehicle.registration_number
+                    ),
+                    "type": (
+                        vehicle_document
+                        .get_document_type_display()
+                    ),
+                    "date": expiry_date,
+                    "status": get_alert_status(
+                        expiry_date,
+                        today,
+                    ),
+                }
+            )
+
+    if category in (
+        "all",
+        "drivers",
+    ):
+        if user_is_superuser(user):
+            drivers = (
+                Driver.objects
+                .all()
+            )
+
+        else:
+            membership = (
+                get_membership(user)
+            )
+
+            if (
+                membership is None
+                or membership.role
+                != "admin"
+            ):
+                drivers = (
+                    Driver.objects.none()
+                )
+
+            else:
+                drivers = (
+                    Driver.objects
+                    .filter(
+                        organization=(
+                            membership.organization
+                        )
+                    )
+                )
+
+        for driver in drivers:
+            driver_dates = [
+                (
+                    "Ważność prawa jazdy",
+                    driver.license_expiry_date,
+                ),
+                (
+                    "Badania lekarskie",
+                    driver.medical_exam_expiry_date,
+                ),
+            ]
+
+            for (
+                alert_type,
+                expiry_date,
+            ) in driver_dates:
+                if not expiry_date:
+                    continue
+
+                if (
+                    expiry_date
+                    > warning_limit
+                ):
+                    continue
+
+                alerts.append(
+                    {
+                        "category": "driver",
+                        "name": (
+                            f"{driver.first_name} "
+                            f"{driver.last_name}"
+                        ),
+                        "secondary": "Kierowca",
+                        "type": alert_type,
+                        "date": expiry_date,
+                        "status": get_alert_status(
+                            expiry_date,
+                            today,
+                        ),
+                    }
+                )
+
+    alerts.sort(
+        key=lambda alert: (
+            alert["date"]
+        )
+    )
+
+    return alerts
+
+
+class VehicleViewSet(
+    viewsets.ModelViewSet
+):
     queryset = Vehicle.objects.all()
     serializer_class = VehicleSerializer
 
@@ -211,30 +463,47 @@ class VehicleViewSet(viewsets.ModelViewSet):
         url_path="export",
     )
     def export(self, request):
-        vehicle_ids = request.data.get(
-            "vehicle_ids",
-            [],
+        vehicle_ids = (
+            request.data.get(
+                "vehicle_ids",
+                [],
+            )
         )
 
-        if not isinstance(vehicle_ids, list):
+        if not isinstance(
+            vehicle_ids,
+            list,
+        ):
             return Response(
                 {
-                    "detail": "vehicle_ids musi być listą."
+                    "detail": (
+                        "vehicle_ids musi być listą."
+                    )
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
         try:
             vehicle_ids = [
                 int(vehicle_id)
-                for vehicle_id in vehicle_ids
+                for vehicle_id
+                in vehicle_ids
             ]
-        except (TypeError, ValueError):
+        except (
+            TypeError,
+            ValueError,
+        ):
             return Response(
                 {
-                    "detail": "Nieprawidłowe ID pojazdu."
+                    "detail": (
+                        "Nieprawidłowe ID pojazdu."
+                    )
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
         queryset = (
@@ -246,8 +515,10 @@ class VehicleViewSet(viewsets.ModelViewSet):
         )
 
         if vehicle_ids:
-            queryset = queryset.filter(
-                id__in=vehicle_ids
+            queryset = (
+                queryset.filter(
+                    id__in=vehicle_ids
+                )
             )
 
         vehicles_by_id = {
@@ -257,9 +528,13 @@ class VehicleViewSet(viewsets.ModelViewSet):
 
         if vehicle_ids:
             vehicles = [
-                vehicles_by_id[vehicle_id]
-                for vehicle_id in vehicle_ids
-                if vehicle_id in vehicles_by_id
+                vehicles_by_id[
+                    vehicle_id
+                ]
+                for vehicle_id
+                in vehicle_ids
+                if vehicle_id
+                in vehicles_by_id
             ]
         else:
             vehicles = list(
@@ -269,13 +544,17 @@ class VehicleViewSet(viewsets.ModelViewSet):
                 )
             )
 
-        workbook = create_vehicle_workbook(
-            vehicles
+        workbook = (
+            create_vehicle_workbook(
+                vehicles
+            )
         )
 
         output = BytesIO()
 
-        workbook.save(output)
+        workbook.save(
+            output
+        )
 
         output.seek(0)
 
@@ -317,16 +596,22 @@ class VehicleViewSet(viewsets.ModelViewSet):
                 "company",
                 "driver",
             )
-            .filter(pk=pk)
+            .filter(
+                pk=pk
+            )
             .first()
         )
 
         if vehicle is None:
             return Response(
                 {
-                    "detail": "Nie znaleziono pojazdu."
+                    "detail": (
+                        "Nie znaleziono pojazdu."
+                    )
                 },
-                status=status.HTTP_404_NOT_FOUND,
+                status=(
+                    status.HTTP_404_NOT_FOUND
+                ),
             )
 
         service_records = (
@@ -364,11 +649,13 @@ class VehicleViewSet(viewsets.ModelViewSet):
             )
         )
 
-        pdf = create_vehicle_card_pdf(
-            vehicle=vehicle,
-            service_records=service_records,
-            documents=documents,
-            assignments=assignments,
+        pdf = (
+            create_vehicle_card_pdf(
+                vehicle=vehicle,
+                service_records=service_records,
+                documents=documents,
+                assignments=assignments,
+            )
         )
 
         filename = (
@@ -379,7 +666,9 @@ class VehicleViewSet(viewsets.ModelViewSet):
 
         response = HttpResponse(
             pdf.getvalue(),
-            content_type="application/pdf",
+            content_type=(
+                "application/pdf"
+            ),
         )
 
         response[
@@ -399,30 +688,47 @@ class VehicleViewSet(viewsets.ModelViewSet):
         self,
         request,
     ):
-        vehicle_ids = request.data.get(
-            "vehicle_ids",
-            [],
+        vehicle_ids = (
+            request.data.get(
+                "vehicle_ids",
+                [],
+            )
         )
 
-        if not isinstance(vehicle_ids, list):
+        if not isinstance(
+            vehicle_ids,
+            list,
+        ):
             return Response(
                 {
-                    "detail": "vehicle_ids musi być listą."
+                    "detail": (
+                        "vehicle_ids musi być listą."
+                    )
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
         try:
             vehicle_ids = [
                 int(vehicle_id)
-                for vehicle_id in vehicle_ids
+                for vehicle_id
+                in vehicle_ids
             ]
-        except (TypeError, ValueError):
+        except (
+            TypeError,
+            ValueError,
+        ):
             return Response(
                 {
-                    "detail": "Nieprawidłowe ID pojazdu."
+                    "detail": (
+                        "Nieprawidłowe ID pojazdu."
+                    )
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
         queryset = (
@@ -438,21 +744,28 @@ class VehicleViewSet(viewsets.ModelViewSet):
         )
 
         if vehicle_ids:
-            queryset = queryset.filter(
-                id__in=vehicle_ids
+            queryset = (
+                queryset.filter(
+                    id__in=vehicle_ids
+                )
             )
 
-        vehicles = list(queryset)
+        vehicles = list(
+            queryset
+        )
 
         accessible_vehicle_ids = [
             vehicle.id
-            for vehicle in vehicles
+            for vehicle
+            in vehicles
         ]
 
         service_records = (
             ServiceRecord.objects
             .filter(
-                vehicle_id__in=accessible_vehicle_ids
+                vehicle_id__in=(
+                    accessible_vehicle_ids
+                )
             )
             .select_related(
                 "vehicle"
@@ -463,9 +776,11 @@ class VehicleViewSet(viewsets.ModelViewSet):
             )
         )
 
-        pdf = create_statistics_pdf(
-            vehicles=vehicles,
-            service_records=service_records,
+        pdf = (
+            create_statistics_pdf(
+                vehicles=vehicles,
+                service_records=service_records,
+            )
         )
 
         filename = (
@@ -475,7 +790,9 @@ class VehicleViewSet(viewsets.ModelViewSet):
 
         response = HttpResponse(
             pdf.getvalue(),
-            content_type="application/pdf",
+            content_type=(
+                "application/pdf"
+            ),
         )
 
         response[
@@ -486,17 +803,175 @@ class VehicleViewSet(viewsets.ModelViewSet):
 
         return response
 
-    def perform_create(self, serializer):
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="alerts-export",
+    )
+    def alerts_export(
+        self,
+        request,
+    ):
+        category = (
+            request.data.get(
+                "category",
+                "all",
+            )
+        )
+
+        if category not in (
+            "all",
+            "vehicles",
+            "drivers",
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Nieprawidłowa kategoria."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        alerts = (
+            build_alerts_for_user(
+                request.user,
+                category,
+            )
+        )
+
+        workbook = (
+            create_alerts_workbook(
+                alerts
+            )
+        )
+
+        output = BytesIO()
+
+        workbook.save(
+            output
+        )
+
+        output.seek(0)
+
+        filename = (
+            "flotivo-alerty-"
+            f"{timezone.localdate()}.xlsx"
+        )
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type=(
+                "application/"
+                "vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+        )
+
+        response[
+            "Content-Disposition"
+        ] = (
+            f'attachment; filename="{filename}"'
+        )
+
+        return response
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="alerts-pdf",
+    )
+    def alerts_pdf(
+        self,
+        request,
+    ):
+        category = (
+            request.data.get(
+                "category",
+                "all",
+            )
+        )
+
+        if category not in (
+            "all",
+            "vehicles",
+            "drivers",
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Nieprawidłowa kategoria."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        alerts = (
+            build_alerts_for_user(
+                request.user,
+                category,
+            )
+        )
+
+        filter_names = {
+            "all": "Wszystkie",
+            "vehicles": "Pojazdy",
+            "drivers": "Kierowcy",
+        }
+
+        pdf = (
+            create_alerts_pdf(
+                alerts=alerts,
+                filter_name=(
+                    filter_names[
+                        category
+                    ]
+                ),
+            )
+        )
+
+        filename = (
+            "flotivo-alerty-"
+            f"{timezone.localdate()}.pdf"
+        )
+
+        response = HttpResponse(
+            pdf.getvalue(),
+            content_type=(
+                "application/pdf"
+            ),
+        )
+
+        response[
+            "Content-Disposition"
+        ] = (
+            f'attachment; filename="{filename}"'
+        )
+
+        return response
+
+    def perform_create(
+        self,
+        serializer,
+    ):
         if user_is_superuser(
             self.request.user
         ):
-            with set_actor(self.request.user):
+            with set_actor(
+                self.request.user
+            ):
                 serializer.save()
 
             return
 
-        membership = get_membership(
-            self.request.user
+        membership = (
+            get_membership(
+                self.request.user
+            )
         )
 
         if membership is None:
@@ -505,7 +980,8 @@ class VehicleViewSet(viewsets.ModelViewSet):
             )
 
         company = (
-            serializer.validated_data.get(
+            serializer.validated_data
+            .get(
                 "company"
             )
         )
@@ -515,13 +991,22 @@ class VehicleViewSet(viewsets.ModelViewSet):
             company,
         )
 
-        with set_actor(self.request.user):
+        with set_actor(
+            self.request.user
+        ):
             serializer.save(
-                organization=membership.organization
+                organization=(
+                    membership.organization
+                )
             )
 
-    def perform_update(self, serializer):
-        vehicle = self.get_object()
+    def perform_update(
+        self,
+        serializer,
+    ):
+        vehicle = (
+            self.get_object()
+        )
 
         ensure_vehicle_edit_permission(
             self.request.user,
@@ -531,17 +1016,22 @@ class VehicleViewSet(viewsets.ModelViewSet):
         if user_is_superuser(
             self.request.user
         ):
-            with set_actor(self.request.user):
+            with set_actor(
+                self.request.user
+            ):
                 serializer.save()
 
             return
 
-        membership = get_membership(
-            self.request.user
+        membership = (
+            get_membership(
+                self.request.user
+            )
         )
 
         new_company = (
-            serializer.validated_data.get(
+            serializer.validated_data
+            .get(
                 "company",
                 vehicle.company,
             )
@@ -566,37 +1056,55 @@ class VehicleViewSet(viewsets.ModelViewSet):
 
         elif (
             new_company is not None
-            and new_company.organization_id
-            != membership.organization_id
+            and (
+                new_company.organization_id
+                != membership.organization_id
+            )
         ):
             raise PermissionDenied(
                 "Nie możesz przypisać pojazdu do spółki z innej organizacji."
             )
 
-        with set_actor(self.request.user):
+        with set_actor(
+            self.request.user
+        ):
             serializer.save(
-                organization=membership.organization
+                organization=(
+                    membership.organization
+                )
             )
 
-    def perform_destroy(self, instance):
+    def perform_destroy(
+        self,
+        instance,
+    ):
         ensure_vehicle_edit_permission(
             self.request.user,
             instance,
         )
 
-        with set_actor(self.request.user):
+        with set_actor(
+            self.request.user
+        ):
             instance.delete()
 
 
 class ServiceRecordViewSet(
     viewsets.ModelViewSet
 ):
-    queryset = ServiceRecord.objects.all()
-    serializer_class = ServiceRecordSerializer
+    queryset = (
+        ServiceRecord.objects.all()
+    )
+
+    serializer_class = (
+        ServiceRecordSerializer
+    )
 
     def get_queryset(self):
-        vehicles = get_accessible_vehicles(
-            self.request.user
+        vehicles = (
+            get_accessible_vehicles(
+                self.request.user
+            )
         )
 
         queryset = (
@@ -607,14 +1115,19 @@ class ServiceRecordViewSet(
         )
 
         vehicle_id = (
-            self.request.query_params.get(
+            self.request.query_params
+            .get(
                 "vehicle"
             )
         )
 
         if vehicle_id:
-            queryset = queryset.filter(
-                vehicle_id=vehicle_id
+            queryset = (
+                queryset.filter(
+                    vehicle_id=(
+                        vehicle_id
+                    )
+                )
             )
 
         return queryset
@@ -624,10 +1137,15 @@ class ServiceRecordViewSet(
         methods=["post"],
         url_path="export",
     )
-    def export(self, request):
-        service_record_ids = request.data.get(
-            "service_record_ids",
-            [],
+    def export(
+        self,
+        request,
+    ):
+        service_record_ids = (
+            request.data.get(
+                "service_record_ids",
+                [],
+            )
         )
 
         if not isinstance(
@@ -640,32 +1158,46 @@ class ServiceRecordViewSet(
                         "service_record_ids musi być listą."
                     )
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
         try:
             service_record_ids = [
                 int(record_id)
-                for record_id in service_record_ids
+                for record_id
+                in service_record_ids
             ]
-        except (TypeError, ValueError):
+        except (
+            TypeError,
+            ValueError,
+        ):
             return Response(
                 {
                     "detail": (
                         "Nieprawidłowe ID wpisu serwisowego."
                     )
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
         queryset = (
             self.get_queryset()
-            .select_related("vehicle")
+            .select_related(
+                "vehicle"
+            )
         )
 
         if service_record_ids:
-            queryset = queryset.filter(
-                id__in=service_record_ids
+            queryset = (
+                queryset.filter(
+                    id__in=(
+                        service_record_ids
+                    )
+                )
             )
 
         records_by_id = {
@@ -675,9 +1207,13 @@ class ServiceRecordViewSet(
 
         if service_record_ids:
             service_records = [
-                records_by_id[record_id]
-                for record_id in service_record_ids
-                if record_id in records_by_id
+                records_by_id[
+                    record_id
+                ]
+                for record_id
+                in service_record_ids
+                if record_id
+                in records_by_id
             ]
         else:
             service_records = list(
@@ -687,13 +1223,17 @@ class ServiceRecordViewSet(
                 )
             )
 
-        workbook = create_service_workbook(
-            service_records
+        workbook = (
+            create_service_workbook(
+                service_records
+            )
         )
 
         output = BytesIO()
 
-        workbook.save(output)
+        workbook.save(
+            output
+        )
 
         output.seek(0)
 
@@ -719,9 +1259,13 @@ class ServiceRecordViewSet(
 
         return response
 
-    def perform_create(self, serializer):
+    def perform_create(
+        self,
+        serializer,
+    ):
         vehicle = (
-            serializer.validated_data.get(
+            serializer.validated_data
+            .get(
                 "vehicle"
             )
         )
@@ -731,13 +1275,22 @@ class ServiceRecordViewSet(
             vehicle,
         )
 
-        with set_actor(self.request.user):
+        with set_actor(
+            self.request.user
+        ):
             serializer.save()
 
-    def perform_update(self, serializer):
-        service_record = self.get_object()
+    def perform_update(
+        self,
+        serializer,
+    ):
+        service_record = (
+            self.get_object()
+        )
 
-        old_vehicle = service_record.vehicle
+        old_vehicle = (
+            service_record.vehicle
+        )
 
         ensure_vehicle_edit_permission(
             self.request.user,
@@ -745,7 +1298,8 @@ class ServiceRecordViewSet(
         )
 
         new_vehicle = (
-            serializer.validated_data.get(
+            serializer.validated_data
+            .get(
                 "vehicle",
                 old_vehicle,
             )
@@ -756,28 +1310,42 @@ class ServiceRecordViewSet(
             new_vehicle,
         )
 
-        with set_actor(self.request.user):
+        with set_actor(
+            self.request.user
+        ):
             serializer.save()
 
-    def perform_destroy(self, instance):
+    def perform_destroy(
+        self,
+        instance,
+    ):
         ensure_vehicle_edit_permission(
             self.request.user,
             instance.vehicle,
         )
 
-        with set_actor(self.request.user):
+        with set_actor(
+            self.request.user
+        ):
             instance.delete()
 
 
 class VehicleDocumentViewSet(
     viewsets.ModelViewSet
 ):
-    queryset = VehicleDocument.objects.all()
-    serializer_class = VehicleDocumentSerializer
+    queryset = (
+        VehicleDocument.objects.all()
+    )
+
+    serializer_class = (
+        VehicleDocumentSerializer
+    )
 
     def get_queryset(self):
-        vehicles = get_accessible_vehicles(
-            self.request.user
+        vehicles = (
+            get_accessible_vehicles(
+                self.request.user
+            )
         )
 
         queryset = (
@@ -788,21 +1356,30 @@ class VehicleDocumentViewSet(
         )
 
         vehicle_id = (
-            self.request.query_params.get(
+            self.request.query_params
+            .get(
                 "vehicle"
             )
         )
 
         if vehicle_id:
-            queryset = queryset.filter(
-                vehicle_id=vehicle_id
+            queryset = (
+                queryset.filter(
+                    vehicle_id=(
+                        vehicle_id
+                    )
+                )
             )
 
         return queryset
 
-    def perform_create(self, serializer):
+    def perform_create(
+        self,
+        serializer,
+    ):
         vehicle = (
-            serializer.validated_data.get(
+            serializer.validated_data
+            .get(
                 "vehicle"
             )
         )
@@ -812,13 +1389,22 @@ class VehicleDocumentViewSet(
             vehicle,
         )
 
-        with set_actor(self.request.user):
+        with set_actor(
+            self.request.user
+        ):
             serializer.save()
 
-    def perform_update(self, serializer):
-        document = self.get_object()
+    def perform_update(
+        self,
+        serializer,
+    ):
+        document = (
+            self.get_object()
+        )
 
-        old_vehicle = document.vehicle
+        old_vehicle = (
+            document.vehicle
+        )
 
         ensure_vehicle_edit_permission(
             self.request.user,
@@ -826,7 +1412,8 @@ class VehicleDocumentViewSet(
         )
 
         new_vehicle = (
-            serializer.validated_data.get(
+            serializer.validated_data
+            .get(
                 "vehicle",
                 old_vehicle,
             )
@@ -837,14 +1424,21 @@ class VehicleDocumentViewSet(
             new_vehicle,
         )
 
-        with set_actor(self.request.user):
+        with set_actor(
+            self.request.user
+        ):
             serializer.save()
 
-    def perform_destroy(self, instance):
+    def perform_destroy(
+        self,
+        instance,
+    ):
         ensure_vehicle_edit_permission(
             self.request.user,
             instance.vehicle,
         )
 
-        with set_actor(self.request.user):
+        with set_actor(
+            self.request.user
+        ):
             instance.delete()

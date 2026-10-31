@@ -2,19 +2,62 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/', include('vehicles.urls')),
-    path('api/', include('drivers.urls')),
-    path('api/', include('assignments.urls')),
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path("api/", include("organizations.urls")),
-    path("api/notifications/",include("notifications.urls"),
-),
+    path(
+        "admin/",
+        admin.site.urls,
+    ),
+
+    path(
+        "api/",
+        include("vehicles.urls"),
+    ),
+
+    path(
+        "api/",
+        include("drivers.urls"),
+    ),
+
+    path(
+        "api/",
+        include("assignments.urls"),
+    ),
+
+    path(
+        "api/token/",
+        TokenObtainPairView.as_view(),
+        name="token_obtain_pair",
+    ),
+
+    path(
+        "api/token/refresh/",
+        TokenRefreshView.as_view(),
+        name="token_refresh",
+    ),
+
+    path(
+        "api/",
+        include("organizations.urls"),
+    ),
+
+    path(
+        "api/notifications/",
+        include("notifications.urls"),
+    ),
+
+    path(
+        "api/reports/",
+        include("reports.urls"),
+    ),
 ]
+
 
 if settings.DEBUG:
     urlpatterns += static(

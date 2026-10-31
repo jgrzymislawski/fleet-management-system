@@ -46,6 +46,10 @@ function Sidebar({ onLogout }) {
             Statystyki
           </button>
 
+          <button className="sidebar-item" onClick={() => navigate("/reports")}>
+            Raporty
+          </button>
+
           <button className="sidebar-item" onClick={() => navigate("/account")}>
             Moje konto
           </button>

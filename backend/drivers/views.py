@@ -21,6 +21,7 @@ from .models import (
 from .serializers import DriverSerializer
 from .assignment_serializers import DriverVehicleAssignmentSerializer
 from .export_utils import create_driver_workbook
+from .pdf_utils import create_driver_card_pdf
 
 
 def user_is_superuser(user):
@@ -166,6 +167,71 @@ class DriverViewSet(viewsets.ModelViewSet):
                 "vnd.openxmlformats-officedocument."
                 "spreadsheetml.sheet"
             ),
+        )
+
+        response[
+            "Content-Disposition"
+        ] = (
+            f'attachment; filename="{filename}"'
+        )
+
+        return response
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="card-pdf",
+    )
+    def card_pdf(
+        self,
+        request,
+        pk=None,
+    ):
+        driver = (
+            self.get_queryset()
+            .filter(pk=pk)
+            .first()
+        )
+
+        if driver is None:
+            return Response(
+                {
+                    "detail": "Nie znaleziono kierowcy."
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        assignments = (
+            DriverVehicleAssignment.objects
+            .filter(
+                driver=driver
+            )
+            .select_related(
+                "vehicle",
+                "vehicle__company",
+                "vehicle__organization",
+            )
+            .order_by(
+                "-start_date",
+                "-id",
+            )
+        )
+
+        pdf = create_driver_card_pdf(
+            driver=driver,
+            assignments=assignments,
+        )
+
+        filename = (
+            "flotivo-kierowca-"
+            f"{driver.first_name}-"
+            f"{driver.last_name}-"
+            f"{timezone.localdate()}.pdf"
+        )
+
+        response = HttpResponse(
+            pdf.getvalue(),
+            content_type="application/pdf",
         )
 
         response[

@@ -420,6 +420,41 @@
     color: #707070;
 }
 
+.driver-details-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.driver-details-export {
+    padding: 12px 20px;
+    border: 1px solid #1A1A1A;
+    border-radius: 6px;
+    background-color: transparent;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.driver-details-export:hover:not(:disabled) {
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.driver-details-export:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .driver-details-header-actions {
+        flex-wrap: wrap;
+    }
+}
+
 @media (max-width: 900px) {
     .driver-details-card,
     .driver-license-card,

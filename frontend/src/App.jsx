@@ -20,6 +20,7 @@ import ServiceHistoryPage from "./components/ServiceHistoryPage";
 import AddServiceRecordPage from "./components/AddServiceRecordPage";
 import EditServiceRecordPage from "./components/EditServiceRecordPage";
 import StatisticsPage from "./components/StatisticsPage";
+import ReportsPage from "./components/ReportsPage";
 import AddVehicleDocumentPage from "./components/AddVehicleDocumentPage";
 import EditVehicleDocumentPage from "./components/EditVehicleDocumentPage";
 import AccountPage from "./components/AccountPage";
@@ -50,11 +51,13 @@ function App() {
 
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);
+
     navigate("/dashboard");
   };
 
   const handleLogout = () => {
     localStorage.removeItem("access_token");
+
     localStorage.removeItem("refresh_token");
 
     clearUser();
@@ -66,6 +69,7 @@ function App() {
 
   const handleIdleLogout = useCallback(() => {
     localStorage.removeItem("access_token");
+
     localStorage.removeItem("refresh_token");
 
     clearUser();
@@ -213,6 +217,11 @@ function App() {
       />
 
       <Route
+        path="/reports"
+        element={protectedElement(<ReportsPage onLogout={handleLogout} />)}
+      />
+
+      <Route
         path="/account"
         element={protectedElement(<AccountPage onLogout={handleLogout} />)}
       />
@@ -223,12 +232,14 @@ function App() {
           <ChangePasswordPage onLogout={handleLogout} />,
         )}
       />
+
       <Route
         path="/account/notifications"
         element={protectedElement(
           <NotificationPreferencesPage onLogout={handleLogout} />,
         )}
       />
+
       <Route
         path="/admin-panel"
         element={adminElement(<AdminPanelPage onLogout={handleLogout} />)}
@@ -243,6 +254,7 @@ function App() {
         path="/admin-panel/companies/add"
         element={adminElement(<AddCompanyPage onLogout={handleLogout} />)}
       />
+
       <Route
         path="/admin-panel/notifications"
         element={adminElement(
@@ -264,6 +276,7 @@ function App() {
         path="/admin-panel/users/add"
         element={adminElement(<AddUserPage onLogout={handleLogout} />)}
       />
+
       <Route
         path="/admin-panel/users/:id/edit"
         element={adminElement(<EditUserPage onLogout={handleLogout} />)}

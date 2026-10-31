@@ -1,5 +1,9 @@
 .alerts-header {
     margin-bottom: 30px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
 }
 
 .alerts-header h1 {
@@ -209,6 +213,50 @@
     text-align: center;
     font-size: 13px;
     color: #777777;
+}
+
+.alerts-export-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.alerts-export-button {
+    padding: 12px 20px;
+    border: 1px solid #1A1A1A;
+    border-radius: 6px;
+    background-color: transparent;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.alerts-export-button:hover:not(:disabled) {
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.alerts-export-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.alerts-export-pdf {
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.alerts-export-pdf:hover:not(:disabled) {
+    opacity: 0.85;
+}
+
+@media (max-width: 768px) {
+    .alerts-export-actions {
+        flex-wrap: wrap;
+    }
 }
 
 @media (max-width: 900px) {

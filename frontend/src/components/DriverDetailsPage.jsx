@@ -16,6 +16,8 @@ function DriverDetailsPage({ onLogout }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const [exportingPdf, setExportingPdf] = useState(false);
+
   const canManageDrivers = user?.role === "admin";
 
   useEffect(() => {
@@ -104,9 +106,11 @@ function DriverDetailsPage({ onLogout }) {
     }
 
     const today = new Date();
+
     const expiryDate = new Date(date);
 
     today.setHours(0, 0, 0, 0);
+
     expiryDate.setHours(0, 0, 0, 0);
 
     const difference = expiryDate - today;
@@ -138,6 +142,66 @@ function DriverDetailsPage({ onLogout }) {
       text: "Ważne",
       className: "driver-expiry-valid",
     };
+  };
+
+  const getExportFilename = (response) => {
+    const contentDisposition = response.headers["content-disposition"];
+
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+
+      if (filenameMatch && filenameMatch[1]) {
+        return filenameMatch[1];
+      }
+    }
+
+    return (
+      `flotivo-kierowca-` + `${driver.first_name}-` + `${driver.last_name}.pdf`
+    );
+  };
+
+  const handleExportPdf = async () => {
+    if (!driver) {
+      return;
+    }
+
+    try {
+      setExportingPdf(true);
+
+      setError(null);
+
+      const response = await apiClient.get(`drivers/${id}/card-pdf/`, {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data], {
+        type: "application/pdf",
+      });
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+
+      link.download = getExportFilename(response);
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error("Błąd eksportu karty kierowcy:", err);
+
+      console.error("Odpowiedź backendu:", err.response?.data);
+
+      setError("Nie udało się wygenerować karty kierowcy.");
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   if (loading) {
@@ -215,14 +279,25 @@ function DriverDetailsPage({ onLogout }) {
             </div>
           </div>
 
-          {canManageDrivers && (
+          <div className="driver-details-header-actions">
             <button
-              className="driver-details-edit"
-              onClick={() => navigate(`/drivers/${driver.id}/edit`)}
+              type="button"
+              className="driver-details-export"
+              onClick={handleExportPdf}
+              disabled={exportingPdf}
             >
-              Edytuj kierowcę
+              {exportingPdf ? "Generowanie..." : "Eksportuj kartę PDF"}
             </button>
-          )}
+
+            {canManageDrivers && (
+              <button
+                className="driver-details-edit"
+                onClick={() => navigate(`/drivers/${driver.id}/edit`)}
+              >
+                Edytuj kierowcę
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="driver-details-card">
