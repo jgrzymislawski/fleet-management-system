@@ -1,4 +1,3 @@
-from datetime import timedelta
 from io import BytesIO
 
 from django.http import HttpResponse
@@ -16,10 +15,9 @@ from organizations.models import (
     CompanyAccess,
 )
 
-from drivers.models import (
-    Driver,
-    DriverVehicleAssignment,
-)
+from drivers.models import DriverVehicleAssignment
+
+from alerts.services import build_alerts
 
 from .models import (
     Vehicle,
@@ -208,244 +206,6 @@ def validate_company_for_vehicle(
             )
 
 
-def get_alert_status(
-    expiry_date,
-    today,
-):
-    days_left = (
-        expiry_date - today
-    ).days
-
-    if days_left < 0:
-        days_after = abs(days_left)
-
-        if days_after == 1:
-            return "1 dzień po terminie"
-
-        return (
-            f"{days_after} dni po terminie"
-        )
-
-    if days_left == 0:
-        return "Wygasa dzisiaj"
-
-    if days_left == 1:
-        return "Wygasa za 1 dzień"
-
-    return (
-        f"Wygasa za {days_left} dni"
-    )
-
-
-def build_alerts_for_user(
-    user,
-    category="all",
-):
-    today = timezone.localdate()
-
-    warning_limit = (
-        today
-        + timedelta(days=30)
-    )
-
-    alerts = []
-
-    vehicles = (
-        get_accessible_vehicles(user)
-        .select_related(
-            "company"
-        )
-    )
-
-    vehicle_ids = list(
-        vehicles.values_list(
-            "id",
-            flat=True,
-        )
-    )
-
-    if category in (
-        "all",
-        "vehicles",
-    ):
-        for vehicle in vehicles:
-            vehicle_dates = [
-                (
-                    "Przegląd techniczny",
-                    vehicle.inspection_expiry_date,
-                ),
-                (
-                    "Polisa OC",
-                    vehicle.insurance_expiry_date,
-                ),
-            ]
-
-            for (
-                alert_type,
-                expiry_date,
-            ) in vehicle_dates:
-                if not expiry_date:
-                    continue
-
-                if (
-                    expiry_date
-                    > warning_limit
-                ):
-                    continue
-
-                alerts.append(
-                    {
-                        "category": "vehicle",
-                        "name": (
-                            f"{vehicle.brand} "
-                            f"{vehicle.model}"
-                        ),
-                        "secondary": (
-                            vehicle.registration_number
-                        ),
-                        "type": alert_type,
-                        "date": expiry_date,
-                        "status": get_alert_status(
-                            expiry_date,
-                            today,
-                        ),
-                    }
-                )
-
-        documents = (
-            VehicleDocument.objects
-            .filter(
-                vehicle_id__in=vehicle_ids,
-                expiry_date__isnull=False,
-                expiry_date__lte=warning_limit,
-            )
-            .exclude(
-                document_type__in=[
-                    "oc",
-                    "inspection",
-                ]
-            )
-            .select_related(
-                "vehicle"
-            )
-        )
-
-        for vehicle_document in documents:
-            vehicle = (
-                vehicle_document.vehicle
-            )
-
-            expiry_date = (
-                vehicle_document.expiry_date
-            )
-
-            alerts.append(
-                {
-                    "category": "vehicle",
-                    "name": (
-                        f"{vehicle.brand} "
-                        f"{vehicle.model}"
-                    ),
-                    "secondary": (
-                        vehicle.registration_number
-                    ),
-                    "type": (
-                        vehicle_document
-                        .get_document_type_display()
-                    ),
-                    "date": expiry_date,
-                    "status": get_alert_status(
-                        expiry_date,
-                        today,
-                    ),
-                }
-            )
-
-    if category in (
-        "all",
-        "drivers",
-    ):
-        if user_is_superuser(user):
-            drivers = (
-                Driver.objects
-                .all()
-            )
-
-        else:
-            membership = (
-                get_membership(user)
-            )
-
-            if (
-                membership is None
-                or membership.role
-                != "admin"
-            ):
-                drivers = (
-                    Driver.objects.none()
-                )
-
-            else:
-                drivers = (
-                    Driver.objects
-                    .filter(
-                        organization=(
-                            membership.organization
-                        )
-                    )
-                )
-
-        for driver in drivers:
-            driver_dates = [
-                (
-                    "Ważność prawa jazdy",
-                    driver.license_expiry_date,
-                ),
-                (
-                    "Badania lekarskie",
-                    driver.medical_exam_expiry_date,
-                ),
-            ]
-
-            for (
-                alert_type,
-                expiry_date,
-            ) in driver_dates:
-                if not expiry_date:
-                    continue
-
-                if (
-                    expiry_date
-                    > warning_limit
-                ):
-                    continue
-
-                alerts.append(
-                    {
-                        "category": "driver",
-                        "name": (
-                            f"{driver.first_name} "
-                            f"{driver.last_name}"
-                        ),
-                        "secondary": "Kierowca",
-                        "type": alert_type,
-                        "date": expiry_date,
-                        "status": get_alert_status(
-                            expiry_date,
-                            today,
-                        ),
-                    }
-                )
-
-    alerts.sort(
-        key=lambda alert: (
-            alert["date"]
-        )
-    )
-
-    return alerts
-
-
 class VehicleViewSet(
     viewsets.ModelViewSet
 ):
@@ -462,7 +222,10 @@ class VehicleViewSet(
         methods=["post"],
         url_path="export",
     )
-    def export(self, request):
+    def export(
+        self,
+        request,
+    ):
         vehicle_ids = (
             request.data.get(
                 "vehicle_ids",
@@ -835,11 +598,9 @@ class VehicleViewSet(
                 ),
             )
 
-        alerts = (
-            build_alerts_for_user(
-                request.user,
-                category,
-            )
+        alerts = build_alerts(
+            user=request.user,
+            category=category,
         )
 
         workbook = (
@@ -910,11 +671,9 @@ class VehicleViewSet(
                 ),
             )
 
-        alerts = (
-            build_alerts_for_user(
-                request.user,
-                category,
-            )
+        alerts = build_alerts(
+            user=request.user,
+            category=category,
         )
 
         filter_names = {

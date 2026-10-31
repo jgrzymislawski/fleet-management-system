@@ -1,510 +1,21 @@
-from datetime import timedelta
 from io import BytesIO
 
 from django.http import HttpResponse
-from django.utils import timezone
 
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from organizations.models import (
-    OrganizationMembership,
-    CompanyAccess,
+from alerts.services import (
+    build_alerts,
+    get_accessible_vehicles,
 )
-
-from vehicles.models import (
-    Vehicle,
-    VehicleDocument,
-)
-
-from drivers.models import Driver
 
 from .alerts_utils import (
     create_alerts_report_pdf,
     create_alerts_report_workbook,
 )
-
-
-def user_is_superuser(user):
-    return bool(
-        getattr(
-            user,
-            "is_superuser",
-            False,
-        )
-    )
-
-
-def get_membership(user):
-    if not getattr(
-        user,
-        "is_authenticated",
-        False,
-    ):
-        return None
-
-    return (
-        OrganizationMembership.objects
-        .select_related(
-            "organization"
-        )
-        .filter(
-            user=user
-        )
-        .first()
-    )
-
-
-def get_accessible_vehicles(user):
-    if user_is_superuser(user):
-        return Vehicle.objects.all()
-
-    membership = get_membership(
-        user
-    )
-
-    if membership is None:
-        return Vehicle.objects.none()
-
-    if membership.role == "admin":
-        return Vehicle.objects.filter(
-            organization=(
-                membership.organization
-            )
-        )
-
-    company_ids = (
-        CompanyAccess.objects
-        .filter(
-            membership=membership,
-            company__is_active=True,
-        )
-        .values_list(
-            "company_id",
-            flat=True,
-        )
-    )
-
-    return Vehicle.objects.filter(
-        organization=(
-            membership.organization
-        ),
-        company_id__in=company_ids,
-        company__is_active=True,
-    )
-
-
-def get_accessible_drivers(
-    user,
-):
-    if user_is_superuser(user):
-        return Driver.objects.all()
-
-    membership = get_membership(
-        user
-    )
-
-    if membership is None:
-        return Driver.objects.none()
-
-    # Zachowujemy tę samą zasadę,
-    # co na obecnej stronie Alerts:
-    # alerty kierowców widzi admin.
-    if membership.role != "admin":
-        return Driver.objects.none()
-
-    return Driver.objects.filter(
-        organization=(
-            membership.organization
-        )
-    )
-
-
-def get_document_type_name(
-    document,
-):
-    try:
-        return (
-            document
-            .get_document_type_display()
-        )
-
-    except Exception:
-        return document.document_type
-
-
-def get_alert_status(
-    expiry_date,
-    today,
-):
-    days_left = (
-        expiry_date - today
-    ).days
-
-    if days_left < 0:
-        days_after = abs(
-            days_left
-        )
-
-        if days_after == 1:
-            days_text = (
-                "1 dzień po terminie"
-            )
-        else:
-            days_text = (
-                f"{days_after} dni po terminie"
-            )
-
-        return {
-            "days_left": days_left,
-            "days_text": days_text,
-            "status": "Po terminie",
-        }
-
-    if days_left == 0:
-        return {
-            "days_left": 0,
-            "days_text": (
-                "Wygasa dzisiaj"
-            ),
-            "status": (
-                "Wygasa dzisiaj"
-            ),
-        }
-
-    if days_left == 1:
-        return {
-            "days_left": 1,
-            "days_text": (
-                "Wygasa za 1 dzień"
-            ),
-            "status": (
-                "Wygasa wkrótce"
-            ),
-        }
-
-    return {
-        "days_left": days_left,
-        "days_text": (
-            f"Wygasa za {days_left} dni"
-        ),
-        "status": (
-            "Wygasa wkrótce"
-        ),
-    }
-
-
-def build_vehicle_alerts(
-    vehicles,
-    today,
-    warning_limit,
-):
-    vehicle_list = list(
-        vehicles
-    )
-
-    vehicle_ids = [
-        vehicle.id
-        for vehicle
-        in vehicle_list
-    ]
-
-    alerts = []
-
-    for vehicle in vehicle_list:
-        dates = [
-            (
-                "Przegląd techniczny",
-                vehicle
-                .inspection_expiry_date,
-            ),
-            (
-                "Polisa OC",
-                vehicle
-                .insurance_expiry_date,
-            ),
-        ]
-
-        for (
-            alert_type,
-            expiry_date,
-        ) in dates:
-            if not expiry_date:
-                continue
-
-            if (
-                expiry_date
-                > warning_limit
-            ):
-                continue
-
-            status_data = (
-                get_alert_status(
-                    expiry_date,
-                    today,
-                )
-            )
-
-            alerts.append(
-                {
-                    "category": "vehicle",
-                    "target_id": (
-                        vehicle.id
-                    ),
-                    "name": (
-                        f"{vehicle.brand} "
-                        f"{vehicle.model}"
-                    ),
-                    "secondary": (
-                        vehicle
-                        .registration_number
-                    ),
-                    "type": alert_type,
-                    "date": expiry_date,
-                    "days_left": (
-                        status_data[
-                            "days_left"
-                        ]
-                    ),
-                    "days_text": (
-                        status_data[
-                            "days_text"
-                        ]
-                    ),
-                    "status": (
-                        status_data[
-                            "status"
-                        ]
-                    ),
-                    "company_id": (
-                        vehicle.company_id
-                    ),
-                    "company_name": (
-                        vehicle.company.name
-                        if vehicle.company
-                        else None
-                    ),
-                    "branch": (
-                        vehicle.branch
-                        or None
-                    ),
-                }
-            )
-
-    documents = (
-        VehicleDocument.objects
-        .filter(
-            vehicle_id__in=(
-                vehicle_ids
-            ),
-            expiry_date__isnull=False,
-            expiry_date__lte=(
-                warning_limit
-            ),
-        )
-        .exclude(
-            document_type__in=[
-                "oc",
-                "inspection",
-            ]
-        )
-        .select_related(
-            "vehicle",
-            "vehicle__company",
-        )
-    )
-
-    for document in documents:
-        vehicle = (
-            document.vehicle
-        )
-
-        expiry_date = (
-            document.expiry_date
-        )
-
-        status_data = (
-            get_alert_status(
-                expiry_date,
-                today,
-            )
-        )
-
-        alerts.append(
-            {
-                "category": "vehicle",
-                "target_id": (
-                    vehicle.id
-                ),
-                "name": (
-                    f"{vehicle.brand} "
-                    f"{vehicle.model}"
-                ),
-                "secondary": (
-                    vehicle
-                    .registration_number
-                ),
-                "type": (
-                    get_document_type_name(
-                        document
-                    )
-                ),
-                "date": expiry_date,
-                "days_left": (
-                    status_data[
-                        "days_left"
-                    ]
-                ),
-                "days_text": (
-                    status_data[
-                        "days_text"
-                    ]
-                ),
-                "status": (
-                    status_data[
-                        "status"
-                    ]
-                ),
-                "company_id": (
-                    vehicle.company_id
-                ),
-                "company_name": (
-                    vehicle.company.name
-                    if vehicle.company
-                    else None
-                ),
-                "branch": (
-                    vehicle.branch
-                    or None
-                ),
-            }
-        )
-
-    return alerts
-
-
-def build_driver_alerts(
-    drivers,
-    today,
-    warning_limit,
-):
-    alerts = []
-
-    for driver in drivers:
-        dates = [
-            (
-                "Ważność prawa jazdy",
-                driver
-                .license_expiry_date,
-            ),
-            (
-                "Badania lekarskie",
-                driver
-                .medical_exam_expiry_date,
-            ),
-        ]
-
-        for (
-            alert_type,
-            expiry_date,
-        ) in dates:
-            if not expiry_date:
-                continue
-
-            if (
-                expiry_date
-                > warning_limit
-            ):
-                continue
-
-            status_data = (
-                get_alert_status(
-                    expiry_date,
-                    today,
-                )
-            )
-
-            alerts.append(
-                {
-                    "category": "driver",
-                    "target_id": (
-                        driver.id
-                    ),
-                    "name": (
-                        f"{driver.first_name} "
-                        f"{driver.last_name}"
-                    ),
-                    "secondary": (
-                        "Kierowca"
-                    ),
-                    "type": alert_type,
-                    "date": expiry_date,
-                    "days_left": (
-                        status_data[
-                            "days_left"
-                        ]
-                    ),
-                    "days_text": (
-                        status_data[
-                            "days_text"
-                        ]
-                    ),
-                    "status": (
-                        status_data[
-                            "status"
-                        ]
-                    ),
-                    "company_id": None,
-                    "company_name": None,
-                    "branch": None,
-                }
-            )
-
-    return alerts
-
-
-def filter_alerts_by_status(
-    alerts,
-    alert_status,
-):
-    if alert_status == "all":
-        return alerts
-
-    if alert_status == "expired":
-        return [
-            alert
-            for alert in alerts
-            if (
-                alert["days_left"]
-                < 0
-            )
-        ]
-
-    if alert_status == "7_days":
-        return [
-            alert
-            for alert in alerts
-            if (
-                0
-                <= alert["days_left"]
-                <= 7
-            )
-        ]
-
-    if alert_status == "30_days":
-        return [
-            alert
-            for alert in alerts
-            if (
-                0
-                <= alert["days_left"]
-                <= 30
-            )
-        ]
-
-    return alerts
 
 
 class AlertsReportView(
@@ -609,17 +120,6 @@ class AlertsReportView(
                 ),
             )
 
-        vehicles = (
-            get_accessible_vehicles(
-                request.user
-            )
-            .select_related(
-                "company"
-            )
-        )
-
-        selected_company_name = None
-
         if company_id:
             try:
                 company_id = int(
@@ -641,23 +141,6 @@ class AlertsReportView(
                         .HTTP_400_BAD_REQUEST
                     ),
                 )
-
-            vehicles = (
-                vehicles.filter(
-                    company_id=(
-                        company_id
-                    )
-                )
-            )
-
-        if branch:
-            vehicles = (
-                vehicles.filter(
-                    branch=branch
-                )
-            )
-
-        selected_vehicle = None
 
         if vehicle_id:
             try:
@@ -681,21 +164,45 @@ class AlertsReportView(
                     ),
                 )
 
-            vehicles = (
-                vehicles.filter(
-                    id=vehicle_id
-                )
+        accessible_vehicles = (
+            get_accessible_vehicles(
+                request.user
             )
-
-        vehicle_list = list(
-            vehicles.order_by(
-                "brand",
-                "model",
+            .select_related(
+                "company"
             )
         )
 
+        selected_company = None
+
+        if company_id:
+            selected_company = (
+                accessible_vehicles
+                .filter(
+                    company_id=company_id
+                )
+                .exclude(
+                    company__isnull=True
+                )
+                .values(
+                    "company_id",
+                    "company__name",
+                )
+                .first()
+            )
+
+        selected_vehicle = None
+
         if vehicle_id:
-            if not vehicle_list:
+            selected_vehicle = (
+                accessible_vehicles
+                .filter(
+                    id=vehicle_id
+                )
+                .first()
+            )
+
+            if selected_vehicle is None:
                 return Response(
                     {
                         "detail": (
@@ -709,98 +216,19 @@ class AlertsReportView(
                     ),
                 )
 
-            selected_vehicle = (
-                vehicle_list[0]
-            )
-
-        if company_id:
-            company = next(
-                (
-                    vehicle.company
-                    for vehicle
-                    in vehicle_list
-                    if (
-                        vehicle.company_id
-                        == company_id
-                        and vehicle.company
-                    )
-                ),
-                None,
-            )
-
-            if company:
-                selected_company_name = (
-                    company.name
-                )
-
-        today = (
-            timezone.localdate()
-        )
-
-        warning_limit = (
-            today
-            + timedelta(
-                days=30
-            )
-        )
-
-        alerts = []
-
-        if category in (
-            "all",
-            "vehicles",
-        ):
-            alerts.extend(
-                build_vehicle_alerts(
-                    vehicle_list,
-                    today,
-                    warning_limit,
-                )
-            )
-
-        # Filtry spółki/oddziału/pojazdu
-        # nie mają jednoznacznego znaczenia
-        # dla kierowcy, bo Driver należy
-        # do Organization, a nie Company.
-        driver_filters_active = bool(
-            company_id
-            or branch
-            or vehicle_id
-        )
-
-        if (
-            category
-            in (
-                "all",
-                "drivers",
-            )
-            and not driver_filters_active
-        ):
-            drivers = (
-                get_accessible_drivers(
-                    request.user
-                )
-            )
-
-            alerts.extend(
-                build_driver_alerts(
-                    drivers,
-                    today,
-                    warning_limit,
-                )
-            )
-
-        alerts = (
-            filter_alerts_by_status(
-                alerts,
-                alert_status,
-            )
-        )
-
-        alerts.sort(
-            key=lambda alert: (
-                alert["date"]
-            )
+        alerts = build_alerts(
+            user=request.user,
+            category=category,
+            alert_status=(
+                alert_status
+            ),
+            company_id=(
+                company_id
+            ),
+            branch=branch,
+            vehicle_id=(
+                vehicle_id
+            ),
         )
 
         category_names = {
@@ -821,6 +249,15 @@ class AlertsReportView(
                 "Wygasa w ciągu 30 dni"
             ),
         }
+
+        company_name = None
+
+        if selected_company:
+            company_name = (
+                selected_company[
+                    "company__name"
+                ]
+            )
 
         vehicle_name = None
 
@@ -845,11 +282,10 @@ class AlertsReportView(
                 ]
             ),
             "company_name": (
-                selected_company_name
+                company_name
             ),
             "branch": (
-                branch
-                or None
+                branch or None
             ),
             "vehicle_name": (
                 vehicle_name
@@ -889,9 +325,7 @@ class AlertsReportView(
 
         output = BytesIO()
 
-        workbook.save(
-            output
-        )
+        workbook.save(output)
 
         output.seek(0)
 
