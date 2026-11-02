@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import apiClient from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import VehicleImportModal from "./VehicleImportModal";
 import "./VehicleList.css";
 
 function VehicleList() {
@@ -24,6 +25,8 @@ function VehicleList() {
 
   const [exporting, setExporting] = useState(false);
 
+  const [importModalOpen, setImportModalOpen] = useState(false);
+
   const navigate = useNavigate();
 
   const { user, canEditCompany } = useAuth();
@@ -38,20 +41,25 @@ function VehicleList() {
     user?.role === "admin" ||
     user?.companies?.some((company) => company.role === "editor");
 
-  useEffect(() => {
-    apiClient
-      .get("vehicles/")
-      .then((response) => {
-        const data = Array.isArray(response.data)
-          ? response.data
-          : response.data.results || [];
+  const loadVehicles = async () => {
+    try {
+      const response = await apiClient.get("vehicles/");
 
-        setVehicles(data);
-      })
-      .catch((err) => {
-        console.error(err);
-        setError("Nie udało się pobrać listy pojazdów");
-      });
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+
+      setVehicles(data);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+
+      setError("Nie udało się pobrać listy pojazdów");
+    }
+  };
+
+  useEffect(() => {
+    loadVehicles();
   }, []);
 
   useEffect(() => {
@@ -444,6 +452,15 @@ function VehicleList() {
           >
             {exporting ? "Eksportowanie..." : "Eksportuj"}
           </button>
+
+          {canAddVehicle && (
+            <button
+              className="export-vehicles-button"
+              onClick={() => setImportModalOpen(true)}
+            >
+              Importuj
+            </button>
+          )}
 
           {canAddVehicle && (
             <button
@@ -983,6 +1000,13 @@ function VehicleList() {
           </div>
         )}
       </div>
+
+      {importModalOpen && (
+        <VehicleImportModal
+          onClose={() => setImportModalOpen(false)}
+          onImported={loadVehicles}
+        />
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import DriverImportModal from "./DriverImportModal";
 import "./DriverList.css";
 
 function DriverList() {
@@ -12,6 +13,7 @@ function DriverList() {
   const [sortField, setSortField] = useState(null);
   const [sortDirection, setSortDirection] = useState("asc");
   const [exporting, setExporting] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const navigate = useNavigate();
 
@@ -19,20 +21,25 @@ function DriverList() {
 
   const canManageDrivers = user?.role === "admin";
 
-  useEffect(() => {
-    apiClient
-      .get("drivers/")
-      .then((response) => {
-        const data = Array.isArray(response.data)
-          ? response.data
-          : response.data.results || [];
+  const loadDrivers = async () => {
+    try {
+      const response = await apiClient.get("drivers/");
 
-        setDrivers(data);
-      })
-      .catch((err) => {
-        console.error(err);
-        setError("Nie udało się pobrać listy kierowców");
-      });
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+
+      setDrivers(data);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+
+      setError("Nie udało się pobrać listy kierowców");
+    }
+  };
+
+  useEffect(() => {
+    loadDrivers();
   }, []);
 
   const handleMenuClick = (driverId) => {
@@ -151,7 +158,6 @@ function DriverList() {
 
     if (sortField === "hired_at") {
       valueA = a.hired_at ? new Date(a.hired_at) : new Date(0);
-
       valueB = b.hired_at ? new Date(b.hired_at) : new Date(0);
     }
 
@@ -229,7 +235,6 @@ function DriverList() {
       window.URL.revokeObjectURL(downloadUrl);
     } catch (err) {
       console.error("Błąd eksportu kierowców:", err);
-
       console.error("Odpowiedź backendu:", err.response?.data);
 
       setError("Nie udało się wyeksportować kierowców.");
@@ -255,6 +260,15 @@ function DriverList() {
           >
             {exporting ? "Eksportowanie..." : "Eksportuj"}
           </button>
+
+          {canManageDrivers && (
+            <button
+              className="export-drivers-button"
+              onClick={() => setImportModalOpen(true)}
+            >
+              Importuj
+            </button>
+          )}
 
           {canManageDrivers && (
             <button
@@ -382,6 +396,13 @@ function DriverList() {
           <div className="drivers-empty">Nie znaleziono kierowców.</div>
         )}
       </div>
+
+      {importModalOpen && (
+        <DriverImportModal
+          onClose={() => setImportModalOpen(false)}
+          onImported={loadDrivers}
+        />
+      )}
     </div>
   );
 }

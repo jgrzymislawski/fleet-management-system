@@ -8,10 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from organizations.models import (
-    Company,
-    OrganizationMembership,
-)
+from organizations.models import Company
 
 from .models import Vehicle
 from .serializers import VehicleSerializer
@@ -37,9 +34,7 @@ from .import_utils import (
 )
 
 
-class VehicleImportTemplateView(
-    APIView
-):
+class VehicleImportTemplateView(APIView):
     permission_classes = [
         IsAuthenticated
     ]
@@ -71,9 +66,7 @@ class VehicleImportTemplateView(
         return response
 
 
-class VehicleImportView(
-    APIView
-):
+class VehicleImportView(APIView):
     permission_classes = [
         IsAuthenticated
     ]
@@ -147,24 +140,67 @@ class VehicleImportView(
             in worksheet[1]
         ]
 
-        if headers != VEHICLE_IMPORT_HEADERS:
+        received_headers = [
+            header
+            for header in headers
+            if header
+        ]
+
+        missing_headers = [
+            header
+            for header in VEHICLE_IMPORT_HEADERS
+            if header not in received_headers
+        ]
+
+        duplicate_headers = [
+            header
+            for header in set(
+                received_headers
+            )
+            if (
+                received_headers.count(
+                    header
+                )
+                > 1
+            )
+        ]
+
+        if missing_headers:
             return Response(
                 {
                     "detail": (
-                        "Nieprawidłowy format pliku. "
-                        "Pobierz aktualny szablon importu pojazdów."
+                        "W pliku brakuje wymaganych kolumn."
                     ),
-                    "expected_headers": (
-                        VEHICLE_IMPORT_HEADERS
-                    ),
-                    "received_headers": (
-                        headers
+                    "missing_headers": (
+                        missing_headers
                     ),
                 },
                 status=(
                     status.HTTP_400_BAD_REQUEST
                 ),
             )
+
+        if duplicate_headers:
+            return Response(
+                {
+                    "detail": (
+                        "W pliku znajdują się zduplikowane nagłówki."
+                    ),
+                    "duplicate_headers": (
+                        duplicate_headers
+                    ),
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        header_indexes = {
+            header: index
+            for index, header
+            in enumerate(headers)
+            if header
+        }
 
         membership = get_membership(
             request.user
@@ -192,7 +228,10 @@ class VehicleImportView(
         skipped = 0
         errors = []
 
-        seen_registration_numbers = set()
+        seen_registration_numbers = (
+            set()
+        )
+
         seen_vins = set()
 
         for row_number, row in enumerate(
@@ -211,12 +250,24 @@ class VehicleImportView(
             ):
                 continue
 
-            row_data = dict(
-                zip(
-                    VEHICLE_IMPORT_HEADERS,
-                    row,
+            row_data = {
+                header: (
+                    row[
+                        header_indexes[
+                            header
+                        ]
+                    ]
+                    if (
+                        header_indexes[
+                            header
+                        ]
+                        < len(row)
+                    )
+                    else None
                 )
-            )
+                for header
+                in VEHICLE_IMPORT_HEADERS
+            }
 
             try:
                 brand = normalize_text(
@@ -259,7 +310,10 @@ class VehicleImportView(
 
                 if not registration_number:
                     raise ValueError(
-                        "Pole „Numer rejestracyjny” jest wymagane."
+                        (
+                            "Pole „Numer rejestracyjny” "
+                            "jest wymagane."
+                        )
                     )
 
                 if (
@@ -267,8 +321,10 @@ class VehicleImportView(
                     in seen_registration_numbers
                 ):
                     raise ValueError(
-                        "Numer rejestracyjny występuje "
-                        "więcej niż raz w pliku."
+                        (
+                            "Numer rejestracyjny występuje "
+                            "więcej niż raz w pliku."
+                        )
                     )
 
                 seen_registration_numbers.add(
@@ -280,7 +336,10 @@ class VehicleImportView(
                     and vin in seen_vins
                 ):
                     raise ValueError(
-                        "VIN występuje więcej niż raz w pliku."
+                        (
+                            "VIN występuje więcej niż "
+                            "raz w pliku."
+                        )
                     )
 
                 if vin:
@@ -297,12 +356,18 @@ class VehicleImportView(
 
                     errors.append(
                         {
-                            "row": row_number,
-                            "message": (
-                                "Pojazd o numerze rejestracyjnym "
-                                f"{registration_number} już istnieje."
+                            "row": (
+                                row_number
                             ),
-                            "type": "duplicate",
+                            "message": (
+                                "Pojazd o numerze "
+                                "rejestracyjnym "
+                                f"{registration_number} "
+                                "już istnieje."
+                            ),
+                            "type": (
+                                "duplicate"
+                            ),
                         }
                     )
 
@@ -318,11 +383,16 @@ class VehicleImportView(
 
                     errors.append(
                         {
-                            "row": row_number,
-                            "message": (
-                                f"Pojazd o VIN {vin} już istnieje."
+                            "row": (
+                                row_number
                             ),
-                            "type": "duplicate",
+                            "message": (
+                                "Pojazd o VIN "
+                                f"{vin} już istnieje."
+                            ),
+                            "type": (
+                                "duplicate"
+                            ),
                         }
                     )
 
@@ -337,7 +407,9 @@ class VehicleImportView(
                 )
 
                 mileage = parse_integer(
-                    row_data["Przebieg"],
+                    row_data[
+                        "Przebieg"
+                    ],
                     "Przebieg",
                     required=False,
                     minimum=0,
@@ -346,43 +418,55 @@ class VehicleImportView(
                 if mileage is None:
                     mileage = 0
 
-                vehicle_type = parse_choice(
-                    row_data[
-                        "Typ pojazdu"
-                    ],
-                    "Typ pojazdu",
-                    VEHICLE_TYPE_MAPPING,
-                    required=True,
+                vehicle_type = (
+                    parse_choice(
+                        row_data[
+                            "Typ pojazdu"
+                        ],
+                        "Typ pojazdu",
+                        VEHICLE_TYPE_MAPPING,
+                        required=True,
+                    )
                 )
 
-                fuel_type = parse_choice(
-                    row_data[
-                        "Rodzaj paliwa"
-                    ],
-                    "Rodzaj paliwa",
-                    FUEL_TYPE_MAPPING,
-                    required=False,
+                fuel_type = (
+                    parse_choice(
+                        row_data[
+                            "Rodzaj paliwa"
+                        ],
+                        "Rodzaj paliwa",
+                        FUEL_TYPE_MAPPING,
+                        required=False,
+                    )
                 )
 
-                vehicle_status = parse_choice(
-                    row_data["Status"],
-                    "Status",
-                    STATUS_MAPPING,
-                    required=True,
+                vehicle_status = (
+                    parse_choice(
+                        row_data[
+                            "Status"
+                        ],
+                        "Status",
+                        STATUS_MAPPING,
+                        required=True,
+                    )
                 )
 
-                inspection_date = parse_date(
-                    row_data[
-                        "Termin przeglądu"
-                    ],
-                    "Termin przeglądu",
+                inspection_date = (
+                    parse_date(
+                        row_data[
+                            "Termin przeglądu"
+                        ],
+                        "Termin przeglądu",
+                    )
                 )
 
-                insurance_date = parse_date(
-                    row_data[
-                        "Termin OC"
-                    ],
-                    "Termin OC",
+                insurance_date = (
+                    parse_date(
+                        row_data[
+                            "Termin OC"
+                        ],
+                        "Termin OC",
+                    )
                 )
 
                 company = self.get_company(
@@ -417,7 +501,9 @@ class VehicleImportView(
                     "fuel_type": (
                         fuel_type
                     ),
-                    "mileage": mileage,
+                    "mileage": (
+                        mileage
+                    ),
                     "status": (
                         vehicle_status
                     ),
@@ -426,7 +512,9 @@ class VehicleImportView(
                         if company
                         else None
                     ),
-                    "branch": branch,
+                    "branch": (
+                        branch
+                    ),
                     "inspection_expiry_date": (
                         inspection_date
                     ),
@@ -435,11 +523,17 @@ class VehicleImportView(
                     ),
                 }
 
-                serializer = VehicleSerializer(
-                    data=serializer_data,
-                    context={
-                        "request": request,
-                    },
+                serializer = (
+                    VehicleSerializer(
+                        data=(
+                            serializer_data
+                        ),
+                        context={
+                            "request": (
+                                request
+                            ),
+                        },
+                    )
                 )
 
                 serializer.is_valid(
@@ -448,7 +542,9 @@ class VehicleImportView(
 
                 with transaction.atomic():
                     serializer.save(
-                        organization=organization
+                        organization=(
+                            organization
+                        )
                     )
 
                 imported += 1
@@ -456,21 +552,32 @@ class VehicleImportView(
             except ValueError as exc:
                 errors.append(
                     {
-                        "row": row_number,
-                        "message": str(exc),
-                        "type": "validation",
+                        "row": (
+                            row_number
+                        ),
+                        "message": (
+                            str(exc)
+                        ),
+                        "type": (
+                            "validation"
+                        ),
                     }
                 )
 
             except IntegrityError:
                 errors.append(
                     {
-                        "row": row_number,
-                        "message": (
-                            "Nie udało się zapisać pojazdu "
-                            "z powodu konfliktu danych."
+                        "row": (
+                            row_number
                         ),
-                        "type": "database",
+                        "message": (
+                            "Nie udało się zapisać "
+                            "pojazdu z powodu "
+                            "konfliktu danych."
+                        ),
+                        "type": (
+                            "database"
+                        ),
                     }
                 )
 
@@ -481,7 +588,10 @@ class VehicleImportView(
                     None,
                 )
 
-                if error_detail is not None:
+                if (
+                    error_detail
+                    is not None
+                ):
                     message = str(
                         error_detail
                     )
@@ -492,22 +602,36 @@ class VehicleImportView(
 
                 errors.append(
                     {
-                        "row": row_number,
-                        "message": message,
-                        "type": "validation",
+                        "row": (
+                            row_number
+                        ),
+                        "message": (
+                            message
+                        ),
+                        "type": (
+                            "validation"
+                        ),
                     }
                 )
 
         return Response(
             {
-                "imported": imported,
-                "skipped": skipped,
+                "imported": (
+                    imported
+                ),
+                "skipped": (
+                    skipped
+                ),
                 "errors_count": (
                     len(errors)
                 ),
-                "errors": errors,
+                "errors": (
+                    errors
+                ),
             },
-            status=status.HTTP_200_OK,
+            status=(
+                status.HTTP_200_OK
+            ),
         )
 
     def get_company(
@@ -521,30 +645,47 @@ class VehicleImportView(
         ):
             if not company_name:
                 raise ValueError(
-                    "Superadministrator musi podać spółkę."
+                    (
+                        "Superadministrator musi "
+                        "podać spółkę."
+                    )
                 )
 
             companies = (
                 Company.objects.filter(
-                    name__iexact=company_name,
+                    name__iexact=(
+                        company_name
+                    ),
                     is_active=True,
                 )
             )
 
-            if companies.count() == 0:
-                raise ValueError(
-                    f"Nie znaleziono spółki „{company_name}”."
-                )
-
-            if companies.count() > 1:
+            if (
+                companies.count()
+                == 0
+            ):
                 raise ValueError(
                     (
-                        f"Nazwa spółki „{company_name}” "
+                        "Nie znaleziono spółki "
+                        f"„{company_name}”."
+                    )
+                )
+
+            if (
+                companies.count()
+                > 1
+            ):
+                raise ValueError(
+                    (
+                        "Nazwa spółki "
+                        f"„{company_name}” "
                         "nie jest jednoznaczna."
                     )
                 )
 
-            return companies.first()
+            return (
+                companies.first()
+            )
 
         if not company_name:
             if (
@@ -554,7 +695,10 @@ class VehicleImportView(
                 return None
 
             raise ValueError(
-                "Pole „Spółka” jest wymagane."
+                (
+                    "Pole „Spółka” "
+                    "jest wymagane."
+                )
             )
 
         company = (
@@ -563,7 +707,9 @@ class VehicleImportView(
                 organization=(
                     membership.organization
                 ),
-                name__iexact=company_name,
+                name__iexact=(
+                    company_name
+                ),
                 is_active=True,
             )
             .first()
@@ -572,8 +718,10 @@ class VehicleImportView(
         if company is None:
             raise ValueError(
                 (
-                    f"Nie znaleziono aktywnej spółki "
-                    f"„{company_name}” w Twojej organizacji."
+                    "Nie znaleziono aktywnej "
+                    "spółki "
+                    f"„{company_name}” "
+                    "w Twojej organizacji."
                 )
             )
 
@@ -587,8 +735,10 @@ class VehicleImportView(
         ):
             raise ValueError(
                 (
-                    f"Nie masz uprawnień do dodawania "
-                    f"pojazdów do spółki „{company.name}”."
+                    "Nie masz uprawnień "
+                    "do dodawania pojazdów "
+                    "do spółki "
+                    f"„{company.name}”."
                 )
             )
 
@@ -605,7 +755,10 @@ class VehicleImportView(
         ):
             if company is None:
                 raise ValueError(
-                    "Nie można ustalić organizacji."
+                    (
+                        "Nie można ustalić "
+                        "organizacji."
+                    )
                 )
 
             return (
