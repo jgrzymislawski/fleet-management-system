@@ -6,34 +6,46 @@ import Login from "./components/Login";
 import OfferPage from "./components/OfferPage";
 import PreviewPage from "./components/PreviewPage";
 import JoinPage from "./components/JoinPage";
+
 import VehiclesPage from "./components/VehiclesPage";
 import DriversPage from "./components/DriversPage";
 import Dashboard from "./components/Dashboard";
+
 import EditVehiclePage from "./components/EditVehiclePage";
 import AddVehiclePage from "./components/AddVehiclePage";
 import VehicleDetailsPage from "./components/VehicleDetailsPage";
+
 import AddDriverPage from "./components/AddDriverPage";
 import DriverDetailsPage from "./components/DriverDetailsPage";
 import EditDriverPage from "./components/EditDriverPage";
+
 import AlertsPage from "./components/AlertsPage";
+
 import ServiceHistoryPage from "./components/ServiceHistoryPage";
 import AddServiceRecordPage from "./components/AddServiceRecordPage";
 import EditServiceRecordPage from "./components/EditServiceRecordPage";
+
 import StatisticsPage from "./components/StatisticsPage";
 import ReportsPage from "./components/ReportsPage";
+
 import AddVehicleDocumentPage from "./components/AddVehicleDocumentPage";
 import EditVehicleDocumentPage from "./components/EditVehicleDocumentPage";
+
 import AccountPage from "./components/AccountPage";
 import ChangePasswordPage from "./components/ChangePasswordPage";
+import NotificationPreferencesPage from "./components/NotificationPreferencesPage";
+
 import AdminPanelPage from "./components/AdminPanelPage";
 import AdminCompaniesPage from "./components/AdminCompaniesPage";
 import AddCompanyPage from "./components/AddCompanyPage";
 import EditCompanyPage from "./components/EditCompanyPage";
+
 import AdminUsersPage from "./components/AdminUsersPage";
 import AddUserPage from "./components/AddUserPage";
 import EditUserPage from "./components/EditUserPage";
-import NotificationPreferencesPage from "./components/NotificationPreferencesPage";
+
 import AdminNotificationSettingsPage from "./components/AdminNotificationSettingsPage";
+import ActivityLogPage from "./components/ActivityLogPage";
 
 import useIdleLogout from "./hooks/useIdleLogout";
 import { useAuth } from "./context/AuthContext";
@@ -57,7 +69,6 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem("access_token");
-
     localStorage.removeItem("refresh_token");
 
     clearUser();
@@ -69,7 +80,6 @@ function App() {
 
   const handleIdleLogout = useCallback(() => {
     localStorage.removeItem("access_token");
-
     localStorage.removeItem("refresh_token");
 
     clearUser();
@@ -256,13 +266,6 @@ function App() {
       />
 
       <Route
-        path="/admin-panel/notifications"
-        element={adminElement(
-          <AdminNotificationSettingsPage onLogout={handleLogout} />,
-        )}
-      />
-
-      <Route
         path="/admin-panel/companies/:id/edit"
         element={adminElement(<EditCompanyPage onLogout={handleLogout} />)}
       />
@@ -280,6 +283,18 @@ function App() {
       <Route
         path="/admin-panel/users/:id/edit"
         element={adminElement(<EditUserPage onLogout={handleLogout} />)}
+      />
+
+      <Route
+        path="/admin-panel/notifications"
+        element={adminElement(
+          <AdminNotificationSettingsPage onLogout={handleLogout} />,
+        )}
+      />
+
+      <Route
+        path="/admin-panel/activity"
+        element={adminElement(<ActivityLogPage onLogout={handleLogout} />)}
       />
     </Routes>
   );

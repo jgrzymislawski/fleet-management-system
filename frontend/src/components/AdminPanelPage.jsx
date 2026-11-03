@@ -57,6 +57,18 @@ function AdminPanelPage({ onLogout }) {
               e-mail.
             </span>
           </button>
+
+          <button
+            className="admin-panel-card"
+            onClick={() => navigate("/admin-panel/activity")}
+          >
+            <span className="admin-panel-card-title">Log aktywności</span>
+
+            <span className="admin-panel-card-description">
+              Przeglądaj aktywność użytkowników i historię zmian z ostatnich 30
+              dni.
+            </span>
+          </button>
         </div>
       </main>
     </div>

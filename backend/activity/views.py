@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from auditlog.models import LogEntry
 
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from rest_framework import status
@@ -10,7 +11,26 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from organizations.models import OrganizationMembership
+from organizations.models import (
+    Organization,
+    OrganizationMembership,
+    Company,
+    CompanyAccess,
+)
+
+from vehicles.models import (
+    Vehicle,
+    ServiceRecord,
+    VehicleDocument,
+)
+
+from drivers.models import (
+    Driver,
+    DriverVehicleAssignment,
+)
+
+
+User = get_user_model()
 
 
 ACTION_LABELS = {
@@ -31,6 +51,7 @@ MODEL_LABELS = {
     "organizationmembership": "Użytkownik",
     "companyaccess": "Dostęp do spółki",
     "drivervehicleassignment": "Przypisanie kierowcy",
+    "user": "Użytkownik",
 }
 
 
@@ -44,8 +65,12 @@ def get_membership(user):
 
     return (
         OrganizationMembership.objects
-        .select_related("organization")
-        .filter(user=user)
+        .select_related(
+            "organization"
+        )
+        .filter(
+            user=user
+        )
         .first()
     )
 
@@ -62,7 +87,11 @@ def get_actor_name(actor):
     if full_name:
         return full_name
 
-    if getattr(actor, "email", None):
+    if getattr(
+        actor,
+        "email",
+        None,
+    ):
         return actor.email
 
     return actor.get_username()
@@ -77,34 +106,58 @@ def get_model_label(log_entry):
 
     return MODEL_LABELS.get(
         model_name,
-        model_name.replace("_", " ").title()
+        model_name
+        .replace("_", " ")
+        .title()
         or "Inny",
     )
 
 
-def parse_changes(log_entry):
+def get_changes_dict(log_entry):
     changes = log_entry.changes
 
     if not changes:
-        return []
+        return {}
 
-    if isinstance(changes, str):
+    if isinstance(
+        changes,
+        str,
+    ):
         try:
-            changes = json.loads(changes)
+            changes = json.loads(
+                changes
+            )
         except json.JSONDecodeError:
-            return []
+            return {}
 
-    if not isinstance(changes, dict):
-        return []
+    if not isinstance(
+        changes,
+        dict,
+    ):
+        return {}
+
+    return changes
+
+
+def parse_changes(log_entry):
+    changes = get_changes_dict(
+        log_entry
+    )
 
     parsed = []
 
-    for field, values in changes.items():
+    for (
+        field,
+        values,
+    ) in changes.items():
         old_value = None
         new_value = None
 
         if (
-            isinstance(values, (list, tuple))
+            isinstance(
+                values,
+                (list, tuple),
+            )
             and len(values) >= 2
         ):
             old_value = values[0]
@@ -121,12 +174,528 @@ def parse_changes(log_entry):
     return parsed
 
 
-class OrganizationActivityView(APIView):
+def normalize_id(value):
+    if value in (
+        None,
+        "",
+        "None",
+        "null",
+    ):
+        return None
+
+    try:
+        return int(value)
+    except (
+        TypeError,
+        ValueError,
+    ):
+        return None
+
+
+def get_changed_id(
+    log_entry,
+    field_name,
+):
+    changes = get_changes_dict(
+        log_entry
+    )
+
+    values = changes.get(
+        field_name
+    )
+
+    if not isinstance(
+        values,
+        (list, tuple),
+    ):
+        return None
+
+    if len(values) < 2:
+        return None
+
+    old_value = normalize_id(
+        values[0]
+    )
+
+    new_value = normalize_id(
+        values[1]
+    )
+
+    if (
+        log_entry.action
+        == LogEntry.Action.DELETE
+    ):
+        return old_value
+
+    return (
+        new_value
+        or old_value
+    )
+
+
+def log_belongs_to_organization(
+    log_entry,
+    organization,
+):
+    """
+    Sprawdza, czy OBIEKT logu należy do organizacji.
+
+    Nie opieramy się wyłącznie na actor,
+    ponieważ administrator techniczny może wykonywać
+    operacje na wielu organizacjach.
+    """
+
+    if not log_entry.content_type:
+        return False
+
+    app_label = (
+        log_entry.content_type.app_label
+    )
+
+    model_name = (
+        log_entry.content_type.model
+    )
+
+    object_id = normalize_id(
+        log_entry.object_pk
+    )
+
+    organization_id = (
+        organization.id
+    )
+
+    # -------------------------------------------------
+    # ORGANIZATION
+    # -------------------------------------------------
+
+    if (
+        app_label == "organizations"
+        and model_name == "organization"
+    ):
+        return (
+            object_id
+            == organization_id
+        )
+
+    # -------------------------------------------------
+    # COMPANY
+    # -------------------------------------------------
+
+    if (
+        app_label == "organizations"
+        and model_name == "company"
+    ):
+        company = (
+            Company.objects
+            .filter(
+                id=object_id
+            )
+            .only(
+                "organization_id"
+            )
+            .first()
+        )
+
+        if company:
+            return (
+                company.organization_id
+                == organization_id
+            )
+
+        changed_organization_id = (
+            get_changed_id(
+                log_entry,
+                "organization",
+            )
+        )
+
+        return (
+            changed_organization_id
+            == organization_id
+        )
+
+    # -------------------------------------------------
+    # ORGANIZATION MEMBERSHIP
+    # -------------------------------------------------
+
+    if (
+        app_label == "organizations"
+        and model_name
+        == "organizationmembership"
+    ):
+        membership = (
+            OrganizationMembership.objects
+            .filter(
+                id=object_id
+            )
+            .only(
+                "organization_id"
+            )
+            .first()
+        )
+
+        if membership:
+            return (
+                membership.organization_id
+                == organization_id
+            )
+
+        changed_organization_id = (
+            get_changed_id(
+                log_entry,
+                "organization",
+            )
+        )
+
+        return (
+            changed_organization_id
+            == organization_id
+        )
+
+    # -------------------------------------------------
+    # COMPANY ACCESS
+    # -------------------------------------------------
+
+    if (
+        app_label == "organizations"
+        and model_name
+        == "companyaccess"
+    ):
+        access = (
+            CompanyAccess.objects
+            .select_related(
+                "membership"
+            )
+            .filter(
+                id=object_id
+            )
+            .first()
+        )
+
+        if access:
+            return (
+                access
+                .membership
+                .organization_id
+                == organization_id
+            )
+
+        membership_id = (
+            get_changed_id(
+                log_entry,
+                "membership",
+            )
+        )
+
+        if membership_id:
+            return (
+                OrganizationMembership.objects
+                .filter(
+                    id=membership_id,
+                    organization_id=(
+                        organization_id
+                    ),
+                )
+                .exists()
+            )
+
+        return False
+
+    # -------------------------------------------------
+    # VEHICLE
+    # -------------------------------------------------
+
+    if (
+        app_label == "vehicles"
+        and model_name == "vehicle"
+    ):
+        vehicle = (
+            Vehicle.objects
+            .filter(
+                id=object_id
+            )
+            .only(
+                "organization_id"
+            )
+            .first()
+        )
+
+        if vehicle:
+            return (
+                vehicle.organization_id
+                == organization_id
+            )
+
+        changed_organization_id = (
+            get_changed_id(
+                log_entry,
+                "organization",
+            )
+        )
+
+        return (
+            changed_organization_id
+            == organization_id
+        )
+
+    # -------------------------------------------------
+    # SERVICE RECORD
+    # -------------------------------------------------
+
+    if (
+        app_label == "vehicles"
+        and model_name
+        == "servicerecord"
+    ):
+        service = (
+            ServiceRecord.objects
+            .select_related(
+                "vehicle"
+            )
+            .filter(
+                id=object_id
+            )
+            .first()
+        )
+
+        if service:
+            return (
+                service
+                .vehicle
+                .organization_id
+                == organization_id
+            )
+
+        vehicle_id = (
+            get_changed_id(
+                log_entry,
+                "vehicle",
+            )
+        )
+
+        if vehicle_id:
+            return (
+                Vehicle.objects
+                .filter(
+                    id=vehicle_id,
+                    organization_id=(
+                        organization_id
+                    ),
+                )
+                .exists()
+            )
+
+        return False
+
+    # -------------------------------------------------
+    # VEHICLE DOCUMENT
+    # -------------------------------------------------
+
+    if (
+        app_label == "vehicles"
+        and model_name
+        == "vehicledocument"
+    ):
+        document = (
+            VehicleDocument.objects
+            .select_related(
+                "vehicle"
+            )
+            .filter(
+                id=object_id
+            )
+            .first()
+        )
+
+        if document:
+            return (
+                document
+                .vehicle
+                .organization_id
+                == organization_id
+            )
+
+        vehicle_id = (
+            get_changed_id(
+                log_entry,
+                "vehicle",
+            )
+        )
+
+        if vehicle_id:
+            return (
+                Vehicle.objects
+                .filter(
+                    id=vehicle_id,
+                    organization_id=(
+                        organization_id
+                    ),
+                )
+                .exists()
+            )
+
+        return False
+
+    # -------------------------------------------------
+    # DRIVER
+    # -------------------------------------------------
+
+    if (
+        app_label == "drivers"
+        and model_name == "driver"
+    ):
+        driver = (
+            Driver.objects
+            .filter(
+                id=object_id
+            )
+            .only(
+                "organization_id"
+            )
+            .first()
+        )
+
+        if driver:
+            return (
+                driver.organization_id
+                == organization_id
+            )
+
+        changed_organization_id = (
+            get_changed_id(
+                log_entry,
+                "organization",
+            )
+        )
+
+        return (
+            changed_organization_id
+            == organization_id
+        )
+
+    # -------------------------------------------------
+    # DRIVER VEHICLE ASSIGNMENT
+    # -------------------------------------------------
+
+    if (
+        app_label == "drivers"
+        and model_name
+        == "drivervehicleassignment"
+    ):
+        assignment = (
+            DriverVehicleAssignment.objects
+            .select_related(
+                "vehicle",
+                "driver",
+            )
+            .filter(
+                id=object_id
+            )
+            .first()
+        )
+
+        if assignment:
+            if (
+                assignment.vehicle
+                and assignment.vehicle.organization_id
+                == organization_id
+            ):
+                return True
+
+            if (
+                assignment.driver
+                and assignment.driver.organization_id
+                == organization_id
+            ):
+                return True
+
+            return False
+
+        vehicle_id = (
+            get_changed_id(
+                log_entry,
+                "vehicle",
+            )
+        )
+
+        if (
+            vehicle_id
+            and Vehicle.objects
+            .filter(
+                id=vehicle_id,
+                organization_id=(
+                    organization_id
+                ),
+            )
+            .exists()
+        ):
+            return True
+
+        driver_id = (
+            get_changed_id(
+                log_entry,
+                "driver",
+            )
+        )
+
+        if (
+            driver_id
+            and Driver.objects
+            .filter(
+                id=driver_id,
+                organization_id=(
+                    organization_id
+                ),
+            )
+            .exists()
+        ):
+            return True
+
+        return False
+
+    # -------------------------------------------------
+    # DJANGO USER
+    # -------------------------------------------------
+
+    if (
+        model_name == "user"
+    ):
+        if not object_id:
+            return False
+
+        return (
+            OrganizationMembership.objects
+            .filter(
+                user_id=object_id,
+                organization_id=(
+                    organization_id
+                ),
+            )
+            .exists()
+        )
+
+    # -------------------------------------------------
+    # NIEZNANY MODEL
+    # -------------------------------------------------
+
+    # Bezpieczna zasada:
+    # jeśli nie umiemy jednoznacznie określić organizacji,
+    # NIE pokazujemy logu administratorowi organizacji.
+
+    return False
+
+
+class OrganizationActivityView(
+    APIView
+):
     permission_classes = [
         IsAuthenticated,
     ]
 
-    def get(self, request):
+    def get(
+        self,
+        request,
+    ):
         membership = get_membership(
             request.user
         )
@@ -139,12 +708,13 @@ class OrganizationActivityView(APIView):
                         "do żadnej organizacji."
                     )
                 },
-                status=status.HTTP_403_FORBIDDEN,
+                status=(
+                    status.HTTP_403_FORBIDDEN
+                ),
             )
 
         if (
             membership.role != "admin"
-            and not request.user.is_superuser
         ):
             return Response(
                 {
@@ -153,27 +723,20 @@ class OrganizationActivityView(APIView):
                         "ma dostęp do logu aktywności."
                     )
                 },
-                status=status.HTTP_403_FORBIDDEN,
+                status=(
+                    status.HTTP_403_FORBIDDEN
+                ),
             )
 
         organization = (
             membership.organization
         )
 
-        organization_user_ids = list(
-            OrganizationMembership.objects
-            .filter(
-                organization=organization
-            )
-            .values_list(
-                "user_id",
-                flat=True,
-            )
-        )
-
         date_from = (
             timezone.now()
-            - timedelta(days=30)
+            - timedelta(
+                days=30
+            )
         )
 
         queryset = (
@@ -183,40 +746,67 @@ class OrganizationActivityView(APIView):
                 "content_type",
             )
             .filter(
-                actor_id__in=(
-                    organization_user_ids
-                ),
-                timestamp__gte=date_from,
+                timestamp__gte=date_from
             )
             .order_by(
                 "-timestamp"
             )
         )
 
+        organization_logs = []
+
+        for log_entry in queryset:
+            if (
+                log_belongs_to_organization(
+                    log_entry,
+                    organization,
+                )
+            ):
+                organization_logs.append(
+                    log_entry
+                )
+
         action_filter = (
-            request.query_params
-            .get("action", "")
+            request
+            .query_params
+            .get(
+                "action",
+                "",
+            )
             .strip()
             .lower()
         )
 
         user_filter = (
-            request.query_params
-            .get("user", "")
+            request
+            .query_params
+            .get(
+                "user",
+                "",
+            )
             .strip()
         )
 
         model_filter = (
-            request.query_params
-            .get("model", "")
+            request
+            .query_params
+            .get(
+                "model",
+                "",
+            )
             .strip()
             .lower()
         )
 
         search = (
-            request.query_params
-            .get("search", "")
+            request
+            .query_params
+            .get(
+                "search",
+                "",
+            )
             .strip()
+            .lower()
         )
 
         action_mapping = {
@@ -238,49 +828,80 @@ class OrganizationActivityView(APIView):
             action_filter
             in action_mapping
         ):
-            queryset = (
-                queryset.filter(
-                    action=(
-                        action_mapping[
-                            action_filter
-                        ]
-                    )
+            organization_logs = [
+                log_entry
+                for log_entry
+                in organization_logs
+                if (
+                    log_entry.action
+                    == action_mapping[
+                        action_filter
+                    ]
                 )
-            )
+            ]
 
         if user_filter:
-            queryset = (
-                queryset.filter(
-                    actor_id=user_filter
+            organization_logs = [
+                log_entry
+                for log_entry
+                in organization_logs
+                if (
+                    str(
+                        log_entry.actor_id
+                    )
+                    == user_filter
                 )
-            )
+            ]
 
         if model_filter:
-            queryset = (
-                queryset.filter(
-                    content_type__model=(
-                        model_filter
-                    )
+            organization_logs = [
+                log_entry
+                for log_entry
+                in organization_logs
+                if (
+                    log_entry.content_type
+                    and
+                    log_entry
+                    .content_type
+                    .model
+                    == model_filter
                 )
-            )
+            ]
 
         if search:
-            queryset = (
-                queryset.filter(
-                    object_repr__icontains=(
-                        search
-                    )
+            organization_logs = [
+                log_entry
+                for log_entry
+                in organization_logs
+                if (
+                    search
+                    in (
+                        log_entry.object_repr
+                        or ""
+                    ).lower()
+                    or search
+                    in get_actor_name(
+                        log_entry.actor
+                    ).lower()
+                    or search
+                    in get_model_label(
+                        log_entry
+                    ).lower()
                 )
-            )
+            ]
 
         logs = []
 
-        for log_entry in queryset:
-            actor = log_entry.actor
+        for log_entry in organization_logs:
+            actor = (
+                log_entry.actor
+            )
 
             logs.append(
                 {
-                    "id": log_entry.id,
+                    "id": (
+                        log_entry.id
+                    ),
 
                     "timestamp": (
                         log_entry.timestamp
@@ -312,9 +933,12 @@ class OrganizationActivityView(APIView):
                     },
 
                     "model": (
-                        log_entry.content_type.model
+                        log_entry
+                        .content_type
+                        .model
                         if (
-                            log_entry.content_type
+                            log_entry
+                            .content_type
                         )
                         else None
                     ),
@@ -345,9 +969,13 @@ class OrganizationActivityView(APIView):
 
         memberships = (
             OrganizationMembership.objects
-            .select_related("user")
+            .select_related(
+                "user"
+            )
             .filter(
-                organization=organization
+                organization=(
+                    organization
+                )
             )
             .order_by(
                 "user__first_name",
@@ -359,7 +987,10 @@ class OrganizationActivityView(APIView):
         for item in memberships:
             users.append(
                 {
-                    "id": item.user_id,
+                    "id": (
+                        item.user_id
+                    ),
+
                     "name": (
                         get_actor_name(
                             item.user
@@ -371,11 +1002,24 @@ class OrganizationActivityView(APIView):
         return Response(
             {
                 "period_days": 30,
-                "date_from": date_from,
-                "date_to": timezone.now(),
-                "count": len(logs),
+
+                "date_from": (
+                    date_from
+                ),
+
+                "date_to": (
+                    timezone.now()
+                ),
+
+                "count": (
+                    len(logs)
+                ),
+
                 "logs": logs,
+
                 "users": users,
             },
-            status=status.HTTP_200_OK,
+            status=(
+                status.HTTP_200_OK
+            ),
         )
