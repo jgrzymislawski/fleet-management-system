@@ -3,9 +3,7 @@ from django.urls import (
     include,
 )
 
-from rest_framework.routers import (
-    DefaultRouter,
-)
+from rest_framework.routers import DefaultRouter
 
 from .views import (
     VehicleViewSet,
@@ -16,6 +14,10 @@ from .views import (
 from .import_views import (
     VehicleImportView,
     VehicleImportTemplateView,
+)
+
+from .bulk_views import (
+    VehicleBulkUpdateView,
 )
 
 
@@ -48,6 +50,12 @@ urlpatterns = [
         "vehicles/import-template/",
         VehicleImportTemplateView.as_view(),
         name="vehicle-import-template",
+    ),
+
+    path(
+        "vehicles/bulk-update/",
+        VehicleBulkUpdateView.as_view(),
+        name="vehicle-bulk-update",
     ),
 
     path(

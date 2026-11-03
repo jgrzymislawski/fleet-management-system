@@ -139,6 +139,49 @@ def get_changes_dict(log_entry):
     return changes
 
 
+def normalize_id(value):
+    if value in (
+        None,
+        "",
+        "None",
+        "null",
+    ):
+        return None
+
+    try:
+        return int(value)
+    except (
+        TypeError,
+        ValueError,
+    ):
+        return None
+
+
+def get_company_name(value):
+    company_id = normalize_id(
+        value
+    )
+
+    if company_id is None:
+        return "brak"
+
+    company = (
+        Company.objects
+        .filter(
+            id=company_id
+        )
+        .only(
+            "name"
+        )
+        .first()
+    )
+
+    if company:
+        return company.name
+
+    return f"Spółka #{company_id}"
+
+
 def parse_changes(log_entry):
     changes = get_changes_dict(
         log_entry
@@ -163,6 +206,15 @@ def parse_changes(log_entry):
             old_value = values[0]
             new_value = values[1]
 
+        if field == "company":
+            old_value = get_company_name(
+                old_value
+            )
+
+            new_value = get_company_name(
+                new_value
+            )
+
         parsed.append(
             {
                 "field": field,
@@ -172,24 +224,6 @@ def parse_changes(log_entry):
         )
 
     return parsed
-
-
-def normalize_id(value):
-    if value in (
-        None,
-        "",
-        "None",
-        "null",
-    ):
-        return None
-
-    try:
-        return int(value)
-    except (
-        TypeError,
-        ValueError,
-    ):
-        return None
 
 
 def get_changed_id(
@@ -237,14 +271,6 @@ def log_belongs_to_organization(
     log_entry,
     organization,
 ):
-    """
-    Sprawdza, czy OBIEKT logu należy do organizacji.
-
-    Nie opieramy się wyłącznie na actor,
-    ponieważ administrator techniczny może wykonywać
-    operacje na wielu organizacjach.
-    """
-
     if not log_entry.content_type:
         return False
 
@@ -264,10 +290,6 @@ def log_belongs_to_organization(
         organization.id
     )
 
-    # -------------------------------------------------
-    # ORGANIZATION
-    # -------------------------------------------------
-
     if (
         app_label == "organizations"
         and model_name == "organization"
@@ -276,10 +298,6 @@ def log_belongs_to_organization(
             object_id
             == organization_id
         )
-
-    # -------------------------------------------------
-    # COMPANY
-    # -------------------------------------------------
 
     if (
         app_label == "organizations"
@@ -314,10 +332,6 @@ def log_belongs_to_organization(
             == organization_id
         )
 
-    # -------------------------------------------------
-    # ORGANIZATION MEMBERSHIP
-    # -------------------------------------------------
-
     if (
         app_label == "organizations"
         and model_name
@@ -351,10 +365,6 @@ def log_belongs_to_organization(
             changed_organization_id
             == organization_id
         )
-
-    # -------------------------------------------------
-    # COMPANY ACCESS
-    # -------------------------------------------------
 
     if (
         app_label == "organizations"
@@ -401,10 +411,6 @@ def log_belongs_to_organization(
 
         return False
 
-    # -------------------------------------------------
-    # VEHICLE
-    # -------------------------------------------------
-
     if (
         app_label == "vehicles"
         and model_name == "vehicle"
@@ -437,10 +443,6 @@ def log_belongs_to_organization(
             changed_organization_id
             == organization_id
         )
-
-    # -------------------------------------------------
-    # SERVICE RECORD
-    # -------------------------------------------------
 
     if (
         app_label == "vehicles"
@@ -487,10 +489,6 @@ def log_belongs_to_organization(
 
         return False
 
-    # -------------------------------------------------
-    # VEHICLE DOCUMENT
-    # -------------------------------------------------
-
     if (
         app_label == "vehicles"
         and model_name
@@ -536,10 +534,6 @@ def log_belongs_to_organization(
 
         return False
 
-    # -------------------------------------------------
-    # DRIVER
-    # -------------------------------------------------
-
     if (
         app_label == "drivers"
         and model_name == "driver"
@@ -572,10 +566,6 @@ def log_belongs_to_organization(
             changed_organization_id
             == organization_id
         )
-
-    # -------------------------------------------------
-    # DRIVER VEHICLE ASSIGNMENT
-    # -------------------------------------------------
 
     if (
         app_label == "drivers"
@@ -653,13 +643,7 @@ def log_belongs_to_organization(
 
         return False
 
-    # -------------------------------------------------
-    # DJANGO USER
-    # -------------------------------------------------
-
-    if (
-        model_name == "user"
-    ):
+    if model_name == "user":
         if not object_id:
             return False
 
@@ -673,14 +657,6 @@ def log_belongs_to_organization(
             )
             .exists()
         )
-
-    # -------------------------------------------------
-    # NIEZNANY MODEL
-    # -------------------------------------------------
-
-    # Bezpieczna zasada:
-    # jeśli nie umiemy jednoznacznie określić organizacji,
-    # NIE pokazujemy logu administratorowi organizacji.
 
     return False
 

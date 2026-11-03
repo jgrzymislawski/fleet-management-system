@@ -328,6 +328,259 @@
     font-weight: 500;
 }
 
+.vehicles-table-header-bulk,
+.vehicles-table-row-bulk {
+  grid-template-columns:
+    44px
+    minmax(150px, 1.4fr)
+    minmax(110px, 1fr)
+    minmax(110px, 1fr)
+    minmax(110px, 1fr)
+    minmax(70px, 0.6fr)
+    minmax(100px, 0.8fr)
+    minmax(110px, 0.9fr)
+    60px;
+}
+
+.vehicles-select-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.vehicles-select-cell input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #1a1a1a;
+}
+
+.vehicles-select-cell input:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.vehicles-table-row-selected {
+  background: #f0ebe6;
+}
+
+.vehicles-bulk-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 18px 0;
+  padding: 14px 16px;
+  border: 1px solid #d9d0c9;
+  border-radius: 12px;
+  background: #faf5f2;
+}
+
+.vehicles-bulk-count {
+  font-size: 14px;
+  color: #4f4843;
+}
+
+.vehicles-bulk-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vehicles-bulk-actions button {
+  padding: 9px 13px;
+  border: 1px solid #cbc2bb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1a1a1a;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vehicles-bulk-actions button:hover {
+  background: #eee8e2;
+}
+
+.vehicles-bulk-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vehicles-bulk-actions .vehicles-bulk-clear {
+  border-color: transparent;
+  background: transparent;
+  color: #6a625c;
+}
+
+.vehicles-bulk-result {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid #cfe0d4;
+  border-radius: 10px;
+  background: #edf6ef;
+  color: #315c3d;
+  font-size: 14px;
+}
+
+.vehicles-bulk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.vehicles-bulk-modal {
+  width: 100%;
+  max-width: 520px;
+  padding: 26px;
+  border-radius: 16px;
+  background: #faf5f2;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.vehicles-bulk-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+
+.vehicles-bulk-modal-header h2 {
+  margin: 0 0 6px;
+  font-size: 23px;
+}
+
+.vehicles-bulk-modal-header p {
+  margin: 0;
+  color: #6a625c;
+  font-size: 14px;
+}
+
+.vehicles-bulk-modal-close {
+  border: 0;
+  background: transparent;
+  color: #555;
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.vehicles-bulk-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vehicles-bulk-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4f4843;
+}
+
+.vehicles-bulk-field select,
+.vehicles-bulk-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid #d1c8c1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1a1a1a;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.vehicles-bulk-field select:focus,
+.vehicles-bulk-field input:focus {
+  outline: none;
+  border-color: #8d837a;
+}
+
+.vehicles-bulk-help {
+  color: #81776f;
+  font-size: 12px;
+}
+
+.vehicles-bulk-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.vehicles-bulk-cancel,
+.vehicles-bulk-submit {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vehicles-bulk-cancel {
+  border: 1px solid #cbc2bb;
+  background: transparent;
+  color: #1a1a1a;
+}
+
+.vehicles-bulk-submit {
+  border: 0;
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+.vehicles-bulk-cancel:disabled,
+.vehicles-bulk-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1050px) {
+  .vehicles-table-header-bulk,
+  .vehicles-table-row-bulk {
+    min-width: 1080px;
+  }
+
+  .vehicles-table {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .vehicles-bulk-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .vehicles-bulk-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .vehicles-bulk-actions button {
+    width: 100%;
+  }
+
+  .vehicles-bulk-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .vehicles-bulk-cancel,
+  .vehicles-bulk-submit {
+    width: 100%;
+  }
+}
+
 .vehicle-status {
     width: fit-content;
     padding: 5px 10px;

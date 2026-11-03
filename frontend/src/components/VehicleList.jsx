@@ -27,6 +27,12 @@ function VehicleList() {
 
   const [importModalOpen, setImportModalOpen] = useState(false);
 
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState([]);
+  const [bulkAction, setBulkAction] = useState(null);
+  const [bulkValue, setBulkValue] = useState("");
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [bulkResult, setBulkResult] = useState(null);
+
   const navigate = useNavigate();
 
   const { user, canEditCompany } = useAuth();
@@ -348,6 +354,178 @@ function VehicleList() {
 
     return -comparison;
   });
+
+  const editableVisibleVehicleIds = sortedVehicles
+    .filter((vehicle) => canEditCompany(vehicle.company))
+    .map((vehicle) => vehicle.id);
+
+  const allVisibleEditableSelected =
+    editableVisibleVehicleIds.length > 0 &&
+    editableVisibleVehicleIds.every((vehicleId) =>
+      selectedVehicleIds.includes(vehicleId),
+    );
+
+  const editableCompanies = (user?.companies || [])
+    .filter((company) => user?.role === "admin" || company.role === "editor")
+    .sort((a, b) =>
+      a.name.localeCompare(b.name, "pl", {
+        sensitivity: "base",
+      }),
+    );
+
+  const toggleVehicleSelection = (vehicleId) => {
+    setBulkResult(null);
+
+    setSelectedVehicleIds((currentIds) => {
+      if (currentIds.includes(vehicleId)) {
+        return currentIds.filter((id) => id !== vehicleId);
+      }
+
+      return [...currentIds, vehicleId];
+    });
+  };
+
+  const toggleAllVisibleVehicles = () => {
+    setBulkResult(null);
+
+    setSelectedVehicleIds((currentIds) => {
+      if (allVisibleEditableSelected) {
+        return currentIds.filter(
+          (id) => !editableVisibleVehicleIds.includes(id),
+        );
+      }
+
+      return [...new Set([...currentIds, ...editableVisibleVehicleIds])];
+    });
+  };
+
+  const clearVehicleSelection = () => {
+    setSelectedVehicleIds([]);
+    setBulkResult(null);
+  };
+
+  const openBulkModal = (action) => {
+    setBulkResult(null);
+    setBulkAction(action);
+
+    if (action === "change_status") {
+      setBulkValue("active");
+    } else {
+      setBulkValue("");
+    }
+  };
+
+  const closeBulkModal = () => {
+    if (bulkUpdating) {
+      return;
+    }
+
+    setBulkAction(null);
+    setBulkValue("");
+  };
+
+  const getBulkModalTitle = () => {
+    if (bulkAction === "change_status") {
+      return "Masowa zmiana statusu";
+    }
+
+    if (bulkAction === "change_company") {
+      return "Masowa zmiana spółki";
+    }
+
+    if (bulkAction === "change_branch") {
+      return "Masowa zmiana oddziału";
+    }
+
+    return "Operacja masowa";
+  };
+
+  const handleBulkUpdate = async () => {
+    if (selectedVehicleIds.length === 0 || !bulkAction) {
+      return;
+    }
+
+    if (bulkAction === "change_company" && bulkValue === "") {
+      setError("Wybierz spółkę.");
+      return;
+    }
+
+    try {
+      setBulkUpdating(true);
+      setError(null);
+      setBulkResult(null);
+
+      let value = bulkValue;
+
+      if (bulkAction === "change_company") {
+        value = bulkValue === "none" ? null : Number(bulkValue);
+      }
+
+      const response = await apiClient.post("vehicles/bulk-update/", {
+        vehicle_ids: selectedVehicleIds,
+        action: bulkAction,
+        value,
+      });
+
+      setBulkResult(response.data);
+      setBulkAction(null);
+      setBulkValue("");
+      setSelectedVehicleIds([]);
+
+      await loadVehicles();
+    } catch (err) {
+      console.error("Błąd operacji masowej:", err);
+      console.error("Odpowiedź backendu:", err.response?.data);
+
+      setError(
+        err.response?.data?.detail || "Nie udało się wykonać operacji masowej.",
+      );
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const handleExportSelected = async () => {
+    if (selectedVehicleIds.length === 0) {
+      return;
+    }
+
+    try {
+      setExporting(true);
+      setError(null);
+
+      const response = await apiClient.post(
+        "vehicles/export/",
+        {
+          vehicle_ids: selectedVehicleIds,
+        },
+        {
+          responseType: "blob",
+        },
+      );
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+      link.download = getExportFilename(response);
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error("Błąd eksportu zaznaczonych pojazdów:", err);
+      setError("Nie udało się wyeksportować zaznaczonych pojazdów.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const clearAllFilters = () => {
     setSelectedBrands([]);
@@ -857,12 +1035,64 @@ function VehicleList() {
         </div>
       )}
 
+      {selectedVehicleIds.length > 0 && (
+        <div className="vehicles-bulk-toolbar">
+          <div className="vehicles-bulk-count">
+            Zaznaczono: <strong>{selectedVehicleIds.length}</strong>
+          </div>
+
+          <div className="vehicles-bulk-actions">
+            <button onClick={() => openBulkModal("change_status")}>
+              Zmień status
+            </button>
+
+            <button onClick={() => openBulkModal("change_company")}>
+              Zmień spółkę
+            </button>
+
+            <button onClick={() => openBulkModal("change_branch")}>
+              Zmień oddział
+            </button>
+
+            <button onClick={handleExportSelected} disabled={exporting}>
+              {exporting ? "Eksportowanie..." : "Eksportuj zaznaczone"}
+            </button>
+
+            <button
+              className="vehicles-bulk-clear"
+              onClick={clearVehicleSelection}
+            >
+              Odznacz
+            </button>
+          </div>
+        </div>
+      )}
+
+      {bulkResult && (
+        <div className="vehicles-bulk-result">
+          <strong>Operacja zakończona.</strong> Zmieniono: {bulkResult.updated},
+          bez zmian: {bulkResult.unchanged}, pominięto: {bulkResult.skipped}.
+        </div>
+      )}
+
       <div className="vehicles-results-info">
         Wyświetlono {filteredVehicles.length} z {vehicles.length} pojazdów
       </div>
 
       <div className="vehicles-table">
-        <div className="vehicles-table-header">
+        <div className="vehicles-table-header vehicles-table-header-bulk">
+          <label
+            className="vehicles-select-cell"
+            title="Zaznacz wszystkie widoczne pojazdy, które możesz edytować"
+          >
+            <input
+              type="checkbox"
+              checked={allVisibleEditableSelected}
+              disabled={editableVisibleVehicleIds.length === 0}
+              onChange={toggleAllVisibleVehicles}
+            />
+          </label>
+
           <button
             className={`table-sort-button ${
               sortField === "vehicle" ? "table-sort-active" : ""
@@ -937,7 +1167,30 @@ function VehicleList() {
         </div>
 
         {sortedVehicles.map((vehicle) => (
-          <div className="vehicles-table-row" key={vehicle.id}>
+          <div
+            className={`vehicles-table-row vehicles-table-row-bulk ${
+              selectedVehicleIds.includes(vehicle.id)
+                ? "vehicles-table-row-selected"
+                : ""
+            }`}
+            key={vehicle.id}
+          >
+            <label
+              className="vehicles-select-cell"
+              title={
+                canEditCompany(vehicle.company)
+                  ? "Zaznacz pojazd"
+                  : "Brak uprawnień do edycji tego pojazdu"
+              }
+            >
+              <input
+                type="checkbox"
+                checked={selectedVehicleIds.includes(vehicle.id)}
+                disabled={!canEditCompany(vehicle.company)}
+                onChange={() => toggleVehicleSelection(vehicle.id)}
+              />
+            </label>
+
             <span className="vehicle-name">
               {vehicle.brand} {vehicle.model}
             </span>
@@ -1000,6 +1253,107 @@ function VehicleList() {
           </div>
         )}
       </div>
+
+      {bulkAction && (
+        <div className="vehicles-bulk-overlay">
+          <div className="vehicles-bulk-modal">
+            <div className="vehicles-bulk-modal-header">
+              <div>
+                <h2>{getBulkModalTitle()}</h2>
+                <p>
+                  Operacja obejmie {selectedVehicleIds.length} zaznaczonych
+                  pojazdów.
+                </p>
+              </div>
+
+              <button
+                className="vehicles-bulk-modal-close"
+                onClick={closeBulkModal}
+                disabled={bulkUpdating}
+              >
+                ×
+              </button>
+            </div>
+
+            {bulkAction === "change_status" && (
+              <div className="vehicles-bulk-field">
+                <label>Nowy status</label>
+
+                <select
+                  value={bulkValue}
+                  onChange={(event) => setBulkValue(event.target.value)}
+                >
+                  <option value="active">Aktywny</option>
+                  <option value="maintenance">W serwisie</option>
+                  <option value="inactive">Nieaktywny</option>
+                </select>
+              </div>
+            )}
+
+            {bulkAction === "change_company" && (
+              <div className="vehicles-bulk-field">
+                <label>Nowa spółka</label>
+
+                <select
+                  value={bulkValue}
+                  onChange={(event) => setBulkValue(event.target.value)}
+                >
+                  <option value="">Wybierz spółkę</option>
+
+                  {user?.role === "admin" && (
+                    <option value="none">Brak spółki</option>
+                  )}
+
+                  {editableCompanies.map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {bulkAction === "change_branch" && (
+              <div className="vehicles-bulk-field">
+                <label>Nowy oddział</label>
+
+                <input
+                  type="text"
+                  maxLength={150}
+                  placeholder="Np. Legnica"
+                  value={bulkValue}
+                  onChange={(event) => setBulkValue(event.target.value)}
+                />
+
+                <span className="vehicles-bulk-help">
+                  Pozostaw puste pole, jeśli chcesz usunąć oddział.
+                </span>
+              </div>
+            )}
+
+            <div className="vehicles-bulk-modal-actions">
+              <button
+                className="vehicles-bulk-cancel"
+                onClick={closeBulkModal}
+                disabled={bulkUpdating}
+              >
+                Anuluj
+              </button>
+
+              <button
+                className="vehicles-bulk-submit"
+                onClick={handleBulkUpdate}
+                disabled={
+                  bulkUpdating ||
+                  (bulkAction === "change_company" && bulkValue === "")
+                }
+              >
+                {bulkUpdating ? "Zapisywanie..." : "Zastosuj zmiany"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {importModalOpen && (
         <VehicleImportModal
