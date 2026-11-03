@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from organizations.models import (
@@ -32,11 +33,11 @@ class Vehicle(models.Model):
     ]
 
     brand = models.CharField(
-        max_length=100
+        max_length=100,
     )
 
     model = models.CharField(
-        max_length=100
+        max_length=100,
     )
 
     registration_number = models.CharField(
@@ -67,7 +68,7 @@ class Vehicle(models.Model):
     )
 
     mileage = models.PositiveIntegerField(
-        default=0
+        default=0,
     )
 
     status = models.CharField(
@@ -104,8 +105,6 @@ class Vehicle(models.Model):
         Organization,
         on_delete=models.CASCADE,
         related_name="vehicles",
-        null=True,
-        blank=True,
     )
 
     company = models.ForeignKey(
@@ -122,7 +121,7 @@ class Vehicle(models.Model):
     )
 
     created_at = models.DateTimeField(
-        auto_now_add=True
+        auto_now_add=True,
     )
 
     def save(
@@ -130,21 +129,103 @@ class Vehicle(models.Model):
         *args,
         **kwargs,
     ):
+        if isinstance(
+            self.driver_name,
+            str,
+        ):
+            self.driver_name = (
+                self.driver_name.strip()
+            )
+
+        if (
+            self.driver
+            and self.driver_name
+        ):
+            raise ValidationError(
+                (
+                    "Wybierz kierowcę z listy "
+                    "albo wpisz kierowcę ręcznie."
+                )
+            )
 
         if self.company_id:
-            self.organization_id = (
+            company_organization_id = (
                 self.company.organization_id
             )
 
-            update_fields = kwargs.get(
-                "update_fields"
+            if self.organization_id is None:
+                self.organization_id = (
+                    company_organization_id
+                )
+
+            elif (
+                self.organization_id
+                != company_organization_id
+            ):
+                raise ValidationError(
+                    {
+                        "company": (
+                            "Pojazd i spółka muszą "
+                            "należeć do tej samej "
+                            "organizacji."
+                        )
+                    }
+                )
+
+        if self.organization_id is None:
+            raise ValidationError(
+                {
+                    "organization": (
+                        "Pojazd musi należeć "
+                        "do organizacji."
+                    )
+                }
             )
 
-            if update_fields is not None:
-                kwargs["update_fields"] = list(
-                    set(update_fields)
-                    | {"organization"}
+        if self.driver_id:
+            if (
+                self.driver.organization_id
+                is None
+            ):
+                raise ValidationError(
+                    {
+                        "driver": (
+                            "Kierowca nie ma "
+                            "przypisanej organizacji."
+                        )
+                    }
                 )
+
+            if (
+                self.driver.organization_id
+                != self.organization_id
+            ):
+                raise ValidationError(
+                    {
+                        "driver": (
+                            "Kierowca i pojazd muszą "
+                            "należeć do tej samej "
+                            "organizacji."
+                        )
+                    }
+                )
+
+        update_fields = kwargs.get(
+            "update_fields"
+        )
+
+        if (
+            update_fields is not None
+            and self.company_id
+        ):
+            kwargs["update_fields"] = list(
+                set(
+                    update_fields
+                )
+                | {
+                    "organization",
+                }
+            )
 
         super().save(
             *args,
@@ -169,11 +250,11 @@ class ServiceRecord(models.Model):
     service_date = models.DateField()
 
     title = models.CharField(
-        max_length=150
+        max_length=150,
     )
 
     description = models.TextField(
-        blank=True
+        blank=True,
     )
 
     mileage = models.PositiveIntegerField(
@@ -188,7 +269,7 @@ class ServiceRecord(models.Model):
     )
 
     created_at = models.DateTimeField(
-        auto_now_add=True
+        auto_now_add=True,
     )
 
     class Meta:
@@ -268,7 +349,7 @@ class VehicleDocument(models.Model):
     )
 
     notes = models.TextField(
-        blank=True
+        blank=True,
     )
 
     file = models.FileField(
@@ -278,7 +359,7 @@ class VehicleDocument(models.Model):
     )
 
     created_at = models.DateTimeField(
-        auto_now_add=True
+        auto_now_add=True,
     )
 
     class Meta:

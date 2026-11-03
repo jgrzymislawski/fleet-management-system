@@ -1,7 +1,10 @@
 from django.contrib.auth import update_session_auth_hash
 
 from rest_framework import status
-from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.exceptions import (
+    NotFound,
+    PermissionDenied,
+)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -23,57 +26,110 @@ from .serializers import (
 
 
 def user_is_superuser(user):
-    return bool(getattr(user, "is_superuser", False))
+    return bool(
+        getattr(
+            user,
+            "is_superuser",
+            False,
+        )
+    )
 
 
 def get_membership(user):
-    if not getattr(user, "is_authenticated", False):
+    if not getattr(
+        user,
+        "is_authenticated",
+        False,
+    ):
         return None
 
     return (
         OrganizationMembership.objects
-        .select_related("organization")
-        .filter(user=user)
+        .select_related(
+            "organization"
+        )
+        .filter(
+            user=user
+        )
         .first()
     )
 
 
 def get_admin_membership(user):
-    membership = get_membership(user)
+    membership = get_membership(
+        user
+    )
 
     if membership is None:
         raise PermissionDenied(
-            "Użytkownik nie jest przypisany do żadnej organizacji."
+            (
+                "Użytkownik nie jest przypisany "
+                "do żadnej organizacji."
+            )
+        )
+
+    if not membership.organization.is_active:
+        raise PermissionDenied(
+            (
+                "Organizacja użytkownika "
+                "jest nieaktywna."
+            )
         )
 
     if membership.role != "admin":
         raise PermissionDenied(
-            "Tylko administrator organizacji ma dostęp do tej funkcji."
+            (
+                "Tylko administrator organizacji "
+                "ma dostęp do tej funkcji."
+            )
         )
 
     return membership
 
 
-class CurrentUserView(APIView):
-    permission_classes = [IsAuthenticated]
+class CurrentUserView(
+    APIView
+):
+    permission_classes = [
+        IsAuthenticated,
+    ]
 
-    def get(self, request):
-        membership = get_membership(request.user)
+    def get(
+        self,
+        request,
+    ):
+        membership = get_membership(
+            request.user
+        )
 
         if membership is None:
-            return Response({
-                "id": request.user.id,
-                "username": request.user.username,
-                "email": request.user.email,
-                "organization": None,
-                "role": None,
-                "companies": [],
-            })
+            return Response(
+                {
+                    "id": request.user.id,
+                    "username": (
+                        request.user.username
+                    ),
+                    "email": (
+                        request.user.email
+                    ),
+                    "organization": None,
+                    "role": None,
+                    "companies": [],
+                }
+            )
 
         if membership.role == "admin":
-            companies = Company.objects.filter(
-                organization=membership.organization,
-                is_active=True,
+            companies = (
+                Company.objects
+                .filter(
+                    organization=(
+                        membership.organization
+                    ),
+                    is_active=True,
+                )
+                .order_by(
+                    "name"
+                )
             )
 
             company_data = [
@@ -84,128 +140,242 @@ class CurrentUserView(APIView):
                 }
                 for company in companies
             ]
+
         else:
             accesses = (
                 CompanyAccess.objects
-                .select_related("company")
+                .select_related(
+                    "company"
+                )
                 .filter(
                     membership=membership,
+                    company__organization=(
+                        membership.organization
+                    ),
                     company__is_active=True,
+                )
+                .order_by(
+                    "company__name"
                 )
             )
 
             company_data = [
                 {
-                    "id": access.company.id,
-                    "name": access.company.name,
-                    "role": access.role,
+                    "id": (
+                        access.company.id
+                    ),
+                    "name": (
+                        access.company.name
+                    ),
+                    "role": (
+                        access.role
+                    ),
                 }
                 for access in accesses
             ]
 
-        return Response({
-            "id": request.user.id,
-            "username": request.user.username,
-            "email": request.user.email,
-            "organization": {
-                "id": membership.organization.id,
-                "name": membership.organization.name,
-            },
-            "role": membership.role,
-            "companies": company_data,
-        })
+        return Response(
+            {
+                "id": request.user.id,
+                "username": (
+                    request.user.username
+                ),
+                "email": (
+                    request.user.email
+                ),
+                "organization": {
+                    "id": (
+                        membership.organization.id
+                    ),
+                    "name": (
+                        membership.organization.name
+                    ),
+                    "is_active": (
+                        membership.organization.is_active
+                    ),
+                },
+                "role": (
+                    membership.role
+                ),
+                "companies": (
+                    company_data
+                ),
+            }
+        )
 
 
-class CompanyListView(APIView):
-    permission_classes = [IsAuthenticated]
+class CompanyListView(
+    APIView
+):
+    permission_classes = [
+        IsAuthenticated,
+    ]
 
-    def get(self, request):
-        if user_is_superuser(request.user):
-            companies = Company.objects.filter(
-                is_active=True,
-            ).order_by("name")
+    def get(
+        self,
+        request,
+    ):
+        membership = get_membership(
+            request.user
+        )
 
-        else:
-            membership = get_membership(request.user)
-
-            if membership is None:
-                return Response([])
-
-            if membership.role == "admin":
-                companies = Company.objects.filter(
-                    organization=membership.organization,
-                    is_active=True,
-                ).order_by("name")
-
-            else:
-                company_ids = CompanyAccess.objects.filter(
-                    membership=membership,
-                    company__is_active=True,
-                ).values_list(
-                    "company_id",
-                    flat=True,
+        if membership is not None:
+            if (
+                not membership
+                .organization
+                .is_active
+            ):
+                return Response(
+                    []
                 )
 
-                companies = Company.objects.filter(
-                    id__in=company_ids,
-                    organization=membership.organization,
+            if membership.role == "admin":
+                companies = (
+                    Company.objects
+                    .filter(
+                        organization=(
+                            membership.organization
+                        ),
+                        is_active=True,
+                    )
+                    .order_by(
+                        "name"
+                    )
+                )
+
+            else:
+                company_ids = (
+                    CompanyAccess.objects
+                    .filter(
+                        membership=(
+                            membership
+                        ),
+                        company__organization=(
+                            membership.organization
+                        ),
+                        company__is_active=True,
+                    )
+                    .values_list(
+                        "company_id",
+                        flat=True,
+                    )
+                )
+
+                companies = (
+                    Company.objects
+                    .filter(
+                        id__in=company_ids,
+                        organization=(
+                            membership.organization
+                        ),
+                        is_active=True,
+                    )
+                    .order_by(
+                        "name"
+                    )
+                )
+
+        elif user_is_superuser(
+            request.user
+        ):
+            companies = (
+                Company.objects
+                .filter(
                     is_active=True,
-                ).order_by("name")
+                    organization__is_active=True,
+                )
+                .order_by(
+                    "organization__name",
+                    "name",
+                )
+            )
+
+        else:
+            companies = (
+                Company.objects.none()
+            )
 
         serializer = CompanySerializer(
             companies,
             many=True,
         )
 
-        return Response(serializer.data)
+        return Response(
+            serializer.data
+        )
 
 
-class ChangePasswordView(APIView):
-    permission_classes = [IsAuthenticated]
+class ChangePasswordView(
+    APIView
+):
+    permission_classes = [
+        IsAuthenticated,
+    ]
 
-    def post(self, request):
+    def post(
+        self,
+        request,
+    ):
         user = request.user
 
-        current_password = request.data.get(
-            "current_password"
+        current_password = (
+            request.data.get(
+                "current_password"
+            )
         )
 
-        new_password = request.data.get(
-            "new_password"
+        new_password = (
+            request.data.get(
+                "new_password"
+            )
         )
 
-        confirm_password = request.data.get(
-            "confirm_password"
+        confirm_password = (
+            request.data.get(
+                "confirm_password"
+            )
         )
 
         if not current_password:
             return Response(
                 {
                     "current_password": [
-                        "Podaj aktualne hasło."
+                        (
+                            "Podaj aktualne hasło."
+                        )
                     ]
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
         if not new_password:
             return Response(
                 {
                     "new_password": [
-                        "Podaj nowe hasło."
+                        (
+                            "Podaj nowe hasło."
+                        )
                     ]
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
         if not confirm_password:
             return Response(
                 {
                     "confirm_password": [
-                        "Powtórz nowe hasło."
+                        (
+                            "Powtórz nowe hasło."
+                        )
                     ]
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
         if not user.check_password(
@@ -214,35 +384,60 @@ class ChangePasswordView(APIView):
             return Response(
                 {
                     "current_password": [
-                        "Aktualne hasło jest nieprawidłowe."
+                        (
+                            "Aktualne hasło "
+                            "jest nieprawidłowe."
+                        )
                     ]
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
-        if new_password != confirm_password:
+        if (
+            new_password
+            != confirm_password
+        ):
             return Response(
                 {
                     "confirm_password": [
-                        "Hasła nie są takie same."
+                        (
+                            "Hasła nie są "
+                            "takie same."
+                        )
                     ]
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
-        if current_password == new_password:
+        if (
+            current_password
+            == new_password
+        ):
             return Response(
                 {
                     "new_password": [
-                        "Nowe hasło musi być inne niż aktualne."
+                        (
+                            "Nowe hasło musi być "
+                            "inne niż aktualne."
+                        )
                     ]
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
-        user.set_password(new_password)
+        user.set_password(
+            new_password
+        )
 
-        with set_actor(request.user):
+        with set_actor(
+            request.user
+        ):
             user.save()
 
         update_session_auth_hash(
@@ -252,24 +447,43 @@ class ChangePasswordView(APIView):
 
         return Response(
             {
-                "detail": "Hasło zostało zmienione."
+                "detail": (
+                    "Hasło zostało zmienione."
+                )
             },
-            status=status.HTTP_200_OK,
+            status=(
+                status.HTTP_200_OK
+            ),
         )
 
 
-class AdminCompanyListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+class AdminCompanyListCreateView(
+    APIView
+):
+    permission_classes = [
+        IsAuthenticated,
+    ]
 
-    def get(self, request):
-        membership = get_admin_membership(
-            request.user
+    def get(
+        self,
+        request,
+    ):
+        membership = (
+            get_admin_membership(
+                request.user
+            )
         )
 
-        companies = Company.objects.filter(
-            organization=membership.organization,
-        ).order_by(
-            "name"
+        companies = (
+            Company.objects
+            .filter(
+                organization=(
+                    membership.organization
+                ),
+            )
+            .order_by(
+                "name"
+            )
         )
 
         serializer = CompanySerializer(
@@ -277,11 +491,18 @@ class AdminCompanyListCreateView(APIView):
             many=True,
         )
 
-        return Response(serializer.data)
+        return Response(
+            serializer.data
+        )
 
-    def post(self, request):
-        membership = get_admin_membership(
-            request.user
+    def post(
+        self,
+        request,
+    ):
+        membership = (
+            get_admin_membership(
+                request.user
+            )
         )
 
         serializer = CompanySerializer(
@@ -292,25 +513,45 @@ class AdminCompanyListCreateView(APIView):
             raise_exception=True
         )
 
-        with set_actor(request.user):
+        with set_actor(
+            request.user
+        ):
             serializer.save(
-                organization=membership.organization
+                organization=(
+                    membership.organization
+                )
             )
 
         return Response(
             serializer.data,
-            status=status.HTTP_201_CREATED,
+            status=(
+                status.HTTP_201_CREATED
+            ),
         )
 
 
-class AdminCompanyDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+class AdminCompanyDetailView(
+    APIView
+):
+    permission_classes = [
+        IsAuthenticated,
+    ]
 
-    def get_company(self, membership, company_id):
-        company = Company.objects.filter(
-            id=company_id,
-            organization=membership.organization,
-        ).first()
+    def get_company(
+        self,
+        membership,
+        company_id,
+    ):
+        company = (
+            Company.objects
+            .filter(
+                id=company_id,
+                organization=(
+                    membership.organization
+                ),
+            )
+            .first()
+        )
 
         if company is None:
             raise NotFound(
@@ -319,9 +560,15 @@ class AdminCompanyDetailView(APIView):
 
         return company
 
-    def get(self, request, company_id):
-        membership = get_admin_membership(
-            request.user
+    def get(
+        self,
+        request,
+        company_id,
+    ):
+        membership = (
+            get_admin_membership(
+                request.user
+            )
         )
 
         company = self.get_company(
@@ -333,11 +580,19 @@ class AdminCompanyDetailView(APIView):
             company
         )
 
-        return Response(serializer.data)
+        return Response(
+            serializer.data
+        )
 
-    def put(self, request, company_id):
-        membership = get_admin_membership(
-            request.user
+    def put(
+        self,
+        request,
+        company_id,
+    ):
+        membership = (
+            get_admin_membership(
+                request.user
+            )
         )
 
         company = self.get_company(
@@ -354,14 +609,28 @@ class AdminCompanyDetailView(APIView):
             raise_exception=True
         )
 
-        with set_actor(request.user):
-            serializer.save()
-
-        return Response(serializer.data)
-
-    def patch(self, request, company_id):
-        membership = get_admin_membership(
+        with set_actor(
             request.user
+        ):
+            serializer.save(
+                organization=(
+                    membership.organization
+                )
+            )
+
+        return Response(
+            serializer.data
+        )
+
+    def patch(
+        self,
+        request,
+        company_id,
+    ):
+        membership = (
+            get_admin_membership(
+                request.user
+            )
         )
 
         company = self.get_company(
@@ -379,18 +648,35 @@ class AdminCompanyDetailView(APIView):
             raise_exception=True
         )
 
-        with set_actor(request.user):
-            serializer.save()
-
-        return Response(serializer.data)
-
-
-class AdminUserListView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        membership = get_admin_membership(
+        with set_actor(
             request.user
+        ):
+            serializer.save(
+                organization=(
+                    membership.organization
+                )
+            )
+
+        return Response(
+            serializer.data
+        )
+
+
+class AdminUserListView(
+    APIView
+):
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def get(
+        self,
+        request,
+    ):
+        membership = (
+            get_admin_membership(
+                request.user
+            )
         )
 
         memberships = (
@@ -400,7 +686,9 @@ class AdminUserListView(APIView):
                 "organization",
             )
             .filter(
-                organization=membership.organization,
+                organization=(
+                    membership.organization
+                ),
             )
             .order_by(
                 "user__username",
@@ -412,39 +700,62 @@ class AdminUserListView(APIView):
             many=True,
         )
 
-        return Response(serializer.data)
-
-    def post(self, request):
-        membership = get_admin_membership(
-            request.user
+        return Response(
+            serializer.data
         )
 
-        serializer = AdminUserCreateSerializer(
-            data=request.data,
-            context={
-                "organization": membership.organization,
-            },
+    def post(
+        self,
+        request,
+    ):
+        membership = (
+            get_admin_membership(
+                request.user
+            )
+        )
+
+        serializer = (
+            AdminUserCreateSerializer(
+                data=request.data,
+                context={
+                    "organization": (
+                        membership.organization
+                    ),
+                },
+            )
         )
 
         serializer.is_valid(
             raise_exception=True
         )
 
-        with set_actor(request.user):
-            created_membership = serializer.save()
+        with set_actor(
+            request.user
+        ):
+            created_membership = (
+                serializer.save()
+            )
 
-        response_serializer = AdminUserSerializer(
-            created_membership
+        response_serializer = (
+            AdminUserSerializer(
+                created_membership
+            )
         )
 
         return Response(
             response_serializer.data,
-            status=status.HTTP_201_CREATED,
+            status=(
+                status.HTTP_201_CREATED
+            ),
         )
 
 
-class AdminUserDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+class AdminUserDetailView(
+    APIView
+):
+    permission_classes = [
+        IsAuthenticated,
+    ]
 
     def get_user_membership(
         self,
@@ -459,42 +770,67 @@ class AdminUserDetailView(APIView):
             )
             .filter(
                 id=membership_id,
-                organization=admin_membership.organization,
+                organization=(
+                    admin_membership.organization
+                ),
             )
             .first()
         )
 
         if membership is None:
             raise NotFound(
-                "Nie znaleziono użytkownika."
+                (
+                    "Nie znaleziono "
+                    "użytkownika."
+                )
             )
 
         return membership
 
-    def get(self, request, membership_id):
-        admin_membership = get_admin_membership(
-            request.user
+    def get(
+        self,
+        request,
+        membership_id,
+    ):
+        admin_membership = (
+            get_admin_membership(
+                request.user
+            )
         )
 
-        membership = self.get_user_membership(
-            admin_membership,
-            membership_id,
+        membership = (
+            self.get_user_membership(
+                admin_membership,
+                membership_id,
+            )
         )
 
-        serializer = AdminUserSerializer(
-            membership
+        serializer = (
+            AdminUserSerializer(
+                membership
+            )
         )
 
-        return Response(serializer.data)
-
-    def put(self, request, membership_id):
-        admin_membership = get_admin_membership(
-            request.user
+        return Response(
+            serializer.data
         )
 
-        membership = self.get_user_membership(
-            admin_membership,
-            membership_id,
+    def put(
+        self,
+        request,
+        membership_id,
+    ):
+        admin_membership = (
+            get_admin_membership(
+                request.user
+            )
+        )
+
+        membership = (
+            self.get_user_membership(
+                admin_membership,
+                membership_id,
+            )
         )
 
         self.validate_self_update(
@@ -502,34 +838,55 @@ class AdminUserDetailView(APIView):
             membership,
         )
 
-        serializer = AdminUserUpdateSerializer(
-            membership,
-            data=request.data,
+        serializer = (
+            AdminUserUpdateSerializer(
+                membership,
+                data=request.data,
+                context={
+                    "organization": (
+                        admin_membership.organization
+                    ),
+                },
+            )
         )
 
         serializer.is_valid(
             raise_exception=True
         )
 
-        with set_actor(request.user):
-            updated_membership = serializer.save()
+        with set_actor(
+            request.user
+        ):
+            updated_membership = (
+                serializer.save()
+            )
 
-        response_serializer = AdminUserSerializer(
-            updated_membership
+        response_serializer = (
+            AdminUserSerializer(
+                updated_membership
+            )
         )
 
         return Response(
             response_serializer.data
         )
 
-    def patch(self, request, membership_id):
-        admin_membership = get_admin_membership(
-            request.user
+    def patch(
+        self,
+        request,
+        membership_id,
+    ):
+        admin_membership = (
+            get_admin_membership(
+                request.user
+            )
         )
 
-        membership = self.get_user_membership(
-            admin_membership,
-            membership_id,
+        membership = (
+            self.get_user_membership(
+                admin_membership,
+                membership_id,
+            )
         )
 
         self.validate_self_update(
@@ -537,21 +894,34 @@ class AdminUserDetailView(APIView):
             membership,
         )
 
-        serializer = AdminUserUpdateSerializer(
-            membership,
-            data=request.data,
-            partial=True,
+        serializer = (
+            AdminUserUpdateSerializer(
+                membership,
+                data=request.data,
+                partial=True,
+                context={
+                    "organization": (
+                        admin_membership.organization
+                    ),
+                },
+            )
         )
 
         serializer.is_valid(
             raise_exception=True
         )
 
-        with set_actor(request.user):
-            updated_membership = serializer.save()
+        with set_actor(
+            request.user
+        ):
+            updated_membership = (
+                serializer.save()
+            )
 
-        response_serializer = AdminUserSerializer(
-            updated_membership
+        response_serializer = (
+            AdminUserSerializer(
+                updated_membership
+            )
         )
 
         return Response(
@@ -563,23 +933,39 @@ class AdminUserDetailView(APIView):
         request,
         membership,
     ):
-        if membership.user_id != request.user.id:
+        if (
+            membership.user_id
+            != request.user.id
+        ):
             return
 
-        new_is_active = request.data.get(
-            "is_active"
+        new_is_active = (
+            request.data.get(
+                "is_active"
+            )
         )
 
-        new_role = request.data.get(
-            "role"
+        new_role = (
+            request.data.get(
+                "role"
+            )
         )
 
         if new_is_active is False:
             raise PermissionDenied(
-                "Nie możesz dezaktywować własnego konta."
+                (
+                    "Nie możesz dezaktywować "
+                    "własnego konta."
+                )
             )
 
-        if new_role and new_role != "admin":
+        if (
+            new_role
+            and new_role != "admin"
+        ):
             raise PermissionDenied(
-                "Nie możesz odebrać sobie roli administratora."
+                (
+                    "Nie możesz odebrać sobie "
+                    "roli administratora."
+                )
             )

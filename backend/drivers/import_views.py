@@ -10,10 +10,7 @@ from rest_framework.views import APIView
 
 from auditlog.context import set_actor
 
-from organizations.models import (
-    Organization,
-    OrganizationMembership,
-)
+from organizations.models import OrganizationMembership
 
 from .models import Driver
 
@@ -25,16 +22,6 @@ from .import_utils import (
     parse_date,
     parse_license_categories,
 )
-
-
-def user_is_superuser(user):
-    return bool(
-        getattr(
-            user,
-            "is_superuser",
-            False,
-        )
-    )
 
 
 def get_membership(user):
@@ -62,55 +49,26 @@ def get_import_organization(user):
         user
     )
 
-    if membership is not None:
-        if (
-            membership.role != "admin"
-            and not user_is_superuser(user)
-        ):
-            return None, (
-                "Tylko administrator organizacji "
-                "może importować kierowców."
-            )
-
-        return (
-            membership.organization,
-            None,
-        )
-
-    if user_is_superuser(user):
-        organizations = (
-            Organization.objects
-            .filter(
-                is_active=True
-            )
-            .order_by("id")
-        )
-
-        organization_count = (
-            organizations.count()
-        )
-
-        if organization_count == 1:
-            return (
-                organizations.first(),
-                None,
-            )
-
-        if organization_count == 0:
-            return None, (
-                "W systemie nie ma aktywnej organizacji."
-            )
-
+    if membership is None:
         return None, (
-            "W systemie istnieje więcej niż jedna "
-            "aktywna organizacja. Superadministrator "
-            "nie może automatycznie ustalić, do której "
-            "organizacji zaimportować kierowców."
+            "Użytkownik nie jest przypisany "
+            "do żadnej organizacji."
         )
 
-    return None, (
-        "Użytkownik nie jest przypisany "
-        "do żadnej organizacji."
+    if membership.role != "admin":
+        return None, (
+            "Tylko administrator organizacji "
+            "może importować kierowców."
+        )
+
+    if not membership.organization.is_active:
+        return None, (
+            "Organizacja użytkownika jest nieaktywna."
+        )
+
+    return (
+        membership.organization,
+        None,
     )
 
 
@@ -118,7 +76,7 @@ class DriverImportTemplateView(
     APIView
 ):
     permission_classes = [
-        IsAuthenticated
+        IsAuthenticated,
     ]
 
     def get(
@@ -152,7 +110,7 @@ class DriverImportView(
     APIView
 ):
     permission_classes = [
-        IsAuthenticated
+        IsAuthenticated,
     ]
 
     def post(
@@ -246,7 +204,8 @@ class DriverImportView(
 
         received_headers = [
             header
-            for header in headers
+            for header
+            in headers
             if header
         ]
 
@@ -432,27 +391,27 @@ class DriverImportView(
                     license_number
                 )
 
-                if Driver.objects.filter(
-                    license_number__iexact=(
-                        license_number
+                if (
+                    Driver.objects
+                    .filter(
+                        license_number__iexact=(
+                            license_number
+                        )
                     )
-                ).exists():
+                    .exists()
+                ):
                     skipped += 1
 
                     errors.append(
                         {
-                            "row": (
-                                row_number
-                            ),
+                            "row": row_number,
                             "message": (
                                 "Kierowca o numerze "
                                 "prawa jazdy "
                                 f"{license_number} "
                                 "już istnieje."
                             ),
-                            "type": (
-                                "duplicate"
-                            ),
+                            "type": "duplicate",
                         }
                     )
 
@@ -490,9 +449,15 @@ class DriverImportView(
                         request.user
                     ):
                         Driver.objects.create(
-                            organization=organization,
-                            first_name=first_name,
-                            last_name=last_name,
+                            organization=(
+                                organization
+                            ),
+                            first_name=(
+                                first_name
+                            ),
+                            last_name=(
+                                last_name
+                            ),
                             license_number=(
                                 license_number
                             ),
@@ -518,47 +483,35 @@ class DriverImportView(
             except ValueError as exc:
                 errors.append(
                     {
-                        "row": (
-                            row_number
-                        ),
+                        "row": row_number,
                         "message": (
                             str(exc)
                         ),
-                        "type": (
-                            "validation"
-                        ),
+                        "type": "validation",
                     }
                 )
 
             except IntegrityError:
                 errors.append(
                     {
-                        "row": (
-                            row_number
-                        ),
+                        "row": row_number,
                         "message": (
                             "Nie udało się zapisać "
                             "kierowcy z powodu "
                             "konfliktu danych."
                         ),
-                        "type": (
-                            "database"
-                        ),
+                        "type": "database",
                     }
                 )
 
             except Exception as exc:
                 errors.append(
                     {
-                        "row": (
-                            row_number
-                        ),
+                        "row": row_number,
                         "message": (
                             str(exc)
                         ),
-                        "type": (
-                            "validation"
-                        ),
+                        "type": "validation",
                     }
                 )
 

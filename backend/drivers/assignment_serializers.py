@@ -3,7 +3,9 @@ from rest_framework import serializers
 from .models import DriverVehicleAssignment
 
 
-class DriverVehicleAssignmentSerializer(serializers.ModelSerializer):
+class DriverVehicleAssignmentSerializer(
+    serializers.ModelSerializer
+):
     is_active = serializers.ReadOnlyField()
     driver_display_name = serializers.ReadOnlyField()
 
@@ -41,34 +43,75 @@ class DriverVehicleAssignmentSerializer(serializers.ModelSerializer):
             "vehicle_registration_number",
         ]
 
-    def get_vehicle_name(self, obj):
-        return f"{obj.vehicle.brand} {obj.vehicle.model}"
+    def get_vehicle_name(
+        self,
+        obj,
+    ):
+        return (
+            f"{obj.vehicle.brand} "
+            f"{obj.vehicle.model}"
+        )
 
-    def validate(self, data):
+    def validate(
+        self,
+        data,
+    ):
         driver = data.get(
             "driver",
-            getattr(self.instance, "driver", None),
+            getattr(
+                self.instance,
+                "driver",
+                None,
+            ),
         )
 
         driver_name = data.get(
             "driver_name",
-            getattr(self.instance, "driver_name", ""),
+            getattr(
+                self.instance,
+                "driver_name",
+                "",
+            ),
         )
 
         vehicle = data.get(
             "vehicle",
-            getattr(self.instance, "vehicle", None),
+            getattr(
+                self.instance,
+                "vehicle",
+                None,
+            ),
         )
 
         start_date = data.get(
             "start_date",
-            getattr(self.instance, "start_date", None),
+            getattr(
+                self.instance,
+                "start_date",
+                None,
+            ),
         )
 
         end_date = data.get(
             "end_date",
-            getattr(self.instance, "end_date", None),
+            getattr(
+                self.instance,
+                "end_date",
+                None,
+            ),
         )
+
+        if isinstance(
+            driver_name,
+            str,
+        ):
+            driver_name = (
+                driver_name.strip()
+            )
+
+            data[
+                "driver_name"
+            ] = driver_name
 
         if driver and driver_name:
             raise serializers.ValidationError(
@@ -80,7 +123,10 @@ class DriverVehicleAssignmentSerializer(serializers.ModelSerializer):
                 }
             )
 
-        if not driver and not driver_name:
+        if (
+            not driver
+            and not driver_name
+        ):
             raise serializers.ValidationError(
                 {
                     "driver": (
@@ -104,20 +150,49 @@ class DriverVehicleAssignmentSerializer(serializers.ModelSerializer):
                 }
             )
 
-        if driver and vehicle:
+        if vehicle:
+            if (
+                vehicle.organization_id
+                is None
+            ):
+                raise serializers.ValidationError(
+                    {
+                        "vehicle": (
+                            "Pojazd nie ma przypisanej "
+                            "organizacji."
+                        )
+                    }
+                )
+
+        if driver:
             if (
                 driver.organization_id
-                and vehicle.organization_id
-                and driver.organization_id
-                != vehicle.organization_id
+                is None
             ):
                 raise serializers.ValidationError(
                     {
                         "driver": (
-                            "Kierowca i pojazd muszą należeć "
-                            "do tej samej organizacji."
+                            "Kierowca nie ma przypisanej "
+                            "organizacji."
                         )
                     }
                 )
+
+        if (
+            driver
+            and vehicle
+            and (
+                driver.organization_id
+                != vehicle.organization_id
+            )
+        ):
+            raise serializers.ValidationError(
+                {
+                    "driver": (
+                        "Kierowca i pojazd muszą należeć "
+                        "do tej samej organizacji."
+                    )
+                }
+            )
 
         return data

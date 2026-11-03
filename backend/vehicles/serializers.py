@@ -3,14 +3,22 @@ from pathlib import Path
 
 from django.db import transaction
 from django.utils import timezone
+
 from rest_framework import serializers
 
 from drivers.models import DriverVehicleAssignment
 from organizations.models import OrganizationMembership
-from .models import Vehicle, ServiceRecord, VehicleDocument
+
+from .models import (
+    Vehicle,
+    ServiceRecord,
+    VehicleDocument,
+)
 
 
-class VehicleSerializer(serializers.ModelSerializer):
+class VehicleSerializer(
+    serializers.ModelSerializer
+):
     company_name = serializers.CharField(
         source="company.name",
         read_only=True,
@@ -26,50 +34,98 @@ class VehicleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vehicle
         fields = "__all__"
+
         read_only_fields = [
             "organization",
             "company_name",
             "company_is_active",
         ]
 
-    def validate(self, attrs):
-        driver = attrs.get("driver")
-        driver_name = attrs.get("driver_name")
+    def validate(
+        self,
+        attrs,
+    ):
+        driver = attrs.get(
+            "driver"
+        )
+
+        driver_name = attrs.get(
+            "driver_name"
+        )
+
+        company = attrs.get(
+            "company"
+        )
 
         if self.instance:
             if "driver" not in attrs:
-                driver = self.instance.driver
+                driver = (
+                    self.instance.driver
+                )
 
             if "driver_name" not in attrs:
-                driver_name = self.instance.driver_name
+                driver_name = (
+                    self.instance.driver_name
+                )
 
-        if isinstance(driver_name, str):
-            driver_name = driver_name.strip()
+            if "company" not in attrs:
+                company = (
+                    self.instance.company
+                )
+
+        if isinstance(
+            driver_name,
+            str,
+        ):
+            driver_name = (
+                driver_name.strip()
+            )
+
+            attrs[
+                "driver_name"
+            ] = driver_name
 
         if driver and driver_name:
             raise serializers.ValidationError(
-                "Wybierz kierowcę z listy albo wpisz kierowcę ręcznie, "
-                "nie można użyć obu opcji jednocześnie."
+                (
+                    "Wybierz kierowcę z listy "
+                    "albo wpisz kierowcę ręcznie, "
+                    "nie można użyć obu opcji "
+                    "jednocześnie."
+                )
             )
 
-        request = self.context.get("request")
+        request = self.context.get(
+            "request"
+        )
 
-        if request and driver:
+        if (
+            request
+            and driver
+        ):
             user = request.user
 
-            if not getattr(user, "is_superuser", False):
-                membership = (
-                    OrganizationMembership.objects
-                    .filter(user=user)
-                    .first()
+            membership = (
+                OrganizationMembership.objects
+                .select_related(
+                    "organization"
                 )
+                .filter(
+                    user=user
+                )
+                .first()
+            )
 
-                if membership is None:
+            if membership is not None:
+                if (
+                    driver.organization_id
+                    is None
+                ):
                     raise serializers.ValidationError(
                         {
                             "driver": (
-                                "Użytkownik nie jest przypisany "
-                                "do żadnej organizacji."
+                                "Kierowca nie ma "
+                                "przypisanej organizacji."
                             )
                         }
                     )
@@ -81,11 +137,66 @@ class VehicleSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {
                             "driver": (
-                                "Nie możesz przypisać kierowcy "
-                                "z innej organizacji."
+                                "Nie możesz przypisać "
+                                "kierowcy z innej "
+                                "organizacji."
                             )
                         }
                     )
+
+            elif getattr(
+                user,
+                "is_superuser",
+                False,
+            ):
+                if company is None:
+                    raise serializers.ValidationError(
+                        {
+                            "company": (
+                                "Superadministrator bez "
+                                "przypisanej organizacji "
+                                "musi wskazać spółkę."
+                            )
+                        }
+                    )
+
+                if (
+                    driver.organization_id
+                    is None
+                ):
+                    raise serializers.ValidationError(
+                        {
+                            "driver": (
+                                "Kierowca nie ma "
+                                "przypisanej organizacji."
+                            )
+                        }
+                    )
+
+                if (
+                    driver.organization_id
+                    != company.organization_id
+                ):
+                    raise serializers.ValidationError(
+                        {
+                            "driver": (
+                                "Kierowca i spółka "
+                                "pojazdu muszą należeć "
+                                "do tej samej organizacji."
+                            )
+                        }
+                    )
+
+            else:
+                raise serializers.ValidationError(
+                    {
+                        "driver": (
+                            "Użytkownik nie jest "
+                            "przypisany do żadnej "
+                            "organizacji."
+                        )
+                    }
+                )
 
         return attrs
 
@@ -117,8 +228,10 @@ class VehicleSerializer(serializers.ModelSerializer):
         ).strip()
 
         return (
-            old_driver_id != new_driver_id
-            or old_name != new_name
+            old_driver_id
+            != new_driver_id
+            or old_name
+            != new_name
         )
 
     def _create_assignment(
@@ -132,7 +245,10 @@ class VehicleSerializer(serializers.ModelSerializer):
             driver_name or ""
         ).strip()
 
-        if not driver and not driver_name:
+        if (
+            not driver
+            and not driver_name
+        ):
             return
 
         DriverVehicleAssignment.objects.create(
@@ -143,7 +259,10 @@ class VehicleSerializer(serializers.ModelSerializer):
         )
 
     @transaction.atomic
-    def create(self, validated_data):
+    def create(
+        self,
+        validated_data,
+    ):
         vehicle = super().create(
             validated_data
         )
@@ -151,32 +270,55 @@ class VehicleSerializer(serializers.ModelSerializer):
         self._create_assignment(
             vehicle=vehicle,
             driver=vehicle.driver,
-            driver_name=vehicle.driver_name,
-            start_date=timezone.localdate(),
+            driver_name=(
+                vehicle.driver_name
+            ),
+            start_date=(
+                timezone.localdate()
+            ),
         )
 
         return vehicle
 
     @transaction.atomic
-    def update(self, instance, validated_data):
-        old_driver = instance.driver
-        old_driver_name = instance.driver_name
-
-        new_driver = validated_data.get(
-            "driver",
-            instance.driver,
+    def update(
+        self,
+        instance,
+        validated_data,
+    ):
+        old_driver = (
+            instance.driver
         )
 
-        new_driver_name = validated_data.get(
-            "driver_name",
-            instance.driver_name,
+        old_driver_name = (
+            instance.driver_name
         )
 
-        changed = self._assignment_changed(
-            old_driver=old_driver,
-            old_driver_name=old_driver_name,
-            new_driver=new_driver,
-            new_driver_name=new_driver_name,
+        new_driver = (
+            validated_data.get(
+                "driver",
+                instance.driver,
+            )
+        )
+
+        new_driver_name = (
+            validated_data.get(
+                "driver_name",
+                instance.driver_name,
+            )
+        )
+
+        changed = (
+            self._assignment_changed(
+                old_driver=old_driver,
+                old_driver_name=(
+                    old_driver_name
+                ),
+                new_driver=new_driver,
+                new_driver_name=(
+                    new_driver_name
+                ),
+            )
         )
 
         vehicle = super().update(
@@ -187,42 +329,64 @@ class VehicleSerializer(serializers.ModelSerializer):
         if not changed:
             return vehicle
 
-        today = timezone.localdate()
+        today = (
+            timezone.localdate()
+        )
 
-        DriverVehicleAssignment.objects.filter(
-            vehicle=vehicle,
-            end_date__isnull=True,
-        ).update(
-            end_date=today,
+        (
+            DriverVehicleAssignment.objects
+            .filter(
+                vehicle=vehicle,
+                end_date__isnull=True,
+            )
+            .update(
+                end_date=today,
+            )
         )
 
         self._create_assignment(
             vehicle=vehicle,
             driver=vehicle.driver,
-            driver_name=vehicle.driver_name,
+            driver_name=(
+                vehicle.driver_name
+            ),
             start_date=today,
         )
 
         return vehicle
 
 
-class ServiceRecordSerializer(serializers.ModelSerializer):
+class ServiceRecordSerializer(
+    serializers.ModelSerializer
+):
     class Meta:
         model = ServiceRecord
         fields = "__all__"
 
 
-class VehicleDocumentSerializer(serializers.ModelSerializer):
+class VehicleDocumentSerializer(
+    serializers.ModelSerializer
+):
     class Meta:
         model = VehicleDocument
         fields = "__all__"
 
-    def validate_file(self, file):
-        max_size = 10 * 1024 * 1024
+    def validate_file(
+        self,
+        file,
+    ):
+        max_size = (
+            10
+            * 1024
+            * 1024
+        )
 
         if file.size > max_size:
             raise serializers.ValidationError(
-                "Maksymalny rozmiar pliku to 10 MB."
+                (
+                    "Maksymalny rozmiar "
+                    "pliku to 10 MB."
+                )
             )
 
         allowed_extensions = {
@@ -236,9 +400,15 @@ class VehicleDocumentSerializer(serializers.ModelSerializer):
             file.name
         ).suffix.lower()
 
-        if extension not in allowed_extensions:
+        if (
+            extension
+            not in allowed_extensions
+        ):
             raise serializers.ValidationError(
-                "Dozwolone formaty plików: PDF, JPG, JPEG, PNG."
+                (
+                    "Dozwolone formaty plików: "
+                    "PDF, JPG, JPEG, PNG."
+                )
             )
 
         allowed_mime_types = {
@@ -255,10 +425,14 @@ class VehicleDocumentSerializer(serializers.ModelSerializer):
 
         if (
             mime_type
-            and mime_type not in allowed_mime_types
+            and mime_type
+            not in allowed_mime_types
         ):
             raise serializers.ValidationError(
-                "Nieprawidłowy typ pliku."
+                (
+                    "Nieprawidłowy "
+                    "typ pliku."
+                )
             )
 
         guessed_mime_type, _ = (
@@ -273,7 +447,10 @@ class VehicleDocumentSerializer(serializers.ModelSerializer):
             not in allowed_mime_types
         ):
             raise serializers.ValidationError(
-                "Nieprawidłowe rozszerzenie lub typ pliku."
+                (
+                    "Nieprawidłowe rozszerzenie "
+                    "lub typ pliku."
+                )
             )
 
         return file

@@ -19,7 +19,9 @@ from .models import (
 )
 
 from .serializers import DriverSerializer
-from .assignment_serializers import DriverVehicleAssignmentSerializer
+from .assignment_serializers import (
+    DriverVehicleAssignmentSerializer,
+)
 from .export_utils import create_driver_workbook
 from .pdf_utils import create_driver_card_pdf
 
@@ -44,82 +46,123 @@ def get_membership(user):
 
     return (
         OrganizationMembership.objects
-        .select_related("organization")
-        .filter(user=user)
+        .select_related(
+            "organization"
+        )
+        .filter(
+            user=user
+        )
         .first()
     )
 
 
 def ensure_driver_management_permission(user):
+    membership = get_membership(user)
+
+    if membership is not None:
+        if membership.role != "admin":
+            raise PermissionDenied(
+                (
+                    "Nie masz uprawnień "
+                    "do zarządzania kierowcami."
+                )
+            )
+
+        return
+
     if user_is_superuser(user):
         return
 
-    membership = get_membership(user)
-
-    if membership is None:
-        raise PermissionDenied(
-            "Nie jesteś przypisany do żadnej organizacji."
+    raise PermissionDenied(
+        (
+            "Nie jesteś przypisany "
+            "do żadnej organizacji."
         )
-
-    if membership.role != "admin":
-        raise PermissionDenied(
-            "Nie masz uprawnień do zarządzania kierowcami."
-        )
+    )
 
 
-class DriverViewSet(viewsets.ModelViewSet):
+class DriverViewSet(
+    viewsets.ModelViewSet
+):
     queryset = Driver.objects.all()
     serializer_class = DriverSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [
+        IsAuthenticated,
+    ]
 
     def get_queryset(self):
         user = self.request.user
 
+        membership = get_membership(
+            user
+        )
+
+        if membership is not None:
+            return Driver.objects.filter(
+                organization=(
+                    membership.organization
+                )
+            )
+
         if user_is_superuser(user):
             return Driver.objects.all()
 
-        membership = get_membership(user)
-
-        if membership is None:
-            return Driver.objects.none()
-
-        return Driver.objects.filter(
-            organization=membership.organization
-        )
+        return Driver.objects.none()
 
     @action(
         detail=False,
         methods=["post"],
         url_path="export",
     )
-    def export(self, request):
+    def export(
+        self,
+        request,
+    ):
         driver_ids = request.data.get(
             "driver_ids",
             [],
         )
 
-        if not isinstance(driver_ids, list):
+        if not isinstance(
+            driver_ids,
+            list,
+        ):
             return Response(
                 {
-                    "detail": "driver_ids musi być listą."
+                    "detail": (
+                        "driver_ids musi być listą."
+                    )
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
         try:
             driver_ids = [
                 int(driver_id)
-                for driver_id in driver_ids
+                for driver_id
+                in driver_ids
             ]
-        except (TypeError, ValueError):
+
+        except (
+            TypeError,
+            ValueError,
+        ):
             return Response(
                 {
-                    "detail": "Nieprawidłowe ID kierowcy."
+                    "detail": (
+                        "Nieprawidłowe ID kierowcy."
+                    )
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
-        queryset = self.get_queryset()
+        queryset = (
+            self.get_queryset()
+        )
 
         if driver_ids:
             queryset = queryset.filter(
@@ -133,9 +176,13 @@ class DriverViewSet(viewsets.ModelViewSet):
 
         if driver_ids:
             drivers = [
-                drivers_by_id[driver_id]
-                for driver_id in driver_ids
-                if driver_id in drivers_by_id
+                drivers_by_id[
+                    driver_id
+                ]
+                for driver_id
+                in driver_ids
+                if driver_id
+                in drivers_by_id
             ]
         else:
             drivers = list(
@@ -145,13 +192,17 @@ class DriverViewSet(viewsets.ModelViewSet):
                 )
             )
 
-        workbook = create_driver_workbook(
-            drivers
+        workbook = (
+            create_driver_workbook(
+                drivers
+            )
         )
 
         output = BytesIO()
 
-        workbook.save(output)
+        workbook.save(
+            output
+        )
 
         output.seek(0)
 
@@ -189,16 +240,22 @@ class DriverViewSet(viewsets.ModelViewSet):
     ):
         driver = (
             self.get_queryset()
-            .filter(pk=pk)
+            .filter(
+                pk=pk
+            )
             .first()
         )
 
         if driver is None:
             return Response(
                 {
-                    "detail": "Nie znaleziono kierowcy."
+                    "detail": (
+                        "Nie znaleziono kierowcy."
+                    )
                 },
-                status=status.HTTP_404_NOT_FOUND,
+                status=(
+                    status.HTTP_404_NOT_FOUND
+                ),
             )
 
         assignments = (
@@ -231,7 +288,9 @@ class DriverViewSet(viewsets.ModelViewSet):
 
         response = HttpResponse(
             pdf.getvalue(),
-            content_type="application/pdf",
+            content_type=(
+                "application/pdf"
+            ),
         )
 
         response[
@@ -242,101 +301,201 @@ class DriverViewSet(viewsets.ModelViewSet):
 
         return response
 
-    def perform_create(self, serializer):
+    def perform_create(
+        self,
+        serializer,
+    ):
         user = self.request.user
 
-        if user_is_superuser(user):
-            with set_actor(user):
-                serializer.save()
+        membership = get_membership(
+            user
+        )
+
+        if membership is not None:
+            if membership.role != "admin":
+                raise PermissionDenied(
+                    (
+                        "Nie masz uprawnień "
+                        "do dodawania kierowców."
+                    )
+                )
+
+            with set_actor(
+                user
+            ):
+                serializer.save(
+                    organization=(
+                        membership.organization
+                    )
+                )
 
             return
 
-        membership = get_membership(user)
-
-        if membership is None:
-            raise PermissionDenied(
-                "Nie jesteś przypisany do żadnej organizacji."
+        if user_is_superuser(user):
+            organization = (
+                serializer.validated_data.get(
+                    "organization"
+                )
             )
 
-        if membership.role != "admin":
-            raise PermissionDenied(
-                "Nie masz uprawnień do dodawania kierowców."
-            )
+            if organization is None:
+                raise PermissionDenied(
+                    (
+                        "Superadministrator bez "
+                        "przypisanej organizacji "
+                        "musi wskazać organizację."
+                    )
+                )
 
-        with set_actor(user):
-            serializer.save(
-                organization=membership.organization
-            )
+            with set_actor(
+                user
+            ):
+                serializer.save(
+                    organization=organization
+                )
 
-    def perform_update(self, serializer):
+            return
+
+        raise PermissionDenied(
+            (
+                "Nie jesteś przypisany "
+                "do żadnej organizacji."
+            )
+        )
+
+    def perform_update(
+        self,
+        serializer,
+    ):
         user = self.request.user
-
-        ensure_driver_management_permission(user)
-
         driver = self.get_object()
 
-        if user_is_superuser(user):
-            with set_actor(user):
-                serializer.save()
+        ensure_driver_management_permission(
+            user
+        )
+
+        membership = get_membership(
+            user
+        )
+
+        if membership is not None:
+            if (
+                driver.organization_id
+                != membership.organization_id
+            ):
+                raise PermissionDenied(
+                    (
+                        "Nie masz dostępu "
+                        "do tego kierowcy."
+                    )
+                )
+
+            with set_actor(
+                user
+            ):
+                serializer.save(
+                    organization=(
+                        membership.organization
+                    )
+                )
 
             return
 
-        membership = get_membership(user)
-
-        if membership is None:
-            raise PermissionDenied(
-                "Nie jesteś przypisany do żadnej organizacji."
+        if user_is_superuser(user):
+            organization = (
+                serializer.validated_data.get(
+                    "organization",
+                    driver.organization,
+                )
             )
 
-        if (
-            driver.organization_id
-            != membership.organization_id
-        ):
-            raise PermissionDenied(
-                "Nie masz dostępu do tego kierowcy."
-            )
+            if organization is None:
+                raise PermissionDenied(
+                    (
+                        "Nie można zapisać kierowcy "
+                        "bez organizacji."
+                    )
+                )
 
-        with set_actor(user):
-            serializer.save(
-                organization=membership.organization
-            )
+            with set_actor(
+                user
+            ):
+                serializer.save(
+                    organization=organization
+                )
 
-    def perform_destroy(self, instance):
+            return
+
+        raise PermissionDenied(
+            (
+                "Nie jesteś przypisany "
+                "do żadnej organizacji."
+            )
+        )
+
+    def perform_destroy(
+        self,
+        instance,
+    ):
         user = self.request.user
 
-        ensure_driver_management_permission(user)
+        ensure_driver_management_permission(
+            user
+        )
 
-        if user_is_superuser(user):
-            with set_actor(user):
+        membership = get_membership(
+            user
+        )
+
+        if membership is not None:
+            if (
+                instance.organization_id
+                != membership.organization_id
+            ):
+                raise PermissionDenied(
+                    (
+                        "Nie masz dostępu "
+                        "do tego kierowcy."
+                    )
+                )
+
+            with set_actor(
+                user
+            ):
                 instance.delete()
 
             return
 
-        membership = get_membership(user)
+        if user_is_superuser(user):
+            with set_actor(
+                user
+            ):
+                instance.delete()
 
-        if membership is None:
-            raise PermissionDenied(
-                "Nie jesteś przypisany do żadnej organizacji."
+            return
+
+        raise PermissionDenied(
+            (
+                "Nie jesteś przypisany "
+                "do żadnej organizacji."
             )
-
-        if (
-            instance.organization_id
-            != membership.organization_id
-        ):
-            raise PermissionDenied(
-                "Nie masz dostępu do tego kierowcy."
-            )
-
-        with set_actor(user):
-            instance.delete()
+        )
 
 
 class DriverVehicleAssignmentViewSet(
     viewsets.ModelViewSet
 ):
-    queryset = DriverVehicleAssignment.objects.all()
-    serializer_class = DriverVehicleAssignmentSerializer
-    permission_classes = [IsAuthenticated]
+    queryset = (
+        DriverVehicleAssignment.objects.all()
+    )
+
+    serializer_class = (
+        DriverVehicleAssignmentSerializer
+    )
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
 
     def get_queryset(self):
         user = self.request.user
@@ -348,88 +507,144 @@ class DriverVehicleAssignmentViewSet(
                 "vehicle__company",
                 "vehicle__organization",
                 "driver",
+                "driver__organization",
             )
         )
+
+        membership = get_membership(
+            user
+        )
+
+        if membership is not None:
+            queryset = queryset.filter(
+                vehicle__organization=(
+                    membership.organization
+                ),
+                driver__organization=(
+                    membership.organization
+                ),
+            )
+
+            if membership.role == "admin":
+                return queryset
+
+            company_ids = (
+                membership
+                .company_accesses
+                .filter(
+                    company__is_active=True
+                )
+                .values_list(
+                    "company_id",
+                    flat=True,
+                )
+            )
+
+            return queryset.filter(
+                vehicle__company_id__in=(
+                    company_ids
+                ),
+                vehicle__company__is_active=True,
+            )
 
         if user_is_superuser(user):
             return queryset
 
-        membership = get_membership(user)
-
-        if membership is None:
-            return DriverVehicleAssignment.objects.none()
-
-        queryset = queryset.filter(
-            vehicle__organization=membership.organization
+        return (
+            DriverVehicleAssignment.objects
+            .none()
         )
 
-        if membership.role == "admin":
-            return queryset
-
-        company_ids = (
-            membership.company_accesses
-            .values_list(
-                "company_id",
-                flat=True,
-            )
-        )
-
-        return queryset.filter(
-            vehicle__company_id__in=company_ids,
-            vehicle__company__is_active=True,
-        )
-
-    def check_write_access(self, vehicle):
+    def check_write_access(
+        self,
+        vehicle,
+    ):
         user = self.request.user
 
+        membership = get_membership(
+            user
+        )
+
+        if membership is not None:
+            if vehicle.organization_id is None:
+                raise PermissionDenied(
+                    (
+                        "Pojazd nie ma przypisanej "
+                        "organizacji."
+                    )
+                )
+
+            if (
+                vehicle.organization_id
+                != membership.organization_id
+            ):
+                raise PermissionDenied(
+                    (
+                        "Nie masz dostępu "
+                        "do tego pojazdu."
+                    )
+                )
+
+            if membership.role == "admin":
+                return
+
+            if not vehicle.company_id:
+                raise PermissionDenied(
+                    (
+                        "Nie masz uprawnień do "
+                        "zarządzania przypisaniami "
+                        "tego pojazdu."
+                    )
+                )
+
+            if not vehicle.company.is_active:
+                raise PermissionDenied(
+                    (
+                        "Nie można zmieniać "
+                        "przypisań w nieaktywnej "
+                        "spółce."
+                    )
+                )
+
+            access = (
+                membership
+                .company_accesses
+                .filter(
+                    company_id=(
+                        vehicle.company_id
+                    ),
+                    company__is_active=True,
+                )
+                .first()
+            )
+
+            if access is None:
+                raise PermissionDenied(
+                    (
+                        "Nie masz dostępu "
+                        "do tej spółki."
+                    )
+                )
+
+            if access.role != "editor":
+                raise PermissionDenied(
+                    (
+                        "Masz tylko uprawnienia "
+                        "do odczytu."
+                    )
+                )
+
+            return
+
         if user_is_superuser(user):
             return
 
-        membership = get_membership(user)
-
-        if membership is None:
-            raise PermissionDenied(
-                "Nie jesteś przypisany do żadnej organizacji."
+        raise PermissionDenied(
+            (
+                "Nie jesteś przypisany "
+                "do żadnej organizacji."
             )
-
-        if (
-            vehicle.organization_id
-            != membership.organization_id
-        ):
-            raise PermissionDenied(
-                "Nie masz dostępu do tego pojazdu."
-            )
-
-        if membership.role == "admin":
-            return
-
-        if not vehicle.company_id:
-            raise PermissionDenied(
-                "Nie masz uprawnień do zarządzania przypisaniami tego pojazdu."
-            )
-
-        if not vehicle.company.is_active:
-            raise PermissionDenied(
-                "Nie można zmieniać przypisań w nieaktywnej spółce."
-            )
-
-        access = (
-            membership.company_accesses
-            .filter(
-                company_id=vehicle.company_id
-            )
-            .first()
         )
-
-        if access is None:
-            raise PermissionDenied(
-                "Nie masz dostępu do tej spółki."
-            )
-
-        if access.role != "editor":
-            raise PermissionDenied(
-                "Masz tylko uprawnienia do odczytu."
-            )
 
     def validate_driver_access(
         self,
@@ -439,38 +654,94 @@ class DriverVehicleAssignmentViewSet(
         if driver is None:
             return
 
+        if vehicle.organization_id is None:
+            raise PermissionDenied(
+                (
+                    "Pojazd nie ma przypisanej "
+                    "organizacji."
+                )
+            )
+
+        if driver.organization_id is None:
+            raise PermissionDenied(
+                (
+                    "Kierowca nie ma przypisanej "
+                    "organizacji."
+                )
+            )
+
         if (
             vehicle.organization_id
-            and driver.organization_id
-            and vehicle.organization_id
             != driver.organization_id
         ):
             raise PermissionDenied(
-                "Kierowca i pojazd muszą należeć do tej samej organizacji."
+                (
+                    "Kierowca i pojazd muszą "
+                    "należeć do tej samej "
+                    "organizacji."
+                )
             )
 
-    def perform_create(self, serializer):
-        vehicle = serializer.validated_data[
-            "vehicle"
-        ]
+        membership = get_membership(
+            self.request.user
+        )
+
+        if (
+            membership is not None
+            and (
+                driver.organization_id
+                != membership.organization_id
+            )
+        ):
+            raise PermissionDenied(
+                (
+                    "Nie masz dostępu "
+                    "do tego kierowcy."
+                )
+            )
+
+    def perform_create(
+        self,
+        serializer,
+    ):
+        vehicle = (
+            serializer.validated_data[
+                "vehicle"
+            ]
+        )
 
         driver = (
             serializer.validated_data
-            .get("driver")
+            .get(
+                "driver"
+            )
         )
 
-        self.check_write_access(vehicle)
+        self.check_write_access(
+            vehicle
+        )
 
         self.validate_driver_access(
             vehicle,
             driver,
         )
 
-        with set_actor(self.request.user):
+        with set_actor(
+            self.request.user
+        ):
             serializer.save()
 
-    def perform_update(self, serializer):
-        assignment = self.get_object()
+    def perform_update(
+        self,
+        serializer,
+    ):
+        assignment = (
+            self.get_object()
+        )
+
+        self.check_write_access(
+            assignment.vehicle
+        )
 
         vehicle = (
             serializer.validated_data
@@ -488,20 +759,29 @@ class DriverVehicleAssignmentViewSet(
             )
         )
 
-        self.check_write_access(vehicle)
+        self.check_write_access(
+            vehicle
+        )
 
         self.validate_driver_access(
             vehicle,
             driver,
         )
 
-        with set_actor(self.request.user):
+        with set_actor(
+            self.request.user
+        ):
             serializer.save()
 
-    def perform_destroy(self, instance):
+    def perform_destroy(
+        self,
+        instance,
+    ):
         self.check_write_access(
             instance.vehicle
         )
 
-        with set_actor(self.request.user):
+        with set_actor(
+            self.request.user
+        ):
             instance.delete()

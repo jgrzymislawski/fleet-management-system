@@ -3,6 +3,8 @@ from django.http import HttpResponse
 
 from openpyxl import load_workbook
 
+from auditlog.context import set_actor
+
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -36,7 +38,7 @@ from .import_utils import (
 
 class VehicleImportTemplateView(APIView):
     permission_classes = [
-        IsAuthenticated
+        IsAuthenticated,
     ]
 
     def get(
@@ -68,7 +70,7 @@ class VehicleImportTemplateView(APIView):
 
 class VehicleImportView(APIView):
     permission_classes = [
-        IsAuthenticated
+        IsAuthenticated,
     ]
 
     def post(
@@ -104,7 +106,8 @@ class VehicleImportView(APIView):
             return Response(
                 {
                     "detail": (
-                        "Obsługiwane są wyłącznie pliki XLSX."
+                        "Obsługiwane są wyłącznie "
+                        "pliki XLSX."
                     )
                 },
                 status=(
@@ -122,7 +125,8 @@ class VehicleImportView(APIView):
             return Response(
                 {
                     "detail": (
-                        "Nie udało się odczytać pliku XLSX."
+                        "Nie udało się odczytać "
+                        "pliku XLSX."
                     )
                 },
                 status=(
@@ -142,19 +146,22 @@ class VehicleImportView(APIView):
 
         received_headers = [
             header
-            for header in headers
+            for header
+            in headers
             if header
         ]
 
         missing_headers = [
             header
-            for header in VEHICLE_IMPORT_HEADERS
+            for header
+            in VEHICLE_IMPORT_HEADERS
             if header not in received_headers
         ]
 
         duplicate_headers = [
             header
-            for header in set(
+            for header
+            in set(
                 received_headers
             )
             if (
@@ -169,7 +176,8 @@ class VehicleImportView(APIView):
             return Response(
                 {
                     "detail": (
-                        "W pliku brakuje wymaganych kolumn."
+                        "W pliku brakuje "
+                        "wymaganych kolumn."
                     ),
                     "missing_headers": (
                         missing_headers
@@ -184,7 +192,8 @@ class VehicleImportView(APIView):
             return Response(
                 {
                     "detail": (
-                        "W pliku znajdują się zduplikowane nagłówki."
+                        "W pliku znajdują się "
+                        "zduplikowane nagłówki."
                     ),
                     "duplicate_headers": (
                         duplicate_headers
@@ -215,8 +224,9 @@ class VehicleImportView(APIView):
             return Response(
                 {
                     "detail": (
-                        "Użytkownik nie jest przypisany "
-                        "do żadnej organizacji."
+                        "Użytkownik nie jest "
+                        "przypisany do żadnej "
+                        "organizacji."
                     )
                 },
                 status=(
@@ -228,13 +238,13 @@ class VehicleImportView(APIView):
         skipped = 0
         errors = []
 
-        seen_registration_numbers = (
-            set()
-        )
-
+        seen_registration_numbers = set()
         seen_vins = set()
 
-        for row_number, row in enumerate(
+        for (
+            row_number,
+            row,
+        ) in enumerate(
             worksheet.iter_rows(
                 min_row=2,
                 values_only=True,
@@ -271,11 +281,15 @@ class VehicleImportView(APIView):
 
             try:
                 brand = normalize_text(
-                    row_data["Marka"]
+                    row_data[
+                        "Marka"
+                    ]
                 )
 
                 model = normalize_text(
-                    row_data["Model"]
+                    row_data[
+                        "Model"
+                    ]
                 )
 
                 registration_number = (
@@ -287,25 +301,37 @@ class VehicleImportView(APIView):
                 )
 
                 vin = normalize_vin(
-                    row_data["VIN"]
+                    row_data[
+                        "VIN"
+                    ]
                 )
 
                 company_name = normalize_text(
-                    row_data["Spółka"]
+                    row_data[
+                        "Spółka"
+                    ]
                 )
 
                 branch = normalize_text(
-                    row_data["Oddział"]
+                    row_data[
+                        "Oddział"
+                    ]
                 )
 
                 if not brand:
                     raise ValueError(
-                        "Pole „Marka” jest wymagane."
+                        (
+                            "Pole „Marka” "
+                            "jest wymagane."
+                        )
                     )
 
                 if not model:
                     raise ValueError(
-                        "Pole „Model” jest wymagane."
+                        (
+                            "Pole „Model” "
+                            "jest wymagane."
+                        )
                     )
 
                 if not registration_number:
@@ -322,8 +348,9 @@ class VehicleImportView(APIView):
                 ):
                     raise ValueError(
                         (
-                            "Numer rejestracyjny występuje "
-                            "więcej niż raz w pliku."
+                            "Numer rejestracyjny "
+                            "występuje więcej niż "
+                            "raz w pliku."
                         )
                     )
 
@@ -337,8 +364,8 @@ class VehicleImportView(APIView):
                 ):
                     raise ValueError(
                         (
-                            "VIN występuje więcej niż "
-                            "raz w pliku."
+                            "VIN występuje więcej "
+                            "niż raz w pliku."
                         )
                     )
 
@@ -347,27 +374,27 @@ class VehicleImportView(APIView):
                         vin
                     )
 
-                if Vehicle.objects.filter(
-                    registration_number__iexact=(
-                        registration_number
+                if (
+                    Vehicle.objects
+                    .filter(
+                        registration_number__iexact=(
+                            registration_number
+                        )
                     )
-                ).exists():
+                    .exists()
+                ):
                     skipped += 1
 
                     errors.append(
                         {
-                            "row": (
-                                row_number
-                            ),
+                            "row": row_number,
                             "message": (
                                 "Pojazd o numerze "
                                 "rejestracyjnym "
                                 f"{registration_number} "
                                 "już istnieje."
                             ),
-                            "type": (
-                                "duplicate"
-                            ),
+                            "type": "duplicate",
                         }
                     )
 
@@ -375,31 +402,31 @@ class VehicleImportView(APIView):
 
                 if (
                     vin
-                    and Vehicle.objects.filter(
+                    and Vehicle.objects
+                    .filter(
                         vin__iexact=vin
-                    ).exists()
+                    )
+                    .exists()
                 ):
                     skipped += 1
 
                     errors.append(
                         {
-                            "row": (
-                                row_number
-                            ),
+                            "row": row_number,
                             "message": (
                                 "Pojazd o VIN "
                                 f"{vin} już istnieje."
                             ),
-                            "type": (
-                                "duplicate"
-                            ),
+                            "type": "duplicate",
                         }
                     )
 
                     continue
 
                 year = parse_integer(
-                    row_data["Rok"],
+                    row_data[
+                        "Rok"
+                    ],
                     "Rok",
                     required=True,
                     minimum=1900,
@@ -483,6 +510,21 @@ class VehicleImportView(APIView):
                     )
                 )
 
+                if (
+                    company is not None
+                    and (
+                        company.organization_id
+                        != organization.id
+                    )
+                ):
+                    raise ValueError(
+                        (
+                            "Wybrana spółka nie należy "
+                            "do organizacji importującego "
+                            "użytkownika."
+                        )
+                    )
+
                 serializer_data = {
                     "brand": brand,
                     "model": model,
@@ -501,9 +543,7 @@ class VehicleImportView(APIView):
                     "fuel_type": (
                         fuel_type
                     ),
-                    "mileage": (
-                        mileage
-                    ),
+                    "mileage": mileage,
                     "status": (
                         vehicle_status
                     ),
@@ -512,9 +552,7 @@ class VehicleImportView(APIView):
                         if company
                         else None
                     ),
-                    "branch": (
-                        branch
-                    ),
+                    "branch": branch,
                     "inspection_expiry_date": (
                         inspection_date
                     ),
@@ -523,17 +561,11 @@ class VehicleImportView(APIView):
                     ),
                 }
 
-                serializer = (
-                    VehicleSerializer(
-                        data=(
-                            serializer_data
-                        ),
-                        context={
-                            "request": (
-                                request
-                            ),
-                        },
-                    )
+                serializer = VehicleSerializer(
+                    data=serializer_data,
+                    context={
+                        "request": request,
+                    },
                 )
 
                 serializer.is_valid(
@@ -541,43 +573,38 @@ class VehicleImportView(APIView):
                 )
 
                 with transaction.atomic():
-                    serializer.save(
-                        organization=(
-                            organization
+                    with set_actor(
+                        request.user
+                    ):
+                        serializer.save(
+                            organization=(
+                                organization
+                            )
                         )
-                    )
 
                 imported += 1
 
             except ValueError as exc:
                 errors.append(
                     {
-                        "row": (
-                            row_number
+                        "row": row_number,
+                        "message": str(
+                            exc
                         ),
-                        "message": (
-                            str(exc)
-                        ),
-                        "type": (
-                            "validation"
-                        ),
+                        "type": "validation",
                     }
                 )
 
             except IntegrityError:
                 errors.append(
                     {
-                        "row": (
-                            row_number
-                        ),
+                        "row": row_number,
                         "message": (
                             "Nie udało się zapisać "
                             "pojazdu z powodu "
                             "konfliktu danych."
                         ),
-                        "type": (
-                            "database"
-                        ),
+                        "type": "database",
                     }
                 )
 
@@ -602,32 +629,20 @@ class VehicleImportView(APIView):
 
                 errors.append(
                     {
-                        "row": (
-                            row_number
-                        ),
-                        "message": (
-                            message
-                        ),
-                        "type": (
-                            "validation"
-                        ),
+                        "row": row_number,
+                        "message": message,
+                        "type": "validation",
                     }
                 )
 
         return Response(
             {
-                "imported": (
-                    imported
-                ),
-                "skipped": (
-                    skipped
-                ),
+                "imported": imported,
+                "skipped": skipped,
                 "errors_count": (
                     len(errors)
                 ),
-                "errors": (
-                    errors
-                ),
+                "errors": errors,
             },
             status=(
                 status.HTTP_200_OK
@@ -640,19 +655,27 @@ class VehicleImportView(APIView):
         membership,
         company_name,
     ):
-        if user_is_superuser(
-            request.user
-        ):
+        if membership is not None:
             if not company_name:
+                if (
+                    membership.role
+                    == "admin"
+                ):
+                    return None
+
                 raise ValueError(
                     (
-                        "Superadministrator musi "
-                        "podać spółkę."
+                        "Pole „Spółka” "
+                        "jest wymagane."
                     )
                 )
 
             companies = (
-                Company.objects.filter(
+                Company.objects
+                .filter(
+                    organization=(
+                        membership.organization
+                    ),
                     name__iexact=(
                         company_name
                     ),
@@ -660,26 +683,87 @@ class VehicleImportView(APIView):
                 )
             )
 
-            if (
-                companies.count()
-                == 0
-            ):
+            if not companies.exists():
                 raise ValueError(
                     (
-                        "Nie znaleziono spółki "
+                        "Nie znaleziono aktywnej "
+                        "spółki "
+                        f"„{company_name}” "
+                        "w Twojej organizacji."
+                    )
+                )
+
+            if companies.count() > 1:
+                raise ValueError(
+                    (
+                        "W Twojej organizacji "
+                        "istnieje więcej niż jedna "
+                        "aktywna spółka o nazwie "
                         f"„{company_name}”."
                     )
                 )
 
+            company = (
+                companies.first()
+            )
+
             if (
-                companies.count()
-                > 1
+                membership.role
+                != "admin"
+                and not can_edit_company(
+                    membership,
+                    company,
+                )
             ):
+                raise ValueError(
+                    (
+                        "Nie masz uprawnień "
+                        "do dodawania pojazdów "
+                        "do spółki "
+                        f"„{company.name}”."
+                    )
+                )
+
+            return company
+
+        if user_is_superuser(
+            request.user
+        ):
+            if not company_name:
+                raise ValueError(
+                    (
+                        "Superadministrator bez "
+                        "przypisanej organizacji "
+                        "musi podać spółkę."
+                    )
+                )
+
+            companies = (
+                Company.objects
+                .filter(
+                    name__iexact=(
+                        company_name
+                    ),
+                    is_active=True,
+                )
+            )
+
+            if not companies.exists():
+                raise ValueError(
+                    (
+                        "Nie znaleziono aktywnej "
+                        "spółki "
+                        f"„{company_name}”."
+                    )
+                )
+
+            if companies.count() > 1:
                 raise ValueError(
                     (
                         "Nazwa spółki "
                         f"„{company_name}” "
-                        "nie jest jednoznaczna."
+                        "nie jest jednoznaczna "
+                        "między organizacjami."
                     )
                 )
 
@@ -687,62 +771,12 @@ class VehicleImportView(APIView):
                 companies.first()
             )
 
-        if not company_name:
-            if (
-                membership.role
-                == "admin"
-            ):
-                return None
-
-            raise ValueError(
-                (
-                    "Pole „Spółka” "
-                    "jest wymagane."
-                )
+        raise ValueError(
+            (
+                "Nie można ustalić "
+                "spółki użytkownika."
             )
-
-        company = (
-            Company.objects
-            .filter(
-                organization=(
-                    membership.organization
-                ),
-                name__iexact=(
-                    company_name
-                ),
-                is_active=True,
-            )
-            .first()
         )
-
-        if company is None:
-            raise ValueError(
-                (
-                    "Nie znaleziono aktywnej "
-                    "spółki "
-                    f"„{company_name}” "
-                    "w Twojej organizacji."
-                )
-            )
-
-        if (
-            membership.role
-            != "admin"
-            and not can_edit_company(
-                membership,
-                company,
-            )
-        ):
-            raise ValueError(
-                (
-                    "Nie masz uprawnień "
-                    "do dodawania pojazdów "
-                    "do spółki "
-                    f"„{company.name}”."
-                )
-            )
-
-        return company
 
     def get_organization(
         self,
@@ -750,6 +784,11 @@ class VehicleImportView(APIView):
         membership,
         company,
     ):
+        if membership is not None:
+            return (
+                membership.organization
+            )
+
         if user_is_superuser(
             request.user
         ):
@@ -757,7 +796,7 @@ class VehicleImportView(APIView):
                 raise ValueError(
                     (
                         "Nie można ustalić "
-                        "organizacji."
+                        "organizacji dla pojazdu."
                     )
                 )
 
@@ -765,6 +804,9 @@ class VehicleImportView(APIView):
                 company.organization
             )
 
-        return (
-            membership.organization
+        raise ValueError(
+            (
+                "Nie można ustalić "
+                "organizacji użytkownika."
+            )
         )

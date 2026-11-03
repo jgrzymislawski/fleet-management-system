@@ -381,8 +381,8 @@ def create_vehicle_import_template():
         (
             "Spółka",
             (
-                "Dokładna nazwa spółki istniejącej w systemie. "
-                "Użytkownik musi mieć do niej uprawnienia."
+                "Dokładna nazwa aktywnej spółki należącej do Twojej organizacji. "
+                "Użytkownik musi mieć uprawnienia do dodawania do niej pojazdów."
             ),
         ),
         (

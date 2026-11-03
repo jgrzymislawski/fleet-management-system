@@ -20,12 +20,17 @@ from .views import (
 )
 
 
-class VehicleBulkUpdateView(APIView):
+class VehicleBulkUpdateView(
+    APIView
+):
     permission_classes = [
         IsAuthenticated,
     ]
 
-    def post(self, request):
+    def post(
+        self,
+        request,
+    ):
         vehicle_ids = request.data.get(
             "vehicle_ids",
             [],
@@ -49,7 +54,9 @@ class VehicleBulkUpdateView(APIView):
                         "vehicle_ids musi być listą."
                     )
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
         if not vehicle_ids:
@@ -59,13 +66,16 @@ class VehicleBulkUpdateView(APIView):
                         "Nie wybrano żadnych pojazdów."
                     )
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
         try:
             vehicle_ids = [
                 int(vehicle_id)
-                for vehicle_id in vehicle_ids
+                for vehicle_id
+                in vehicle_ids
             ]
 
         except (
@@ -79,8 +89,16 @@ class VehicleBulkUpdateView(APIView):
                         "ID pojazdu."
                     )
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
+
+        vehicle_ids = list(
+            dict.fromkeys(
+                vehicle_ids
+            )
+        )
 
         allowed_actions = {
             "change_status",
@@ -95,7 +113,9 @@ class VehicleBulkUpdateView(APIView):
                         "Nieprawidłowa operacja masowa."
                     )
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
 
         membership = get_membership(
@@ -115,7 +135,9 @@ class VehicleBulkUpdateView(APIView):
                         "do żadnej organizacji."
                     )
                 },
-                status=status.HTTP_403_FORBIDDEN,
+                status=(
+                    status.HTTP_403_FORBIDDEN
+                ),
             )
 
         company = None
@@ -134,7 +156,9 @@ class VehicleBulkUpdateView(APIView):
                             "Nieprawidłowy status pojazdu."
                         )
                     },
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=(
+                        status.HTTP_400_BAD_REQUEST
+                    ),
                 )
 
         if action == "change_branch":
@@ -151,7 +175,9 @@ class VehicleBulkUpdateView(APIView):
                             "Oddział musi być tekstem."
                         )
                     },
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=(
+                        status.HTTP_400_BAD_REQUEST
+                    ),
                 )
 
             value = value.strip()
@@ -164,7 +190,9 @@ class VehicleBulkUpdateView(APIView):
                             "maksymalnie 150 znaków."
                         )
                     },
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=(
+                        status.HTTP_400_BAD_REQUEST
+                    ),
                 )
 
         if action == "change_company":
@@ -177,10 +205,8 @@ class VehicleBulkUpdateView(APIView):
 
                 if (
                     membership is not None
-                    and membership.role != "admin"
-                    and not user_is_superuser(
-                        request.user
-                    )
+                    and membership.role
+                    != "admin"
                 ):
                     return Response(
                         {
@@ -190,7 +216,27 @@ class VehicleBulkUpdateView(APIView):
                                 "do spółki."
                             )
                         },
-                        status=status.HTTP_403_FORBIDDEN,
+                        status=(
+                            status.HTTP_403_FORBIDDEN
+                        ),
+                    )
+
+                if (
+                    membership is None
+                    and not user_is_superuser(
+                        request.user
+                    )
+                ):
+                    return Response(
+                        {
+                            "detail": (
+                                "Nie masz uprawnień "
+                                "do tej operacji."
+                            )
+                        },
+                        status=(
+                            status.HTTP_403_FORBIDDEN
+                        ),
                     )
 
             else:
@@ -209,42 +255,37 @@ class VehicleBulkUpdateView(APIView):
                                 "Nieprawidłowe ID spółki."
                             )
                         },
-                        status=status.HTTP_400_BAD_REQUEST,
+                        status=(
+                            status.HTTP_400_BAD_REQUEST
+                        ),
                     )
 
-                company = (
-                    Company.objects
-                    .filter(
-                        id=company_id
-                    )
-                    .first()
-                )
-
-                if company is None:
-                    return Response(
-                        {
-                            "detail": (
-                                "Nie znaleziono wybranej "
-                                "spółki."
-                            )
-                        },
-                        status=status.HTTP_404_NOT_FOUND,
+                if membership is not None:
+                    company = (
+                        Company.objects
+                        .filter(
+                            id=company_id,
+                            organization=(
+                                membership.organization
+                            ),
+                            is_active=True,
+                        )
+                        .first()
                     )
 
-                if not company.is_active:
-                    return Response(
-                        {
-                            "detail": (
-                                "Nie można przypisać pojazdów "
-                                "do nieaktywnej spółki."
-                            )
-                        },
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+                    if company is None:
+                        return Response(
+                            {
+                                "detail": (
+                                    "Nie znaleziono aktywnej "
+                                    "spółki w Twojej organizacji."
+                                )
+                            },
+                            status=(
+                                status.HTTP_404_NOT_FOUND
+                            ),
+                        )
 
-                if not user_is_superuser(
-                    request.user
-                ):
                     try:
                         validate_company_for_vehicle(
                             membership,
@@ -254,12 +295,55 @@ class VehicleBulkUpdateView(APIView):
                     except PermissionDenied as exc:
                         return Response(
                             {
-                                "detail": str(
-                                    exc.detail
+                                "detail": (
+                                    str(
+                                        exc.detail
+                                    )
                                 )
                             },
-                            status=status.HTTP_403_FORBIDDEN,
+                            status=(
+                                status.HTTP_403_FORBIDDEN
+                            ),
                         )
+
+                elif user_is_superuser(
+                    request.user
+                ):
+                    company = (
+                        Company.objects
+                        .filter(
+                            id=company_id,
+                            is_active=True,
+                            organization__is_active=True,
+                        )
+                        .first()
+                    )
+
+                    if company is None:
+                        return Response(
+                            {
+                                "detail": (
+                                    "Nie znaleziono aktywnej "
+                                    "spółki."
+                                )
+                            },
+                            status=(
+                                status.HTTP_404_NOT_FOUND
+                            ),
+                        )
+
+                else:
+                    return Response(
+                        {
+                            "detail": (
+                                "Nie masz uprawnień "
+                                "do tej operacji."
+                            )
+                        },
+                        status=(
+                            status.HTTP_403_FORBIDDEN
+                        ),
+                    )
 
         vehicles = (
             Vehicle.objects
@@ -272,6 +356,13 @@ class VehicleBulkUpdateView(APIView):
             )
         )
 
+        if membership is not None:
+            vehicles = vehicles.filter(
+                organization=(
+                    membership.organization
+                )
+            )
+
         vehicles_by_id = {
             vehicle.id: vehicle
             for vehicle in vehicles
@@ -280,12 +371,13 @@ class VehicleBulkUpdateView(APIView):
         updated = 0
         unchanged = 0
         skipped = 0
-
         errors = []
 
         for vehicle_id in vehicle_ids:
-            vehicle = vehicles_by_id.get(
-                vehicle_id
+            vehicle = (
+                vehicles_by_id.get(
+                    vehicle_id
+                )
             )
 
             if vehicle is None:
@@ -293,9 +385,12 @@ class VehicleBulkUpdateView(APIView):
 
                 errors.append(
                     {
-                        "vehicle_id": vehicle_id,
+                        "vehicle_id": (
+                            vehicle_id
+                        ),
                         "message": (
-                            "Nie znaleziono pojazdu."
+                            "Nie znaleziono pojazdu "
+                            "lub nie masz do niego dostępu."
                         ),
                     }
                 )
@@ -311,8 +406,24 @@ class VehicleBulkUpdateView(APIView):
                 if action == "change_company":
                     if (
                         company is not None
-                        and company.organization_id
-                        != vehicle.organization_id
+                        and (
+                            vehicle.organization_id
+                            is None
+                        )
+                    ):
+                        raise PermissionDenied(
+                            (
+                                "Pojazd nie ma przypisanej "
+                                "organizacji."
+                            )
+                        )
+
+                    if (
+                        company is not None
+                        and (
+                            company.organization_id
+                            != vehicle.organization_id
+                        )
                     ):
                         raise PermissionDenied(
                             (
@@ -328,7 +439,10 @@ class VehicleBulkUpdateView(APIView):
                         request.user
                     ):
                         if action == "change_status":
-                            if vehicle.status != value:
+                            if (
+                                vehicle.status
+                                != value
+                            ):
                                 vehicle.status = value
 
                                 vehicle.save(
@@ -340,7 +454,10 @@ class VehicleBulkUpdateView(APIView):
                                 changed = True
 
                         elif action == "change_branch":
-                            if vehicle.branch != value:
+                            if (
+                                vehicle.branch
+                                != value
+                            ):
                                 vehicle.branch = value
 
                                 vehicle.save(
@@ -362,7 +479,9 @@ class VehicleBulkUpdateView(APIView):
                                 vehicle.company_id
                                 != new_company_id
                             ):
-                                vehicle.company = company
+                                vehicle.company = (
+                                    company
+                                )
 
                                 vehicle.save(
                                     update_fields=[
@@ -390,7 +509,9 @@ class VehicleBulkUpdateView(APIView):
                             str(vehicle)
                         ),
                         "message": (
-                            str(exc.detail)
+                            str(
+                                exc.detail
+                            )
                         ),
                     }
                 )
@@ -417,10 +538,12 @@ class VehicleBulkUpdateView(APIView):
                 "updated": updated,
                 "unchanged": unchanged,
                 "skipped": skipped,
-                "errors_count": len(
-                    errors
+                "errors_count": (
+                    len(errors)
                 ),
                 "errors": errors,
             },
-            status=status.HTTP_200_OK,
+            status=(
+                status.HTTP_200_OK
+            ),
         )

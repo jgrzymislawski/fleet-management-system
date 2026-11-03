@@ -1,7 +1,9 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+
 from auditlog.registry import auditlog
+
 from organizations.models import Organization
 
 
@@ -10,8 +12,6 @@ class Driver(models.Model):
         Organization,
         on_delete=models.CASCADE,
         related_name="drivers",
-        null=True,
-        blank=True,
     )
 
     first_name = models.CharField(
@@ -48,8 +48,34 @@ class Driver(models.Model):
 
     hired_at = models.DateField()
 
+    def clean(self):
+        if self.organization_id is None:
+            raise ValidationError(
+                {
+                    "organization": (
+                        "Kierowca musi należeć "
+                        "do organizacji."
+                    )
+                }
+            )
+
+    def save(
+        self,
+        *args,
+        **kwargs,
+    ):
+        self.full_clean()
+
+        super().save(
+            *args,
+            **kwargs,
+        )
+
     def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+        return (
+            f"{self.first_name} "
+            f"{self.last_name}"
+        )
 
 
 class DriverVehicleAssignment(models.Model):
@@ -101,19 +127,32 @@ class DriverVehicleAssignment(models.Model):
                 condition=Q(
                     end_date__isnull=True,
                 ),
-                name="unique_active_driver_assignment_per_vehicle",
+                name=(
+                    "unique_active_"
+                    "driver_assignment_"
+                    "per_vehicle"
+                ),
             )
         ]
 
     def clean(self):
         if self.driver and self.driver_name:
             raise ValidationError(
-                "Wybierz kierowcę z listy albo wpisz osobę ręcznie."
+                (
+                    "Wybierz kierowcę z listy "
+                    "albo wpisz osobę ręcznie."
+                )
             )
 
-        if not self.driver and not self.driver_name:
+        if (
+            not self.driver
+            and not self.driver_name
+        ):
             raise ValidationError(
-                "Musisz wybrać kierowcę albo wpisać osobę ręcznie."
+                (
+                    "Musisz wybrać kierowcę "
+                    "albo wpisać osobę ręcznie."
+                )
             )
 
         if (
@@ -123,35 +162,59 @@ class DriverVehicleAssignment(models.Model):
             raise ValidationError(
                 {
                     "end_date": (
-                        "Data zakończenia nie może być "
-                        "wcześniejsza niż data rozpoczęcia."
+                        "Data zakończenia nie może "
+                        "być wcześniejsza niż "
+                        "data rozpoczęcia."
+                    )
+                }
+            )
+
+        if self.vehicle.organization_id is None:
+            raise ValidationError(
+                {
+                    "vehicle": (
+                        "Pojazd nie ma przypisanej "
+                        "organizacji."
                     )
                 }
             )
 
         if self.driver:
-            vehicle_organization_id = (
-                self.vehicle.organization_id
-            )
-
-            driver_organization_id = (
-                self.driver.organization_id
-            )
+            if self.driver.organization_id is None:
+                raise ValidationError(
+                    {
+                        "driver": (
+                            "Kierowca nie ma "
+                            "przypisanej organizacji."
+                        )
+                    }
+                )
 
             if (
-                vehicle_organization_id
-                and driver_organization_id
-                and vehicle_organization_id
-                != driver_organization_id
+                self.vehicle.organization_id
+                != self.driver.organization_id
             ):
                 raise ValidationError(
                     {
                         "driver": (
-                            "Kierowca i pojazd muszą należeć "
-                            "do tej samej organizacji."
+                            "Kierowca i pojazd muszą "
+                            "należeć do tej samej "
+                            "organizacji."
                         )
                     }
                 )
+
+    def save(
+        self,
+        *args,
+        **kwargs,
+    ):
+        self.full_clean()
+
+        super().save(
+            *args,
+            **kwargs,
+        )
 
     @property
     def is_active(self):
@@ -180,5 +243,11 @@ class DriverVehicleAssignment(models.Model):
             f"{status}"
         )
 
-auditlog.register(Driver)
-auditlog.register(DriverVehicleAssignment)
+
+auditlog.register(
+    Driver
+)
+
+auditlog.register(
+    DriverVehicleAssignment
+)

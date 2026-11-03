@@ -75,9 +75,27 @@ def get_membership(user):
     )
 
 
+def is_system_administrator(actor):
+    if actor is None:
+        return False
+
+    return bool(
+        getattr(
+            actor,
+            "is_superuser",
+            False,
+        )
+    )
+
+
 def get_actor_name(actor):
     if actor is None:
         return "System"
+
+    if is_system_administrator(
+        actor
+    ):
+        return "Administrator systemu"
 
     full_name = (
         f"{actor.first_name or ''} "
@@ -127,6 +145,7 @@ def get_changes_dict(log_entry):
             changes = json.loads(
                 changes
             )
+
         except json.JSONDecodeError:
             return {}
 
@@ -150,6 +169,7 @@ def normalize_id(value):
 
     try:
         return int(value)
+
     except (
         TypeError,
         ValueError,
@@ -903,6 +923,12 @@ class OrganizationActivityView(
 
                         "name": (
                             get_actor_name(
+                                actor
+                            )
+                        ),
+
+                        "is_system_admin": (
+                            is_system_administrator(
                                 actor
                             )
                         ),
