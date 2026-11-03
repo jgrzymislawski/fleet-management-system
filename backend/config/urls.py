@@ -61,6 +61,10 @@ urlpatterns = [
         "api/alerts/",
         include("alerts.urls"),
     ),
+    path(
+        "api/activity/",
+        include("activity.urls"),
+    ),
 ]
 
 
