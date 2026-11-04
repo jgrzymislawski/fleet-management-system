@@ -437,6 +437,10 @@ function VehicleList() {
       return "Masowa zmiana oddziału";
     }
 
+    if (bulkAction === "delete") {
+      return "Usuń zaznaczone pojazdy";
+    }
+
     return "Operacja masowa";
   };
 
@@ -1054,6 +1058,13 @@ function VehicleList() {
               Zmień oddział
             </button>
 
+            <button
+              className="vehicles-bulk-delete"
+              onClick={() => openBulkModal("delete")}
+            >
+              Usuń zaznaczone
+            </button>
+
             <button onClick={handleExportSelected} disabled={exporting}>
               {exporting ? "Eksportowanie..." : "Eksportuj zaznaczone"}
             </button>
@@ -1070,8 +1081,15 @@ function VehicleList() {
 
       {bulkResult && (
         <div className="vehicles-bulk-result">
-          <strong>Operacja zakończona.</strong> Zmieniono: {bulkResult.updated},
-          bez zmian: {bulkResult.unchanged}, pominięto: {bulkResult.skipped}.
+          <strong>Operacja zakończona.</strong>
+
+          {bulkResult.deleted > 0 && <> Usunięto: {bulkResult.deleted}.</>}
+
+          {bulkResult.updated > 0 && <> Zmieniono: {bulkResult.updated}.</>}
+
+          {bulkResult.unchanged > 0 && <> Bez zmian: {bulkResult.unchanged}.</>}
+
+          {bulkResult.skipped > 0 && <> Pominięto: {bulkResult.skipped}.</>}
         </div>
       )}
 
@@ -1331,6 +1349,20 @@ function VehicleList() {
               </div>
             )}
 
+            {bulkAction === "delete" && (
+              <div className="vehicles-bulk-delete-warning">
+                <strong>
+                  Czy na pewno chcesz usunąć {selectedVehicleIds.length}{" "}
+                  zaznaczonych pojazdów?
+                </strong>
+
+                <p>
+                  Pojazdy znikną z aktywnej floty, ale nie zostaną trwale
+                  usunięte. Będzie można je później przywrócić z kosza.
+                </p>
+              </div>
+            )}
+
             <div className="vehicles-bulk-modal-actions">
               <button
                 className="vehicles-bulk-cancel"
@@ -1348,7 +1380,13 @@ function VehicleList() {
                   (bulkAction === "change_company" && bulkValue === "")
                 }
               >
-                {bulkUpdating ? "Zapisywanie..." : "Zastosuj zmiany"}
+                {bulkUpdating
+                  ? bulkAction === "delete"
+                    ? "Usuwanie..."
+                    : "Zapisywanie..."
+                  : bulkAction === "delete"
+                    ? "Usuń zaznaczone"
+                    : "Zastosuj zmiany"}
               </button>
             </div>
           </div>

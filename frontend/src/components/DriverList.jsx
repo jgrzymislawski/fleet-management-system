@@ -15,6 +15,11 @@ function DriverList() {
   const [exporting, setExporting] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
 
+  const [selectedDriverIds, setSelectedDriverIds] = useState([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkResult, setBulkResult] = useState(null);
+
   const navigate = useNavigate();
 
   const { user } = useAuth();
@@ -66,6 +71,10 @@ function DriverList() {
           currentDrivers.filter(
             (currentDriver) => currentDriver.id !== driver.id,
           ),
+        );
+
+        setSelectedDriverIds((currentIds) =>
+          currentIds.filter((driverId) => driverId !== driver.id),
         );
 
         setOpenMenuId(null);
@@ -176,6 +185,98 @@ function DriverList() {
     return sortDirection === "asc" ? comparison : -comparison;
   });
 
+  const visibleDriverIds = canManageDrivers
+    ? sortedDrivers.map((driver) => driver.id)
+    : [];
+
+  const allVisibleDriversSelected =
+    visibleDriverIds.length > 0 &&
+    visibleDriverIds.every((driverId) => selectedDriverIds.includes(driverId));
+
+  const toggleDriverSelection = (driverId) => {
+    setBulkResult(null);
+
+    setSelectedDriverIds((currentIds) => {
+      if (currentIds.includes(driverId)) {
+        return currentIds.filter((id) => id !== driverId);
+      }
+
+      return [...currentIds, driverId];
+    });
+  };
+
+  const toggleAllVisibleDrivers = () => {
+    if (!canManageDrivers) {
+      return;
+    }
+
+    setBulkResult(null);
+
+    setSelectedDriverIds((currentIds) => {
+      if (allVisibleDriversSelected) {
+        return currentIds.filter((id) => !visibleDriverIds.includes(id));
+      }
+
+      return [...new Set([...currentIds, ...visibleDriverIds])];
+    });
+  };
+
+  const clearDriverSelection = () => {
+    setSelectedDriverIds([]);
+    setBulkResult(null);
+  };
+
+  const openBulkDeleteModal = () => {
+    if (!canManageDrivers || selectedDriverIds.length === 0) {
+      return;
+    }
+
+    setBulkResult(null);
+    setBulkDeleteOpen(true);
+  };
+
+  const closeBulkDeleteModal = () => {
+    if (bulkDeleting) {
+      return;
+    }
+
+    setBulkDeleteOpen(false);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!canManageDrivers || selectedDriverIds.length === 0) {
+      return;
+    }
+
+    try {
+      setBulkDeleting(true);
+      setError(null);
+      setBulkResult(null);
+
+      const response = await apiClient.post("drivers/bulk-update/", {
+        driver_ids: selectedDriverIds,
+        action: "delete",
+      });
+
+      setBulkResult(response.data);
+      setSelectedDriverIds([]);
+      setBulkDeleteOpen(false);
+
+      await loadDrivers();
+    } catch (err) {
+      console.error("Błąd masowego usuwania kierowców:", err);
+
+      console.error("Odpowiedź backendu:", err.response?.data);
+
+      setError(
+        err.response?.data?.detail ||
+          "Nie udało się usunąć zaznaczonych kierowców.",
+      );
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const getExportFilename = (response) => {
     const contentDisposition = response.headers["content-disposition"];
 
@@ -192,6 +293,37 @@ function DriverList() {
     return `flotivo-kierowcy-${today}.xlsx`;
   };
 
+  const downloadDriverExport = async (driverIds) => {
+    const response = await apiClient.post(
+      "drivers/export/",
+      {
+        driver_ids: driverIds,
+      },
+      {
+        responseType: "blob",
+      },
+    );
+
+    const blob = new Blob([response.data], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    const downloadUrl = window.URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = downloadUrl;
+    link.download = getExportFilename(response);
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+    window.URL.revokeObjectURL(downloadUrl);
+  };
+
   const handleExport = async () => {
     if (sortedDrivers.length === 0) {
       setError("Brak kierowców do wyeksportowania.");
@@ -205,39 +337,33 @@ function DriverList() {
 
       const driverIds = sortedDrivers.map((driver) => driver.id);
 
-      const response = await apiClient.post(
-        "drivers/export/",
-        {
-          driver_ids: driverIds,
-        },
-        {
-          responseType: "blob",
-        },
-      );
-
-      const blob = new Blob([response.data], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-
-      const downloadUrl = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-
-      link.href = downloadUrl;
-      link.download = getExportFilename(response);
-
-      document.body.appendChild(link);
-
-      link.click();
-
-      link.remove();
-
-      window.URL.revokeObjectURL(downloadUrl);
+      await downloadDriverExport(driverIds);
     } catch (err) {
       console.error("Błąd eksportu kierowców:", err);
       console.error("Odpowiedź backendu:", err.response?.data);
 
       setError("Nie udało się wyeksportować kierowców.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportSelected = async () => {
+    if (selectedDriverIds.length === 0) {
+      return;
+    }
+
+    try {
+      setExporting(true);
+      setError(null);
+
+      await downloadDriverExport(selectedDriverIds);
+    } catch (err) {
+      console.error("Błąd eksportu zaznaczonych kierowców:", err);
+
+      console.error("Odpowiedź backendu:", err.response?.data);
+
+      setError("Nie udało się wyeksportować zaznaczonych kierowców.");
     } finally {
       setExporting(false);
     }
@@ -293,12 +419,68 @@ function DriverList() {
         />
       </div>
 
+      {selectedDriverIds.length > 0 && (
+        <div className="drivers-bulk-toolbar">
+          <div className="drivers-bulk-count">
+            Zaznaczono: <strong>{selectedDriverIds.length}</strong>
+          </div>
+
+          <div className="drivers-bulk-actions">
+            <button onClick={handleExportSelected} disabled={exporting}>
+              {exporting ? "Eksportowanie..." : "Eksportuj zaznaczone"}
+            </button>
+
+            {canManageDrivers && (
+              <button
+                className="drivers-bulk-delete"
+                onClick={openBulkDeleteModal}
+              >
+                Usuń zaznaczone
+              </button>
+            )}
+
+            <button
+              className="drivers-bulk-clear"
+              onClick={clearDriverSelection}
+            >
+              Odznacz
+            </button>
+          </div>
+        </div>
+      )}
+
+      {bulkResult && (
+        <div className="drivers-bulk-result">
+          <strong>Operacja zakończona.</strong>
+
+          {bulkResult.deleted > 0 && <> Usunięto: {bulkResult.deleted}.</>}
+
+          {bulkResult.skipped > 0 && <> Pominięto: {bulkResult.skipped}.</>}
+        </div>
+      )}
+
       <div className="drivers-results-info">
         Wyświetlono: {sortedDrivers.length} z {drivers.length}
       </div>
 
       <div className="drivers-table">
-        <div className="drivers-table-header">
+        <div className="drivers-table-header drivers-table-header-bulk">
+          <label
+            className="drivers-select-cell"
+            title={
+              canManageDrivers
+                ? "Zaznacz wszystkich widocznych kierowców"
+                : "Tylko administrator może zarządzać kierowcami"
+            }
+          >
+            <input
+              type="checkbox"
+              checked={allVisibleDriversSelected}
+              disabled={!canManageDrivers || visibleDriverIds.length === 0}
+              onChange={toggleAllVisibleDrivers}
+            />
+          </label>
+
           <button
             className="drivers-sort-button"
             onClick={() => handleSort("first_name")}
@@ -343,7 +525,30 @@ function DriverList() {
         </div>
 
         {sortedDrivers.map((driver) => (
-          <div className="drivers-table-row" key={driver.id}>
+          <div
+            className={`drivers-table-row drivers-table-row-bulk ${
+              selectedDriverIds.includes(driver.id)
+                ? "drivers-table-row-selected"
+                : ""
+            }`}
+            key={driver.id}
+          >
+            <label
+              className="drivers-select-cell"
+              title={
+                canManageDrivers
+                  ? "Zaznacz kierowcę"
+                  : "Tylko administrator może zarządzać kierowcami"
+              }
+            >
+              <input
+                type="checkbox"
+                checked={selectedDriverIds.includes(driver.id)}
+                disabled={!canManageDrivers}
+                onChange={() => toggleDriverSelection(driver.id)}
+              />
+            </label>
+
             <span>{driver.first_name}</span>
 
             <span className="driver-name">{driver.last_name}</span>
@@ -396,6 +601,56 @@ function DriverList() {
           <div className="drivers-empty">Nie znaleziono kierowców.</div>
         )}
       </div>
+
+      {bulkDeleteOpen && (
+        <div className="drivers-bulk-overlay">
+          <div className="drivers-bulk-modal">
+            <div className="drivers-bulk-modal-header">
+              <div>
+                <h2>Usuń zaznaczonych kierowców</h2>
+
+                <p>
+                  Operacja obejmie {selectedDriverIds.length} zaznaczonych
+                  kierowców.
+                </p>
+              </div>
+
+              <button
+                className="drivers-bulk-modal-close"
+                onClick={closeBulkDeleteModal}
+                disabled={bulkDeleting}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="drivers-bulk-delete-warning">
+              <strong>
+                Czy na pewno chcesz usunąć {selectedDriverIds.length}{" "}
+                zaznaczonych kierowców?
+              </strong>
+            </div>
+
+            <div className="drivers-bulk-modal-actions">
+              <button
+                className="drivers-bulk-cancel"
+                onClick={closeBulkDeleteModal}
+                disabled={bulkDeleting}
+              >
+                Anuluj
+              </button>
+
+              <button
+                className="drivers-bulk-submit"
+                onClick={handleBulkDelete}
+                disabled={bulkDeleting}
+              >
+                {bulkDeleting ? "Usuwanie..." : "Usuń zaznaczone"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {importModalOpen && (
         <DriverImportModal

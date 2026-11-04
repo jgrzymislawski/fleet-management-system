@@ -23,6 +23,12 @@
     color: #666666;
 }
 
+.drivers-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .add-driver-button {
     padding: 12px 20px;
     border: none;
@@ -39,9 +45,60 @@
     background-color: #333333;
 }
 
+.export-drivers-button {
+    padding: 12px 20px;
+    border: 1px solid #1A1A1A;
+    border-radius: 6px;
+    background-color: transparent;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.export-drivers-button:hover:not(:disabled) {
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.export-drivers-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .drivers-error {
     margin-bottom: 20px;
     color: #A33A3A;
+}
+
+.drivers-toolbar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.drivers-search {
+    width: 320px;
+    height: 42px;
+    padding: 0 14px;
+    box-sizing: border-box;
+    border: 1px solid #D8D1CA;
+    border-radius: 7px;
+    background-color: #FAF5F2;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+}
+
+.drivers-search::placeholder {
+    color: #999999;
+}
+
+.drivers-search:focus {
+    outline: none;
+    border-color: #1A1A1A;
 }
 
 .drivers-results-info {
@@ -54,32 +111,101 @@
     background-color: #FAF5F2;
     border: 1px solid #D8D1CA;
     border-radius: 8px;
+    overflow: visible;
 }
 
 .drivers-table-header,
-.drivers-table-row {
+.drivers-table-row,
+.drivers-table-header-bulk,
+.drivers-table-row-bulk {
     display: grid;
-    grid-template-columns: 1.4fr 1.2fr 1fr 1fr 70px;
-    gap: 20px;
+    grid-template-columns:
+        44px
+        minmax(120px, 1fr)
+        minmax(140px, 1fr)
+        minmax(180px, 1.25fr)
+        minmax(130px, 0.9fr)
+        minmax(150px, 0.9fr)
+        70px;
+    column-gap: 20px;
     align-items: center;
     padding: 17px 25px;
 }
 
-.drivers-table-header,
+.drivers-table-header {
+    background-color: #F0EAE5;
+    border-bottom: 1px solid #D8D1CA;
+    font-size: 13px;
+    font-weight: 600;
+    color: #3F3A36;
+}
+
 .drivers-table-row {
-    display: grid;
-    grid-template-columns: 1fr 1.2fr 1.4fr 1fr 1.1fr 70px;
-    gap: 20px;
-    align-items: center;
-    padding: 17px 25px;
+    min-height: 58px;
+    border-bottom: 1px solid #E1DAD4;
+    transition: background-color 0.15s ease;
+}
+
+.drivers-table-row:last-child {
+    border-bottom: none;
 }
 
 .drivers-table-row:hover {
     background-color: #F5F1EA;
 }
 
+.drivers-table-row-selected {
+    background-color: #F0EBE6;
+}
+
+.drivers-table-row-selected:hover {
+    background-color: #EDE7E1;
+}
+
+.drivers-table-header > *,
+.drivers-table-row > * {
+    min-width: 0;
+}
+
 .driver-name {
     font-weight: 500;
+}
+
+.drivers-sort-button {
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #3F3A36;
+    text-align: left;
+    cursor: pointer;
+}
+
+.drivers-sort-button:hover {
+    color: #1A1A1A;
+}
+
+.drivers-select-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+}
+
+.drivers-select-cell input {
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: #1A1A1A;
+}
+
+.drivers-select-cell input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
 .driver-actions {
@@ -87,6 +213,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    width: 70px;
 }
 
 .driver-actions-button {
@@ -114,7 +241,7 @@
     position: absolute;
     top: 36px;
     right: 0;
-    z-index: 10;
+    z-index: 20;
     width: 150px;
     padding: 6px;
     background-color: #FFFFFF;
@@ -162,100 +289,256 @@
     color: #777777;
 }
 
-.drivers-toolbar {
+.drivers-bulk-toolbar {
     display: flex;
     align-items: center;
-    margin-bottom: 15px;
-}
-
-.drivers-search {
-    width: 320px;
-    height: 42px;
-    padding: 0 14px;
-    box-sizing: border-box;
-    border: 1px solid #D8D1CA;
-    border-radius: 7px;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin: 18px 0;
+    padding: 14px 16px;
+    border: 1px solid #D9D0C9;
+    border-radius: 12px;
     background-color: #FAF5F2;
-    color: #1A1A1A;
-    font-family: 'Poppins', sans-serif;
-    font-size: 13px;
 }
 
-.drivers-search::placeholder {
-    color: #999999;
+.drivers-bulk-count {
+    font-size: 14px;
+    color: #4F4843;
 }
 
-.drivers-search:focus {
-    outline: none;
-    border-color: #1A1A1A;
-}
-
-.drivers-sort-button {
-    padding: 0;
-    border: none;
-    background: transparent;
-    font-family: 'Poppins', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    color: #555555;
-    text-align: left;
-    cursor: pointer;
-}
-
-.drivers-sort-button:hover {
-    color: #1A1A1A;
-}
-.drivers-header-actions {
+.drivers-bulk-actions {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
-.export-drivers-button {
-    padding: 12px 20px;
-    border: 1px solid #1A1A1A;
-    border-radius: 6px;
-    background-color: transparent;
+.drivers-bulk-actions button {
+    padding: 9px 13px;
+    border: 1px solid #CBC2BB;
+    border-radius: 8px;
+    background-color: #FFFFFF;
     color: #1A1A1A;
     font-family: 'Poppins', sans-serif;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
-    transition: 0.2s ease;
 }
 
-.export-drivers-button:hover:not(:disabled) {
-    background-color: #1A1A1A;
-    color: #FFFFFF;
+.drivers-bulk-actions button:hover:not(:disabled) {
+    background-color: #EEE8E2;
 }
 
-.export-drivers-button:disabled {
+.drivers-bulk-actions button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
-@media (max-width: 900px) {
-    .drivers-header {
-        align-items: flex-start;
-        gap: 20px;
-    }
-    .drivers-search {
-        width: 100%;
-    }
+
+.drivers-bulk-delete {
+    border-color: #C76868 !important;
+    color: #A33A3A !important;
+}
+
+.drivers-bulk-delete:hover:not(:disabled) {
+    background-color: #F3E1E1 !important;
+}
+
+.drivers-bulk-clear {
+    border-color: transparent !important;
+    background-color: transparent !important;
+    color: #6A625C !important;
+}
+
+.drivers-bulk-result {
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    border: 1px solid #CFE0D4;
+    border-radius: 10px;
+    background-color: #EDF6EF;
+    color: #315C3D;
+    font-size: 14px;
+}
+
+.drivers-bulk-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.drivers-bulk-modal {
+    width: 100%;
+    max-width: 520px;
+    padding: 26px;
+    border-radius: 16px;
+    background-color: #FAF5F2;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.drivers-bulk-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 22px;
+}
+
+.drivers-bulk-modal-header h2 {
+    margin: 0 0 6px;
+    font-size: 23px;
+    font-weight: 600;
+    color: #1A1A1A;
+}
+
+.drivers-bulk-modal-header p {
+    margin: 0;
+    color: #6A625C;
+    font-size: 14px;
+}
+
+.drivers-bulk-modal-close {
+    border: none;
+    background: transparent;
+    color: #555555;
+    font-size: 30px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.drivers-bulk-modal-close:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.drivers-bulk-delete-warning {
+    padding: 16px;
+    border: 1px solid #E2BABA;
+    border-radius: 10px;
+    background-color: #F8EAEA;
+}
+
+.drivers-bulk-delete-warning strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #8D3030;
+    font-size: 14px;
+}
+
+.drivers-bulk-delete-warning p {
+    margin: 0;
+    color: #7A4444;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.drivers-bulk-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.drivers-bulk-cancel,
+.drivers-bulk-submit {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.drivers-bulk-cancel {
+    border: 1px solid #CBC2BB;
+    background-color: transparent;
+    color: #1A1A1A;
+}
+
+.drivers-bulk-cancel:hover:not(:disabled) {
+    background-color: #EEE8E2;
+}
+
+.drivers-bulk-submit {
+    border: none;
+    background-color: #A33A3A;
+    color: #FFFFFF;
+}
+
+.drivers-bulk-submit:hover:not(:disabled) {
+    background-color: #8D3030;
+}
+
+.drivers-bulk-cancel:disabled,
+.drivers-bulk-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 1100px) {
     .drivers-table {
         overflow-x: auto;
     }
 
     .drivers-table-header,
-    .drivers-table-row {
-        min-width: 750px;
+    .drivers-table-row,
+    .drivers-table-header-bulk,
+    .drivers-table-row-bulk {
+        min-width: 1050px;
     }
-    .drivers-header-actions {
-    width: 100%;
-    flex-wrap: wrap;
 }
 
-.export-drivers-button,
-.add-driver-button {
-    flex: 1;
+@media (max-width: 900px) {
+    .drivers-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .drivers-header-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .export-drivers-button,
+    .add-driver-button {
+        flex: 1;
+    }
+
+    .drivers-search {
+        width: 100%;
+    }
+
+    .drivers-bulk-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .drivers-bulk-actions {
+        width: 100%;
+    }
 }
+
+@media (max-width: 650px) {
+    .drivers-bulk-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .drivers-bulk-actions button {
+        width: 100%;
+    }
+
+    .drivers-bulk-modal-actions {
+        flex-direction: column-reverse;
+    }
+
+    .drivers-bulk-cancel,
+    .drivers-bulk-submit {
+        width: 100%;
+    }
 }
