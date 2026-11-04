@@ -342,87 +342,6 @@ class VehicleImportView(APIView):
                         )
                     )
 
-                if (
-                    registration_number
-                    in seen_registration_numbers
-                ):
-                    raise ValueError(
-                        (
-                            "Numer rejestracyjny "
-                            "występuje więcej niż "
-                            "raz w pliku."
-                        )
-                    )
-
-                seen_registration_numbers.add(
-                    registration_number
-                )
-
-                if (
-                    vin
-                    and vin in seen_vins
-                ):
-                    raise ValueError(
-                        (
-                            "VIN występuje więcej "
-                            "niż raz w pliku."
-                        )
-                    )
-
-                if vin:
-                    seen_vins.add(
-                        vin
-                    )
-
-                if (
-                    Vehicle.objects
-                    .filter(
-                        registration_number__iexact=(
-                            registration_number
-                        )
-                    )
-                    .exists()
-                ):
-                    skipped += 1
-
-                    errors.append(
-                        {
-                            "row": row_number,
-                            "message": (
-                                "Pojazd o numerze "
-                                "rejestracyjnym "
-                                f"{registration_number} "
-                                "już istnieje."
-                            ),
-                            "type": "duplicate",
-                        }
-                    )
-
-                    continue
-
-                if (
-                    vin
-                    and Vehicle.objects
-                    .filter(
-                        vin__iexact=vin
-                    )
-                    .exists()
-                ):
-                    skipped += 1
-
-                    errors.append(
-                        {
-                            "row": row_number,
-                            "message": (
-                                "Pojazd o VIN "
-                                f"{vin} już istnieje."
-                            ),
-                            "type": "duplicate",
-                        }
-                    )
-
-                    continue
-
                 year = parse_integer(
                     row_data[
                         "Rok"
@@ -524,6 +443,103 @@ class VehicleImportView(APIView):
                             "użytkownika."
                         )
                     )
+
+                registration_key = (
+                    organization.id,
+                    registration_number,
+                )
+
+                if (
+                    registration_key
+                    in seen_registration_numbers
+                ):
+                    raise ValueError(
+                        (
+                            "Numer rejestracyjny "
+                            f"{registration_number} "
+                            "występuje więcej niż raz "
+                            "w pliku dla tej samej "
+                            "organizacji."
+                        )
+                    )
+
+                seen_registration_numbers.add(
+                    registration_key
+                )
+
+                if vin:
+                    vin_key = (
+                        organization.id,
+                        vin,
+                    )
+
+                    if vin_key in seen_vins:
+                        raise ValueError(
+                            (
+                                "VIN "
+                                f"{vin} "
+                                "występuje więcej niż raz "
+                                "w pliku dla tej samej "
+                                "organizacji."
+                            )
+                        )
+
+                    seen_vins.add(
+                        vin_key
+                    )
+
+                if (
+                    Vehicle.objects
+                    .filter(
+                        organization=organization,
+                        registration_number__iexact=(
+                            registration_number
+                        ),
+                    )
+                    .exists()
+                ):
+                    skipped += 1
+
+                    errors.append(
+                        {
+                            "row": row_number,
+                            "message": (
+                                "Pojazd o numerze "
+                                "rejestracyjnym "
+                                f"{registration_number} "
+                                "już istnieje w tej "
+                                "organizacji."
+                            ),
+                            "type": "duplicate",
+                        }
+                    )
+
+                    continue
+
+                if (
+                    vin
+                    and Vehicle.objects
+                    .filter(
+                        organization=organization,
+                        vin__iexact=vin,
+                    )
+                    .exists()
+                ):
+                    skipped += 1
+
+                    errors.append(
+                        {
+                            "row": row_number,
+                            "message": (
+                                "Pojazd o VIN "
+                                f"{vin} już istnieje "
+                                "w tej organizacji."
+                            ),
+                            "type": "duplicate",
+                        }
+                    )
+
+                    continue
 
                 serializer_data = {
                     "brand": brand,

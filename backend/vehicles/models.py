@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 
 from organizations.models import (
     Organization,
@@ -42,12 +43,10 @@ class Vehicle(models.Model):
 
     registration_number = models.CharField(
         max_length=20,
-        unique=True,
     )
 
     vin = models.CharField(
         max_length=17,
-        unique=True,
         null=True,
         blank=True,
     )
@@ -124,11 +123,71 @@ class Vehicle(models.Model):
         auto_now_add=True,
     )
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "organization",
+                    "registration_number",
+                ],
+                name=(
+                    "unique_vehicle_registration_"
+                    "per_organization"
+                ),
+            ),
+            models.UniqueConstraint(
+                fields=[
+                    "organization",
+                    "vin",
+                ],
+                condition=(
+                    Q(
+                        vin__isnull=False
+                    )
+                    & ~Q(
+                        vin=""
+                    )
+                ),
+                name=(
+                    "unique_vehicle_vin_"
+                    "per_organization"
+                ),
+            ),
+        ]
+
     def save(
         self,
         *args,
         **kwargs,
     ):
+        if self.registration_number:
+            self.registration_number = (
+                str(
+                    self.registration_number
+                )
+                .strip()
+                .upper()
+                .replace(
+                    " ",
+                    "",
+                )
+            )
+
+        if self.vin:
+            self.vin = (
+                str(
+                    self.vin
+                )
+                .strip()
+                .upper()
+                .replace(
+                    " ",
+                    "",
+                )
+            )
+        else:
+            self.vin = None
+
         if isinstance(
             self.driver_name,
             str,
@@ -214,17 +273,33 @@ class Vehicle(models.Model):
             "update_fields"
         )
 
-        if (
-            update_fields is not None
-            and self.company_id
-        ):
-            kwargs["update_fields"] = list(
-                set(
-                    update_fields
+        if update_fields is not None:
+            update_fields = set(
+                update_fields
+            )
+
+            if (
+                "registration_number"
+                in update_fields
+            ):
+                update_fields.add(
+                    "registration_number"
                 )
-                | {
-                    "organization",
-                }
+
+            if "vin" in update_fields:
+                update_fields.add(
+                    "vin"
+                )
+
+            if self.company_id:
+                update_fields.add(
+                    "organization"
+                )
+
+            kwargs[
+                "update_fields"
+            ] = list(
+                update_fields
             )
 
         super().save(

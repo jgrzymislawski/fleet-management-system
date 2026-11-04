@@ -24,7 +24,6 @@ class Driver(models.Model):
 
     license_number = models.CharField(
         max_length=30,
-        unique=True,
     )
 
     license_categories = models.JSONField(
@@ -48,6 +47,20 @@ class Driver(models.Model):
 
     hired_at = models.DateField()
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "organization",
+                    "license_number",
+                ],
+                name=(
+                    "unique_driver_license_"
+                    "per_organization"
+                ),
+            )
+        ]
+
     def clean(self):
         if self.organization_id is None:
             raise ValidationError(
@@ -64,6 +77,15 @@ class Driver(models.Model):
         *args,
         **kwargs,
     ):
+        if self.license_number:
+            self.license_number = (
+                str(
+                    self.license_number
+                )
+                .strip()
+                .upper()
+            )
+
         self.full_clean()
 
         super().save(

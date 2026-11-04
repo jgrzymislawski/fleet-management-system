@@ -375,28 +375,36 @@ class DriverImportView(
                         )
                     )
 
+                license_key = (
+                    organization.id,
+                    license_number,
+                )
+
                 if (
-                    license_number
+                    license_key
                     in seen_license_numbers
                 ):
                     raise ValueError(
                         (
                             "Numer prawa jazdy "
+                            f"{license_number} "
                             "występuje więcej niż "
-                            "raz w pliku."
+                            "raz w pliku dla tej samej "
+                            "organizacji."
                         )
                     )
 
                 seen_license_numbers.add(
-                    license_number
+                    license_key
                 )
 
                 if (
                     Driver.objects
                     .filter(
+                        organization=organization,
                         license_number__iexact=(
                             license_number
-                        )
+                        ),
                     )
                     .exists()
                 ):
@@ -404,14 +412,19 @@ class DriverImportView(
 
                     errors.append(
                         {
-                            "row": row_number,
+                            "row": (
+                                row_number
+                            ),
                             "message": (
                                 "Kierowca o numerze "
                                 "prawa jazdy "
                                 f"{license_number} "
-                                "już istnieje."
+                                "już istnieje w tej "
+                                "organizacji."
                             ),
-                            "type": "duplicate",
+                            "type": (
+                                "duplicate"
+                            ),
                         }
                     )
 
@@ -483,35 +496,47 @@ class DriverImportView(
             except ValueError as exc:
                 errors.append(
                     {
-                        "row": row_number,
+                        "row": (
+                            row_number
+                        ),
                         "message": (
                             str(exc)
                         ),
-                        "type": "validation",
+                        "type": (
+                            "validation"
+                        ),
                     }
                 )
 
             except IntegrityError:
                 errors.append(
                     {
-                        "row": row_number,
+                        "row": (
+                            row_number
+                        ),
                         "message": (
                             "Nie udało się zapisać "
                             "kierowcy z powodu "
                             "konfliktu danych."
                         ),
-                        "type": "database",
+                        "type": (
+                            "database"
+                        ),
                     }
                 )
 
             except Exception as exc:
                 errors.append(
                     {
-                        "row": row_number,
+                        "row": (
+                            row_number
+                        ),
                         "message": (
                             str(exc)
                         ),
-                        "type": "validation",
+                        "type": (
+                            "validation"
+                        ),
                     }
                 )
 
