@@ -1,10 +1,22 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 
 from auditlog.registry import auditlog
 
 from organizations.models import Organization
+
+
+class ActiveDriverManager(models.Manager):
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .filter(
+                is_deleted=False
+            )
+        )
 
 
 class Driver(models.Model):
@@ -47,6 +59,21 @@ class Driver(models.Model):
 
     hired_at = models.DateField()
 
+    is_deleted = models.BooleanField(
+        default=False,
+    )
+
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    objects = models.Manager()
+
+    active_objects = (
+        ActiveDriverManager()
+    )
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -54,8 +81,11 @@ class Driver(models.Model):
                     "organization",
                     "license_number",
                 ],
+                condition=Q(
+                    is_deleted=False
+                ),
                 name=(
-                    "unique_driver_license_"
+                    "unique_active_driver_license_"
                     "per_organization"
                 ),
             )
@@ -91,6 +121,66 @@ class Driver(models.Model):
         super().save(
             *args,
             **kwargs,
+        )
+
+    def soft_delete(self):
+        if self.is_deleted:
+            return
+
+        self.is_deleted = True
+        self.deleted_at = (
+            timezone.now()
+        )
+
+        self.save(
+            update_fields=[
+                "is_deleted",
+                "deleted_at",
+            ]
+        )
+
+    def restore(self):
+        if not self.is_deleted:
+            return
+
+        duplicate_exists = (
+            Driver.objects
+            .filter(
+                organization=(
+                    self.organization
+                ),
+                license_number__iexact=(
+                    self.license_number
+                ),
+                is_deleted=False,
+            )
+            .exclude(
+                pk=self.pk
+            )
+            .exists()
+        )
+
+        if duplicate_exists:
+            raise ValidationError(
+                {
+                    "license_number": (
+                        "Nie można przywrócić "
+                        "kierowcy, ponieważ aktywny "
+                        "kierowca z tym numerem "
+                        "prawa jazdy już istnieje "
+                        "w tej organizacji."
+                    )
+                }
+            )
+
+        self.is_deleted = False
+        self.deleted_at = None
+
+        self.save(
+            update_fields=[
+                "is_deleted",
+                "deleted_at",
+            ]
         )
 
     def __str__(self):
@@ -158,7 +248,37 @@ class DriverVehicleAssignment(models.Model):
         ]
 
     def clean(self):
-        if self.driver and self.driver_name:
+        if (
+            self.driver
+            and self.driver.is_deleted
+        ):
+            raise ValidationError(
+                {
+                    "driver": (
+                        "Nie można przypisać "
+                        "usuniętego kierowcy."
+                    )
+                }
+            )
+
+        if (
+            self.vehicle
+            and self.vehicle.is_deleted
+        ):
+            raise ValidationError(
+                {
+                    "vehicle": (
+                        "Nie można przypisać "
+                        "kierowcy do usuniętego "
+                        "pojazdu."
+                    )
+                }
+            )
+
+        if (
+            self.driver
+            and self.driver_name
+        ):
             raise ValidationError(
                 (
                     "Wybierz kierowcę z listy "
@@ -179,7 +299,8 @@ class DriverVehicleAssignment(models.Model):
 
         if (
             self.end_date
-            and self.end_date < self.start_date
+            and self.end_date
+            < self.start_date
         ):
             raise ValidationError(
                 {
@@ -191,7 +312,10 @@ class DriverVehicleAssignment(models.Model):
                 }
             )
 
-        if self.vehicle.organization_id is None:
+        if (
+            self.vehicle.organization_id
+            is None
+        ):
             raise ValidationError(
                 {
                     "vehicle": (
@@ -202,7 +326,10 @@ class DriverVehicleAssignment(models.Model):
             )
 
         if self.driver:
-            if self.driver.organization_id is None:
+            if (
+                self.driver.organization_id
+                is None
+            ):
                 raise ValidationError(
                     {
                         "driver": (

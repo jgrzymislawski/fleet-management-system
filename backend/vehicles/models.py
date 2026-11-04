@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 
 from organizations.models import (
     Organization,
@@ -8,6 +9,17 @@ from organizations.models import (
 )
 
 from auditlog.registry import auditlog
+
+
+class ActiveVehicleManager(models.Manager):
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .filter(
+                is_deleted=False
+            )
+        )
 
 
 class Vehicle(models.Model):
@@ -123,6 +135,21 @@ class Vehicle(models.Model):
         auto_now_add=True,
     )
 
+    is_deleted = models.BooleanField(
+        default=False,
+    )
+
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    objects = models.Manager()
+
+    active_objects = (
+        ActiveVehicleManager()
+    )
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -130,8 +157,11 @@ class Vehicle(models.Model):
                     "organization",
                     "registration_number",
                 ],
+                condition=Q(
+                    is_deleted=False
+                ),
                 name=(
-                    "unique_vehicle_registration_"
+                    "unique_active_vehicle_registration_"
                     "per_organization"
                 ),
             ),
@@ -142,14 +172,17 @@ class Vehicle(models.Model):
                 ],
                 condition=(
                     Q(
-                        vin__isnull=False
+                        is_deleted=False,
+                    )
+                    & Q(
+                        vin__isnull=False,
                     )
                     & ~Q(
-                        vin=""
+                        vin="",
                     )
                 ),
                 name=(
-                    "unique_vehicle_vin_"
+                    "unique_active_vehicle_vin_"
                     "per_organization"
                 ),
             ),
@@ -194,6 +227,19 @@ class Vehicle(models.Model):
         ):
             self.driver_name = (
                 self.driver_name.strip()
+            )
+
+        if (
+            self.driver
+            and self.driver.is_deleted
+        ):
+            raise ValidationError(
+                {
+                    "driver": (
+                        "Nie można przypisać "
+                        "usuniętego kierowcy."
+                    )
+                }
             )
 
         if (
@@ -278,19 +324,6 @@ class Vehicle(models.Model):
                 update_fields
             )
 
-            if (
-                "registration_number"
-                in update_fields
-            ):
-                update_fields.add(
-                    "registration_number"
-                )
-
-            if "vin" in update_fields:
-                update_fields.add(
-                    "vin"
-                )
-
             if self.company_id:
                 update_fields.add(
                     "organization"
@@ -305,6 +338,94 @@ class Vehicle(models.Model):
         super().save(
             *args,
             **kwargs,
+        )
+
+    def soft_delete(self):
+        if self.is_deleted:
+            return
+
+        self.is_deleted = True
+        self.deleted_at = (
+            timezone.now()
+        )
+
+        self.save(
+            update_fields=[
+                "is_deleted",
+                "deleted_at",
+            ]
+        )
+
+    def restore(self):
+        if not self.is_deleted:
+            return
+
+        registration_exists = (
+            Vehicle.objects
+            .filter(
+                organization=(
+                    self.organization
+                ),
+                registration_number__iexact=(
+                    self.registration_number
+                ),
+                is_deleted=False,
+            )
+            .exclude(
+                pk=self.pk
+            )
+            .exists()
+        )
+
+        if registration_exists:
+            raise ValidationError(
+                {
+                    "registration_number": (
+                        "Nie można przywrócić "
+                        "pojazdu, ponieważ aktywny "
+                        "pojazd z tym numerem "
+                        "rejestracyjnym już istnieje "
+                        "w tej organizacji."
+                    )
+                }
+            )
+
+        if self.vin:
+            vin_exists = (
+                Vehicle.objects
+                .filter(
+                    organization=(
+                        self.organization
+                    ),
+                    vin__iexact=self.vin,
+                    is_deleted=False,
+                )
+                .exclude(
+                    pk=self.pk
+                )
+                .exists()
+            )
+
+            if vin_exists:
+                raise ValidationError(
+                    {
+                        "vin": (
+                            "Nie można przywrócić "
+                            "pojazdu, ponieważ aktywny "
+                            "pojazd z tym VIN-em już "
+                            "istnieje w tej organizacji."
+                        )
+                    }
+                )
+
+        self.is_deleted = False
+        self.deleted_at = None
+
+        self.save(
+            update_fields=[
+                "is_deleted",
+                "deleted_at",
+            ]
         )
 
     def __str__(self):

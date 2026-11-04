@@ -1,5 +1,6 @@
 from io import BytesIO
 
+from django.db import transaction
 from django.http import HttpResponse
 from django.utils import timezone
 
@@ -84,7 +85,7 @@ def ensure_driver_management_permission(user):
 class DriverViewSet(
     viewsets.ModelViewSet
 ):
-    queryset = Driver.objects.all()
+    queryset = Driver.active_objects.all()
     serializer_class = DriverSerializer
     permission_classes = [
         IsAuthenticated,
@@ -98,16 +99,16 @@ class DriverViewSet(
         )
 
         if membership is not None:
-            return Driver.objects.filter(
+            return Driver.active_objects.filter(
                 organization=(
                     membership.organization
                 )
             )
 
         if user_is_superuser(user):
-            return Driver.objects.all()
+            return Driver.active_objects.all()
 
-        return Driver.objects.none()
+        return Driver.active_objects.none()
 
     @action(
         detail=False,
@@ -459,27 +460,52 @@ class DriverViewSet(
                     )
                 )
 
-            with set_actor(
-                user
-            ):
-                instance.delete()
-
-            return
-
-        if user_is_superuser(user):
-            with set_actor(
-                user
-            ):
-                instance.delete()
-
-            return
-
-        raise PermissionDenied(
-            (
-                "Nie jesteś przypisany "
-                "do żadnej organizacji."
+        elif not user_is_superuser(
+            user
+        ):
+            raise PermissionDenied(
+                (
+                    "Nie jesteś przypisany "
+                    "do żadnej organizacji."
+                )
             )
-        )
+
+        driver_name = (
+            f"{instance.first_name} "
+            f"{instance.last_name}"
+        ).strip()
+
+        with transaction.atomic():
+            with set_actor(
+                user
+            ):
+                vehicles = (
+                    instance.vehicles
+                    .filter(
+                        is_deleted=False
+                    )
+                )
+
+                for vehicle in vehicles:
+                    if (
+                        vehicle.driver_id
+                        != instance.id
+                    ):
+                        continue
+
+                    vehicle.driver = None
+                    vehicle.driver_name = (
+                        driver_name
+                    )
+
+                    vehicle.save(
+                        update_fields=[
+                            "driver",
+                            "driver_name",
+                        ]
+                    )
+
+                instance.soft_delete()
 
 
 class DriverVehicleAssignmentViewSet(
@@ -508,6 +534,9 @@ class DriverVehicleAssignmentViewSet(
                 "vehicle__organization",
                 "driver",
                 "driver__organization",
+            )
+            .filter(
+                vehicle__is_deleted=False,
             )
         )
 
@@ -559,6 +588,15 @@ class DriverVehicleAssignmentViewSet(
         self,
         vehicle,
     ):
+        if vehicle.is_deleted:
+            raise PermissionDenied(
+                (
+                    "Nie można zarządzać "
+                    "przypisaniami usuniętego "
+                    "pojazdu."
+                )
+            )
+
         user = self.request.user
 
         membership = get_membership(
@@ -653,6 +691,23 @@ class DriverVehicleAssignmentViewSet(
     ):
         if driver is None:
             return
+
+        if driver.is_deleted:
+            raise PermissionDenied(
+                (
+                    "Nie można przypisać "
+                    "usuniętego kierowcy."
+                )
+            )
+
+        if vehicle.is_deleted:
+            raise PermissionDenied(
+                (
+                    "Nie można przypisać "
+                    "kierowcy do usuniętego "
+                    "pojazdu."
+                )
+            )
 
         if vehicle.organization_id is None:
             raise PermissionDenied(

@@ -104,6 +104,7 @@ class VehicleBulkUpdateView(
             "change_status",
             "change_company",
             "change_branch",
+            "delete",
         }
 
         if action not in allowed_actions:
@@ -346,7 +347,7 @@ class VehicleBulkUpdateView(
                     )
 
         vehicles = (
-            Vehicle.objects
+            Vehicle.active_objects
             .select_related(
                 "company",
                 "organization",
@@ -369,6 +370,7 @@ class VehicleBulkUpdateView(
         }
 
         updated = 0
+        deleted = 0
         unchanged = 0
         skipped = 0
         errors = []
@@ -491,8 +493,15 @@ class VehicleBulkUpdateView(
 
                                 changed = True
 
+                        elif action == "delete":
+                            vehicle.soft_delete()
+                            changed = True
+
                 if changed:
-                    updated += 1
+                    if action == "delete":
+                        deleted += 1
+                    else:
+                        updated += 1
 
                 else:
                     unchanged += 1
@@ -536,6 +545,7 @@ class VehicleBulkUpdateView(
         return Response(
             {
                 "updated": updated,
+                "deleted": deleted,
                 "unchanged": unchanged,
                 "skipped": skipped,
                 "errors_count": (

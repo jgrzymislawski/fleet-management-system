@@ -16,7 +16,7 @@ from .import_views import (
     DriverImportView,
     DriverImportTemplateView,
 )
-
+from .bulk_views import DriverBulkUpdateView
 
 router = DefaultRouter()
 
@@ -52,4 +52,9 @@ urlpatterns = [
             router.urls
         ),
     ),
+path(
+    "drivers/bulk-update/",
+    DriverBulkUpdateView.as_view(),
+    name="drivers-bulk-update",
+),
 ]

@@ -77,11 +77,9 @@ def get_membership(user):
 def get_accessible_vehicles(user):
     membership = get_membership(user)
 
-    # Użytkownik przypisany do organizacji zawsze działa
-    # w jej kontekście, również jeśli jest superuserem.
     if membership is not None:
         if membership.role == "admin":
-            return Vehicle.objects.filter(
+            return Vehicle.active_objects.filter(
                 organization=membership.organization,
             )
 
@@ -97,17 +95,16 @@ def get_accessible_vehicles(user):
             )
         )
 
-        return Vehicle.objects.filter(
+        return Vehicle.active_objects.filter(
             organization=membership.organization,
             company_id__in=company_ids,
             company__is_active=True,
         )
 
-    # Techniczny superuser bez membership zachowuje globalny dostęp.
     if user_is_superuser(user):
-        return Vehicle.objects.all()
+        return Vehicle.active_objects.all()
 
-    return Vehicle.objects.none()
+    return Vehicle.active_objects.none()
 
 
 def can_edit_company(
@@ -168,7 +165,6 @@ def ensure_vehicle_edit_permission(
 
         return
 
-    # Techniczny superuser bez membership.
     if user_is_superuser(user):
         return
 
@@ -275,7 +271,7 @@ def create_xlsx_response(
 class VehicleViewSet(
     viewsets.ModelViewSet
 ):
-    queryset = Vehicle.objects.all()
+    queryset = Vehicle.active_objects.all()
     serializer_class = VehicleSerializer
 
     def get_queryset(self):
@@ -655,7 +651,6 @@ class VehicleViewSet(
 
             return
 
-        # Techniczny superuser bez membership.
         if user_is_superuser(
             self.request.user
         ):
@@ -747,7 +742,6 @@ class VehicleViewSet(
 
             return
 
-        # Techniczny superuser bez membership.
         if user_is_superuser(
             self.request.user
         ):
@@ -793,7 +787,7 @@ class VehicleViewSet(
         with set_actor(
             self.request.user
         ):
-            instance.delete()
+            instance.soft_delete()
 
 
 class ServiceRecordViewSet(
