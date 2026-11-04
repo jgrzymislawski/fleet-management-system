@@ -12,6 +12,8 @@ class DriverSerializer(
 
         read_only_fields = [
             "organization",
+            "is_deleted",
+            "deleted_at",
         ]
 
     def validate_license_number(

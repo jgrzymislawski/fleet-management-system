@@ -127,6 +127,44 @@ class Driver(models.Model):
         if self.is_deleted:
             return
 
+        driver_name = (
+            f"{self.first_name} "
+            f"{self.last_name}"
+        ).strip()
+
+        current_vehicles = (
+            self.vehicles
+            .filter(
+                is_deleted=False,
+                driver_id=self.id,
+            )
+        )
+
+        for vehicle in current_vehicles:
+            vehicle.driver = None
+            vehicle.driver_name = (
+                driver_name
+            )
+
+            vehicle.save(
+                update_fields=[
+                    "driver",
+                    "driver_name",
+                ]
+            )
+
+        (
+            self.vehicle_assignments
+            .filter(
+                end_date__isnull=True,
+            )
+            .update(
+                end_date=(
+                    timezone.localdate()
+                )
+            )
+        )
+
         self.is_deleted = True
         self.deleted_at = (
             timezone.now()

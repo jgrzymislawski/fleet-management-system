@@ -549,9 +549,6 @@ class DriverVehicleAssignmentViewSet(
                 vehicle__organization=(
                     membership.organization
                 ),
-                driver__organization=(
-                    membership.organization
-                ),
             )
 
             if membership.role == "admin":

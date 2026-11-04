@@ -152,6 +152,18 @@ class DriverVehicleAssignmentSerializer(
 
         if vehicle:
             if (
+                vehicle.is_deleted
+            ):
+                raise serializers.ValidationError(
+                    {
+                        "vehicle": (
+                            "Nie można przypisać kierowcy "
+                            "do usuniętego pojazdu."
+                        )
+                    }
+                )
+
+            if (
                 vehicle.organization_id
                 is None
             ):
@@ -165,6 +177,18 @@ class DriverVehicleAssignmentSerializer(
                 )
 
         if driver:
+            if (
+                driver.is_deleted
+            ):
+                raise serializers.ValidationError(
+                    {
+                        "driver": (
+                            "Nie można przypisać "
+                            "usuniętego kierowcy."
+                        )
+                    }
+                )
+
             if (
                 driver.organization_id
                 is None

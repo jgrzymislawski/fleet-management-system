@@ -39,6 +39,8 @@ class VehicleSerializer(
             "organization",
             "company_name",
             "company_is_active",
+            "is_deleted",
+            "deleted_at",
         ]
 
     def validate(
@@ -93,6 +95,19 @@ class VehicleSerializer(
                     "nie można użyć obu opcji "
                     "jednocześnie."
                 )
+            )
+
+        if (
+            driver
+            and driver.is_deleted
+        ):
+            raise serializers.ValidationError(
+                {
+                    "driver": (
+                        "Nie można przypisać "
+                        "usuniętego kierowcy."
+                    )
+                }
             )
 
         request = self.context.get(
@@ -363,6 +378,20 @@ class ServiceRecordSerializer(
         model = ServiceRecord
         fields = "__all__"
 
+    def validate_vehicle(
+        self,
+        vehicle,
+    ):
+        if vehicle.is_deleted:
+            raise serializers.ValidationError(
+                (
+                    "Nie można dodać wpisu serwisowego "
+                    "do usuniętego pojazdu."
+                )
+            )
+
+        return vehicle
+
 
 class VehicleDocumentSerializer(
     serializers.ModelSerializer
@@ -370,6 +399,20 @@ class VehicleDocumentSerializer(
     class Meta:
         model = VehicleDocument
         fields = "__all__"
+
+    def validate_vehicle(
+        self,
+        vehicle,
+    ):
+        if vehicle.is_deleted:
+            raise serializers.ValidationError(
+                (
+                    "Nie można dodać dokumentu "
+                    "do usuniętego pojazdu."
+                )
+            )
+
+        return vehicle
 
     def validate_file(
         self,
