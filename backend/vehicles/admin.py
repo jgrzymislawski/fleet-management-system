@@ -1,8 +1,9 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils.html import format_html, format_html_join
 
 from auditlog import get_logentry_model
 from auditlog.admin import LogEntryAdmin
+from auditlog.context import set_actor
 
 from .models import (
     Vehicle,
@@ -11,22 +12,244 @@ from .models import (
 )
 
 
-admin.site.register(Vehicle)
-admin.site.register(ServiceRecord)
-admin.site.register(VehicleDocument)
+class VehicleDeletedStatusFilter(
+    admin.SimpleListFilter
+):
+    title = "stan rekordu"
+    parameter_name = "deleted_status"
+
+    def lookups(
+        self,
+        request,
+        model_admin,
+    ):
+        return (
+            (
+                "active",
+                "Aktywne",
+            ),
+            (
+                "deleted",
+                "Usunięte",
+            ),
+        )
+
+    def queryset(
+        self,
+        request,
+        queryset,
+    ):
+        if self.value() == "active":
+            return queryset.filter(
+                is_deleted=False
+            )
+
+        if self.value() == "deleted":
+            return queryset.filter(
+                is_deleted=True
+            )
+
+        return queryset
+
+
+@admin.register(Vehicle)
+class VehicleAdmin(
+    admin.ModelAdmin
+):
+    list_display = (
+        "id",
+        "registration_number",
+        "brand",
+        "model",
+        "organization",
+        "company",
+        "status",
+        "is_deleted",
+        "deleted_at",
+    )
+
+    list_filter = (
+        VehicleDeletedStatusFilter,
+        "status",
+        "organization",
+        "company",
+    )
+
+    search_fields = (
+        "registration_number",
+        "vin",
+        "brand",
+        "model",
+    )
+
+    ordering = (
+        "-id",
+    )
+
+    readonly_fields = (
+        "deleted_at",
+    )
+
+    actions = (
+        "soft_delete_selected",
+        "restore_selected",
+    )
+
+    @admin.action(
+        description=(
+            "Przenieś zaznaczone pojazdy do kosza"
+        )
+    )
+    def soft_delete_selected(
+        self,
+        request,
+        queryset,
+    ):
+        deleted = 0
+        skipped = 0
+
+        with set_actor(
+            request.user
+        ):
+            for vehicle in queryset:
+                if vehicle.is_deleted:
+                    skipped += 1
+                    continue
+
+                vehicle.soft_delete()
+
+                deleted += 1
+
+        if deleted:
+            self.message_user(
+                request,
+                (
+                    "Przeniesiono pojazdy "
+                    f"do kosza: {deleted}."
+                ),
+                level=messages.SUCCESS,
+            )
+
+        if skipped:
+            self.message_user(
+                request,
+                (
+                    "Pominięto pojazdy już "
+                    f"usunięte: {skipped}."
+                ),
+                level=messages.WARNING,
+            )
+
+    @admin.action(
+        description=(
+            "Przywróć zaznaczone pojazdy"
+        )
+    )
+    def restore_selected(
+        self,
+        request,
+        queryset,
+    ):
+        restored = 0
+        skipped = 0
+        errors = []
+
+        with set_actor(
+            request.user
+        ):
+            for vehicle in queryset:
+                if not vehicle.is_deleted:
+                    skipped += 1
+                    continue
+
+                try:
+                    vehicle.restore()
+
+                    restored += 1
+
+                except Exception as exc:
+                    errors.append(
+                        (
+                            f"{vehicle}: "
+                            f"{exc}"
+                        )
+                    )
+
+        if restored:
+            self.message_user(
+                request,
+                (
+                    "Przywrócono pojazdy: "
+                    f"{restored}."
+                ),
+                level=messages.SUCCESS,
+            )
+
+        if skipped:
+            self.message_user(
+                request,
+                (
+                    "Pominięto aktywne "
+                    f"pojazdy: {skipped}."
+                ),
+                level=messages.WARNING,
+            )
+
+        for error in errors:
+            self.message_user(
+                request,
+                error,
+                level=messages.ERROR,
+            )
+
+    def delete_model(
+        self,
+        request,
+        obj,
+    ):
+        with set_actor(
+            request.user
+        ):
+            obj.soft_delete()
+
+    def delete_queryset(
+        self,
+        request,
+        queryset,
+    ):
+        with set_actor(
+            request.user
+        ):
+            for vehicle in queryset:
+                if not vehicle.is_deleted:
+                    vehicle.soft_delete()
+
+
+admin.site.register(
+    ServiceRecord
+)
+
+admin.site.register(
+    VehicleDocument
+)
 
 
 LogEntry = get_logentry_model()
 
 
 try:
-    admin.site.unregister(LogEntry)
+    admin.site.unregister(
+        LogEntry
+    )
+
 except admin.sites.NotRegistered:
     pass
 
 
 @admin.register(LogEntry)
-class FlotivoLogEntryAdmin(LogEntryAdmin):
+class FlotivoLogEntryAdmin(
+    LogEntryAdmin
+):
     list_display = [
         "created",
         "object_name",
@@ -84,51 +307,98 @@ class FlotivoLogEntryAdmin(LogEntryAdmin):
         description="Data",
         ordering="timestamp",
     )
-    def created(self, obj):
+    def created(
+        self,
+        obj,
+    ):
         return obj.timestamp
 
-    @admin.display(description="Obiekt")
-    def object_name(self, obj):
+    @admin.display(
+        description="Obiekt"
+    )
+    def object_name(
+        self,
+        obj,
+    ):
         return obj.object_repr
 
-    @admin.display(description="Użytkownik")
-    def actor_name(self, obj):
+    @admin.display(
+        description="Użytkownik"
+    )
+    def actor_name(
+        self,
+        obj,
+    ):
         if not obj.actor:
             return "System"
 
-        full_name = obj.actor.get_full_name()
+        full_name = (
+            obj.actor.get_full_name()
+        )
 
         if full_name:
-            return f"{full_name} ({obj.actor.username})"
+            return (
+                f"{full_name} "
+                f"({obj.actor.username})"
+            )
 
         return obj.actor.username
 
-    @admin.display(description="Akcja")
-    def action_name(self, obj):
-        if obj.action == LogEntry.Action.CREATE:
+    @admin.display(
+        description="Akcja"
+    )
+    def action_name(
+        self,
+        obj,
+    ):
+        if (
+            obj.action
+            == LogEntry.Action.CREATE
+        ):
             return "Dodano"
 
-        if obj.action == LogEntry.Action.UPDATE:
+        if (
+            obj.action
+            == LogEntry.Action.UPDATE
+        ):
             return "Zmieniono"
 
-        if obj.action == LogEntry.Action.DELETE:
+        if (
+            obj.action
+            == LogEntry.Action.DELETE
+        ):
             return "Usunięto"
 
-        if obj.action == LogEntry.Action.ACCESS:
+        if (
+            obj.action
+            == LogEntry.Action.ACCESS
+        ):
             return "Wyświetlono"
 
-        return obj.get_action_display()
+        return (
+            obj.get_action_display()
+        )
 
-    @admin.display(description="Zmiany")
-    def changes_summary(self, obj):
-        changes = obj.changes_display_dict
+    @admin.display(
+        description="Zmiany"
+    )
+    def changes_summary(
+        self,
+        obj,
+    ):
+        changes = (
+            obj.changes_display_dict
+        )
 
         if not changes:
             return "-"
 
         parts = []
 
-        for field_name, values in changes.items():
+        for (
+            field_name,
+            values,
+        ) in changes.items():
             old_value = (
                 values[0]
                 if len(values) > 0
@@ -142,26 +412,42 @@ class FlotivoLogEntryAdmin(LogEntryAdmin):
             )
 
             parts.append(
-                f"{field_name}: "
-                f"{self.format_value(old_value)} "
-                f"→ "
-                f"{self.format_value(new_value)}"
+                (
+                    f"{field_name}: "
+                    f"{self.format_value(old_value)} "
+                    f"→ "
+                    f"{self.format_value(new_value)}"
+                )
             )
 
-        return " | ".join(parts)
+        return " | ".join(
+            parts
+        )
 
     @admin.display(
-        description="Szczegółowe zmiany"
+        description=(
+            "Szczegółowe zmiany"
+        )
     )
-    def changes_details(self, obj):
-        changes = obj.changes_display_dict
+    def changes_details(
+        self,
+        obj,
+    ):
+        changes = (
+            obj.changes_display_dict
+        )
 
         if not changes:
-            return "Brak zapisanych zmian."
+            return (
+                "Brak zapisanych zmian."
+            )
 
         rows = []
 
-        for field_name, values in changes.items():
+        for (
+            field_name,
+            values,
+        ) in changes.items():
             old_value = (
                 values[0]
                 if len(values) > 0
@@ -177,47 +463,53 @@ class FlotivoLogEntryAdmin(LogEntryAdmin):
             rows.append(
                 (
                     field_name,
-                    self.format_value(old_value),
-                    self.format_value(new_value),
+                    self.format_value(
+                        old_value
+                    ),
+                    self.format_value(
+                        new_value
+                    ),
                 )
             )
 
-        table_rows = format_html_join(
-            "",
-            """
-            <tr>
-                <td style="
-                    padding: 10px;
-                    font-weight: 600;
-                    border-bottom: 1px solid #444;
-                ">
-                    {}
-                </td>
+        table_rows = (
+            format_html_join(
+                "",
+                """
+                <tr>
+                    <td style="
+                        padding: 10px;
+                        font-weight: 600;
+                        border-bottom: 1px solid #444;
+                    ">
+                        {}
+                    </td>
 
-                <td style="
-                    padding: 10px;
-                    border-bottom: 1px solid #444;
-                ">
-                    {}
-                </td>
+                    <td style="
+                        padding: 10px;
+                        border-bottom: 1px solid #444;
+                    ">
+                        {}
+                    </td>
 
-                <td style="
-                    padding: 10px;
-                    text-align: center;
-                    border-bottom: 1px solid #444;
-                ">
-                    →
-                </td>
+                    <td style="
+                        padding: 10px;
+                        text-align: center;
+                        border-bottom: 1px solid #444;
+                    ">
+                        →
+                    </td>
 
-                <td style="
-                    padding: 10px;
-                    border-bottom: 1px solid #444;
-                ">
-                    {}
-                </td>
-            </tr>
-            """,
-            rows,
+                    <td style="
+                        padding: 10px;
+                        border-bottom: 1px solid #444;
+                    ">
+                        {}
+                    </td>
+                </tr>
+                """,
+                rows,
+            )
         )
 
         return format_html(
@@ -265,7 +557,10 @@ class FlotivoLogEntryAdmin(LogEntryAdmin):
             table_rows,
         )
 
-    def format_value(self, value):
+    def format_value(
+        self,
+        value,
+    ):
         if value is None:
             return "Brak"
 
@@ -279,17 +574,27 @@ class FlotivoLogEntryAdmin(LogEntryAdmin):
 
         return value
 
-    def has_module_permission(self, request):
-        return request.user.is_superuser
+    def has_module_permission(
+        self,
+        request,
+    ):
+        return (
+            request.user.is_superuser
+        )
 
     def has_view_permission(
         self,
         request,
         obj=None,
     ):
-        return request.user.is_superuser
+        return (
+            request.user.is_superuser
+        )
 
-    def has_add_permission(self, request):
+    def has_add_permission(
+        self,
+        request,
+    ):
         return False
 
     def has_change_permission(

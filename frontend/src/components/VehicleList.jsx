@@ -1355,11 +1355,6 @@ function VehicleList() {
                   Czy na pewno chcesz usunąć {selectedVehicleIds.length}{" "}
                   zaznaczonych pojazdów?
                 </strong>
-
-                <p>
-                  Pojazdy znikną z aktywnej floty, ale nie zostaną trwale
-                  usunięte. Będzie można je później przywrócić z kosza.
-                </p>
               </div>
             )}
 
