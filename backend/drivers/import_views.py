@@ -399,7 +399,7 @@ class DriverImportView(
                 )
 
                 if (
-                    Driver.objects
+                    Driver.active_objects
                     .filter(
                         organization=organization,
                         license_number__iexact=(

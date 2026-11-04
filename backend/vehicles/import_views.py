@@ -489,14 +489,14 @@ class VehicleImportView(APIView):
                     )
 
                 if (
-                    Vehicle.objects
-                    .filter(
-                        organization=organization,
-                        registration_number__iexact=(
-                            registration_number
-                        ),
-                    )
-                    .exists()
+                        Vehicle.active_objects
+                                .filter(
+                            organization=organization,
+                            registration_number__iexact=(
+                                    registration_number
+                            ),
+                        )
+                                .exists()
                 ):
                     skipped += 1
 
@@ -517,13 +517,13 @@ class VehicleImportView(APIView):
                     continue
 
                 if (
-                    vin
-                    and Vehicle.objects
-                    .filter(
-                        organization=organization,
-                        vin__iexact=vin,
-                    )
-                    .exists()
+                        vin
+                        and Vehicle.active_objects
+                        .filter(
+                    organization=organization,
+                    vin__iexact=vin,
+                )
+                        .exists()
                 ):
                     skipped += 1
 
