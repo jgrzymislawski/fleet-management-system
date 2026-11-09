@@ -55,39 +55,55 @@ def get_membership(user):
 
 
 def get_accessible_vehicles(user):
-    if user_is_superuser(user):
-        return Vehicle.objects.all()
+    membership = get_membership(
+        user
+    )
 
-    membership = get_membership(user)
+    if membership is not None:
+        if membership.role == "admin":
+            return (
+                Vehicle.active_objects
+                .filter(
+                    organization=(
+                        membership.organization
+                    )
+                )
+            )
 
-    if membership is None:
-        return Vehicle.objects.none()
-
-    if membership.role == "admin":
-        return Vehicle.objects.filter(
-            organization=(
-                membership.organization
+        company_ids = (
+            CompanyAccess.objects
+            .filter(
+                membership=membership,
+                company__is_active=True,
+            )
+            .values_list(
+                "company_id",
+                flat=True,
             )
         )
 
-    company_ids = (
-        CompanyAccess.objects
-        .filter(
-            membership=membership,
-            company__is_active=True,
+        return (
+            Vehicle.active_objects
+            .filter(
+                organization=(
+                    membership.organization
+                ),
+                company_id__in=company_ids,
+                company__is_active=True,
+            )
         )
-        .values_list(
-            "company_id",
-            flat=True,
-        )
-    )
 
-    return Vehicle.objects.filter(
-        organization=(
-            membership.organization
-        ),
-        company_id__in=company_ids,
-        company__is_active=True,
+    if user_is_superuser(
+        user
+    ):
+        return (
+            Vehicle.active_objects
+            .all()
+        )
+
+    return (
+        Vehicle.active_objects
+        .none()
     )
 
 

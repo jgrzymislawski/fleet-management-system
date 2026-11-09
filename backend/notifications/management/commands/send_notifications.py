@@ -128,7 +128,7 @@ class Command(BaseCommand):
         sent_count = 0
 
         vehicles = (
-            Vehicle.objects
+            Vehicle.active_objects
             .filter(
                 organization=organization,
             )
@@ -194,6 +194,7 @@ class Command(BaseCommand):
             VehicleDocument.objects
             .filter(
                 vehicle__organization=organization,
+                vehicle__is_deleted=False,
                 expiry_date__isnull=False,
             )
             .select_related(
@@ -259,7 +260,7 @@ class Command(BaseCommand):
     ):
         sent_count = 0
 
-        drivers = Driver.objects.filter(
+        drivers = Driver.active_objects.filter(
             organization=organization,
         )
 
