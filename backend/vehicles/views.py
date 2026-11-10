@@ -466,6 +466,12 @@ class VehicleViewSet(
             "status": (
                 "status",
             ),
+            "inspection_expiry_date":(
+                "inspection_expiry_date",
+            ),
+            "insurance_expiry_date":(
+                "insurance_expiry_date",
+            ),
         }
 
         descending = ordering.startswith(

@@ -271,7 +271,7 @@
 .vehicles-table-header,
 .vehicles-table-row {
     display: grid;
-    grid-template-columns: 1.5fr 1.1fr 1.1fr 1fr 0.6fr 1fr 1fr 70px;
+    grid-template-columns: 1.5fr 1.1fr 1.1fr 1fr 0.6fr 1fr 1fr 1fr 1fr 70px;
     gap: 20px;
     align-items: center;
     padding: 17px 25px;
@@ -339,6 +339,8 @@
     minmax(70px, 0.6fr)
     minmax(100px, 0.8fr)
     minmax(110px, 0.9fr)
+    minmax(120px, 1fr)
+    minmax(120px, 1fr)
     60px;
 }
 
@@ -548,7 +550,7 @@
 @media (max-width: 1050px) {
   .vehicles-table-header-bulk,
   .vehicles-table-row-bulk {
-    min-width: 1080px;
+    min-width: 1320px;
   }
 
   .vehicles-table {
@@ -579,6 +581,53 @@
   .vehicles-bulk-submit {
     width: 100%;
   }
+}
+
+
+.vehicle-expiry-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 0;
+}
+
+.vehicle-expiry-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 5px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.vehicle-expiry-date {
+    font-size: 10px;
+    color: #777777;
+    white-space: nowrap;
+}
+
+.vehicle-expiry-none {
+    background-color: #E8E8E8;
+    color: #666666;
+}
+
+.vehicle-expiry-expired {
+    background-color: #F3E1E1;
+    color: #A33A3A;
+}
+
+.vehicle-expiry-warning {
+    background-color: #F4EBCF;
+    color: #8A6D1D;
+}
+
+.vehicle-expiry-valid {
+    background-color: #E4EFE6;
+    color: #365B3A;
 }
 
 .vehicle-status {
@@ -716,7 +765,7 @@
 
     .vehicles-table-header,
     .vehicles-table-row {
-        min-width: 1050px;
+        min-width: 1290px;
     }
 }
 .vehicles-recent-filter {

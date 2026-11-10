@@ -147,19 +147,15 @@ function VehicleList() {
   }, []);
 
   useEffect(() => {
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-      return;
-    }
-
     const timeoutId = window.setTimeout(() => {
-      loadVehicles(1);
+      loadVehicles(currentPage);
     }, 300);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
   }, [
+    currentPage,
     searchText,
     selectedBrands,
     selectedYears,
@@ -170,14 +166,6 @@ function VehicleList() {
     sortDirection,
     recentOnly,
   ]);
-
-  useEffect(() => {
-    if (currentPage === 1) {
-      return;
-    }
-
-    loadVehicles(currentPage);
-  }, [currentPage]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -238,6 +226,8 @@ function VehicleList() {
   };
 
   const toggleSelectedValue = (value, selectedValues, setSelectedValues) => {
+    setCurrentPage(1);
+
     if (selectedValues.includes(value)) {
       setSelectedValues(
         selectedValues.filter((selectedValue) => selectedValue !== value),
@@ -313,7 +303,61 @@ function VehicleList() {
     return `${Number(mileage).toLocaleString("pl-PL")} km`;
   };
 
+  const formatExpiryDate = (date) => {
+    if (!date) {
+      return "-";
+    }
+
+    return new Date(date).toLocaleDateString("pl-PL");
+  };
+
+  const getExpiryStatus = (date) => {
+    if (!date) {
+      return {
+        text: "Brak terminu",
+        className: "vehicle-expiry-none",
+      };
+    }
+
+    const today = new Date();
+    const expiryDate = new Date(date);
+
+    today.setHours(0, 0, 0, 0);
+    expiryDate.setHours(0, 0, 0, 0);
+
+    const difference = expiryDate - today;
+    const daysLeft = Math.ceil(difference / (1000 * 60 * 60 * 24));
+
+    if (daysLeft < 0) {
+      return {
+        text: "Po terminie",
+        className: "vehicle-expiry-expired",
+      };
+    }
+
+    if (daysLeft === 0) {
+      return {
+        text: "Dzisiaj",
+        className: "vehicle-expiry-warning",
+      };
+    }
+
+    if (daysLeft <= 30) {
+      return {
+        text: `Za ${daysLeft} dni`,
+        className: "vehicle-expiry-warning",
+      };
+    }
+
+    return {
+      text: "Ważne",
+      className: "vehicle-expiry-valid",
+    };
+  };
+
   const handleSort = (field) => {
+    setCurrentPage(1);
+
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -339,8 +383,6 @@ function VehicleList() {
   const statuses = filterOptions.statuses;
 
   const branches = filterOptions.branches;
-
-  const filteredVehicles = vehicles;
 
   const sortedVehicles = vehicles;
 
@@ -546,6 +588,8 @@ function VehicleList() {
   };
 
   const clearAllFilters = () => {
+    setCurrentPage(1);
+
     setSelectedBrands([]);
     setSelectedYears([]);
     setSelectedTypes([]);
@@ -680,13 +724,19 @@ function VehicleList() {
           type="text"
           placeholder="Szukaj po marce, modelu, rejestracji, VIN lub oddziale..."
           value={searchText}
-          onChange={(event) => setSearchText(event.target.value)}
+          onChange={(event) => {
+            setCurrentPage(1);
+            setSearchText(event.target.value);
+          }}
         />
 
         {searchText && (
           <button
             className="vehicles-search-clear"
-            onClick={() => setSearchText("")}
+            onClick={() => {
+              setCurrentPage(1);
+              setSearchText("");
+            }}
             title="Wyczyść wyszukiwanie"
           >
             ×
@@ -720,7 +770,10 @@ function VehicleList() {
                   {selectedBrands.length > 0 && (
                     <button
                       className="filter-clear-button"
-                      onClick={() => setSelectedBrands([])}
+                      onClick={() => {
+                        setCurrentPage(1);
+                        setSelectedBrands([]);
+                      }}
                     >
                       Wyczyść
                     </button>
@@ -731,7 +784,10 @@ function VehicleList() {
                   <input
                     type="checkbox"
                     checked={selectedBrands.length === 0}
-                    onChange={() => setSelectedBrands([])}
+                    onChange={() => {
+                      setCurrentPage(1);
+                      setSelectedBrands([]);
+                    }}
                   />
 
                   <span>Wszystkie marki</span>
@@ -786,7 +842,10 @@ function VehicleList() {
                   {selectedYears.length > 0 && (
                     <button
                       className="filter-clear-button"
-                      onClick={() => setSelectedYears([])}
+                      onClick={() => {
+                        setCurrentPage(1);
+                        setSelectedYears([]);
+                      }}
                     >
                       Wyczyść
                     </button>
@@ -797,7 +856,10 @@ function VehicleList() {
                   <input
                     type="checkbox"
                     checked={selectedYears.length === 0}
-                    onChange={() => setSelectedYears([])}
+                    onChange={() => {
+                      setCurrentPage(1);
+                      setSelectedYears([]);
+                    }}
                   />
 
                   <span>Wszystkie lata</span>
@@ -858,7 +920,10 @@ function VehicleList() {
                   {selectedTypes.length > 0 && (
                     <button
                       className="filter-clear-button"
-                      onClick={() => setSelectedTypes([])}
+                      onClick={() => {
+                        setCurrentPage(1);
+                        setSelectedTypes([]);
+                      }}
                     >
                       Wyczyść
                     </button>
@@ -869,7 +934,10 @@ function VehicleList() {
                   <input
                     type="checkbox"
                     checked={selectedTypes.length === 0}
-                    onChange={() => setSelectedTypes([])}
+                    onChange={() => {
+                      setCurrentPage(1);
+                      setSelectedTypes([]);
+                    }}
                   />
 
                   <span>Wszystkie typy</span>
@@ -930,7 +998,10 @@ function VehicleList() {
                   {selectedBranches.length > 0 && (
                     <button
                       className="filter-clear-button"
-                      onClick={() => setSelectedBranches([])}
+                      onClick={() => {
+                        setCurrentPage(1);
+                        setSelectedBranches([]);
+                      }}
                     >
                       Wyczyść
                     </button>
@@ -941,7 +1012,10 @@ function VehicleList() {
                   <input
                     type="checkbox"
                     checked={selectedBranches.length === 0}
-                    onChange={() => setSelectedBranches([])}
+                    onChange={() => {
+                      setCurrentPage(1);
+                      setSelectedBranches([]);
+                    }}
                   />
 
                   <span>Wszystkie oddziały</span>
@@ -1002,7 +1076,10 @@ function VehicleList() {
                   {selectedStatuses.length > 0 && (
                     <button
                       className="filter-clear-button"
-                      onClick={() => setSelectedStatuses([])}
+                      onClick={() => {
+                        setCurrentPage(1);
+                        setSelectedStatuses([]);
+                      }}
                     >
                       Wyczyść
                     </button>
@@ -1013,7 +1090,10 @@ function VehicleList() {
                   <input
                     type="checkbox"
                     checked={selectedStatuses.length === 0}
-                    onChange={() => setSelectedStatuses([])}
+                    onChange={() => {
+                      setCurrentPage(1);
+                      setSelectedStatuses([]);
+                    }}
                   />
 
                   <span>Wszystkie statusy</span>
@@ -1057,7 +1137,14 @@ function VehicleList() {
         <div className="vehicles-recent-filter">
           <span>Pojazdy dodane w ostatnich 30 dniach</span>
 
-          <button onClick={() => setSearchParams({})}>Pokaż wszystkie</button>
+          <button
+            onClick={() => {
+              setCurrentPage(1);
+              setSearchParams({});
+            }}
+          >
+            Pokaż wszystkie
+          </button>
         </div>
       )}
 
@@ -1195,6 +1282,26 @@ function VehicleList() {
 
           <button
             className={`table-sort-button ${
+              sortField === "inspection_expiry_date" ? "table-sort-active" : ""
+            }`}
+            onClick={() => handleSort("inspection_expiry_date")}
+          >
+            Przegląd
+            <span>{getSortArrow("inspection_expiry_date")}</span>
+          </button>
+
+          <button
+            className={`table-sort-button ${
+              sortField === "insurance_expiry_date" ? "table-sort-active" : ""
+            }`}
+            onClick={() => handleSort("insurance_expiry_date")}
+          >
+            OC
+            <span>{getSortArrow("insurance_expiry_date")}</span>
+          </button>
+
+          <button
+            className={`table-sort-button ${
               sortField === "status" ? "table-sort-active" : ""
             }`}
             onClick={() => handleSort("status")}
@@ -1244,6 +1351,34 @@ function VehicleList() {
             <span>{vehicle.year}</span>
 
             <span>{formatMileage(vehicle.mileage)}</span>
+
+            <div className="vehicle-expiry-cell">
+              <span
+                className={`vehicle-expiry-badge ${
+                  getExpiryStatus(vehicle.inspection_expiry_date).className
+                }`}
+              >
+                {getExpiryStatus(vehicle.inspection_expiry_date).text}
+              </span>
+
+              <span className="vehicle-expiry-date">
+                {formatExpiryDate(vehicle.inspection_expiry_date)}
+              </span>
+            </div>
+
+            <div className="vehicle-expiry-cell">
+              <span
+                className={`vehicle-expiry-badge ${
+                  getExpiryStatus(vehicle.insurance_expiry_date).className
+                }`}
+              >
+                {getExpiryStatus(vehicle.insurance_expiry_date).text}
+              </span>
+
+              <span className="vehicle-expiry-date">
+                {formatExpiryDate(vehicle.insurance_expiry_date)}
+              </span>
+            </div>
 
             <span className={`vehicle-status vehicle-status-${vehicle.status}`}>
               {getStatusName(vehicle.status)}
