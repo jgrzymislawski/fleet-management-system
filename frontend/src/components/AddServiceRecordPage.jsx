@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
+import { fetchAllPages } from "../api/pagination";
 import "./AddServiceRecordPage.css";
 
 function AddServiceRecordPage({ onLogout }) {
@@ -28,13 +29,14 @@ function AddServiceRecordPage({ onLogout }) {
   });
 
   useEffect(() => {
-    apiClient
-      .get("vehicles/")
-      .then((response) => {
-        setVehicles(response.data);
+    const loadVehicles = async () => {
+      try {
+        const vehiclesData = await fetchAllPages(apiClient, "vehicles/");
+
+        setVehicles(vehiclesData);
 
         if (vehicleFromUrl) {
-          const selectedVehicle = response.data.find(
+          const selectedVehicle = vehiclesData.find(
             (vehicle) => Number(vehicle.id) === Number(vehicleFromUrl),
           );
 
@@ -44,11 +46,13 @@ function AddServiceRecordPage({ onLogout }) {
             );
           }
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Błąd pobierania pojazdów:", err);
         setError("Nie udało się pobrać listy pojazdów.");
-      });
+      }
+    };
+
+    loadVehicles();
   }, [vehicleFromUrl]);
 
   useEffect(() => {

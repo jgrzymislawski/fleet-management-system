@@ -485,6 +485,78 @@
 }
 
 
+.activity-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 14px;
+
+  margin-top: 22px;
+  padding: 14px 16px;
+
+  border: 1px solid #E3DBD4;
+  border-radius: 14px;
+
+  background: #FAF5F2;
+}
+
+
+.activity-pagination-button {
+  min-width: 118px;
+  height: 40px;
+
+  padding: 0 14px;
+
+  border: 1px solid #CDC4BC;
+  border-radius: 8px;
+
+  background: #FFFFFF;
+  color: #1A1A1A;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+
+.activity-pagination-button:hover:not(:disabled) {
+  border-color: #1A1A1A;
+
+  background: #1A1A1A;
+  color: #FFFFFF;
+}
+
+
+.activity-pagination-button:disabled {
+  border-color: #E3DBD4;
+
+  background: #F2EDE8;
+  color: #A49B94;
+
+  cursor: not-allowed;
+}
+
+
+.activity-pagination-info {
+  min-width: 120px;
+
+  text-align: center;
+
+  color: #5F5751;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+
 @media (max-width: 1200px) {
   .activity-filters {
     grid-template-columns:
@@ -522,5 +594,25 @@
 
   .activity-log-top {
     align-items: flex-start;
+  }
+
+  .activity-pagination {
+    gap: 8px;
+
+    padding: 12px;
+  }
+
+  .activity-pagination-button {
+    min-width: 0;
+
+    flex: 1;
+
+    padding: 0 10px;
+  }
+
+  .activity-pagination-info {
+    min-width: auto;
+
+    white-space: nowrap;
   }
 }

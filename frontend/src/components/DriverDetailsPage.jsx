@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { fetchAllPages } from "../api/pagination";
 import "./DriverDetailsPage.css";
 
 function DriverDetailsPage({ onLogout }) {
@@ -27,11 +28,7 @@ function DriverDetailsPage({ onLogout }) {
 
         setDriver(driverResponse.data);
 
-        const vehiclesResponse = await apiClient.get("vehicles/");
-
-        const vehiclesData = Array.isArray(vehiclesResponse.data)
-          ? vehiclesResponse.data
-          : vehiclesResponse.data.results || [];
+        const vehiclesData = await fetchAllPages(apiClient, "vehicles/");
 
         const driverVehicles = vehiclesData.filter(
           (vehicle) => Number(vehicle.driver) === Number(id),
@@ -40,16 +37,12 @@ function DriverDetailsPage({ onLogout }) {
         setVehicles(driverVehicles);
 
         try {
-          const assignmentsResponse = await apiClient.get(
+          const driverAssignments = await fetchAllPages(
+            apiClient,
             "driver-assignments/",
-          );
-
-          const assignmentsData = Array.isArray(assignmentsResponse.data)
-            ? assignmentsResponse.data
-            : assignmentsResponse.data.results || [];
-
-          const driverAssignments = assignmentsData.filter(
-            (assignment) => Number(assignment.driver) === Number(id),
+            {
+              driver: id,
+            },
           );
 
           setAssignments(driverAssignments);

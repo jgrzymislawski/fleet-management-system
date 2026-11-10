@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
+import { fetchAllPages } from "../api/pagination";
 import "./AddVehicleDocumentPage.css";
 
 function AddVehicleDocumentPage({ onLogout }) {
@@ -29,8 +30,8 @@ function AddVehicleDocumentPage({ onLogout }) {
   useEffect(() => {
     const loadVehicles = async () => {
       try {
-        const response = await apiClient.get("vehicles/");
-        setVehicles(response.data);
+        const vehiclesData = await fetchAllPages(apiClient, "vehicles/");
+        setVehicles(vehiclesData);
       } catch (err) {
         console.error("Błąd pobierania pojazdów:", err);
         setError("Nie udało się pobrać listy pojazdów.");

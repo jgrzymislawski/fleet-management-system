@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import apiClient from "../api/client";
 import { useAuth } from "../context/AuthContext";
@@ -125,6 +125,7 @@ function ActivityLogPage({ onLogout }) {
 
   const [logs, setLogs] = useState([]);
   const [users, setUsers] = useState([]);
+  const [modelOptions, setModelOptions] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -136,18 +137,66 @@ function ActivityLogPage({ onLogout }) {
 
   const [periodDays, setPeriodDays] = useState(30);
 
+  const [totalLogs, setTotalLogs] = useState(0);
+  const [filteredCount, setFilteredCount] = useState(0);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const pageSize = 20;
+
   const canViewActivity = user?.role === "admin";
 
-  const loadActivity = async () => {
+  const buildActivityParams = (page = currentPage) => {
+    const params = {
+      page,
+      page_size: pageSize,
+    };
+
+    const normalizedSearch = searchText.trim();
+
+    if (normalizedSearch) {
+      params.search = normalizedSearch;
+    }
+
+    if (actionFilter) {
+      params.action = actionFilter;
+    }
+
+    if (userFilter) {
+      params.user = userFilter;
+    }
+
+    if (modelFilter) {
+      params.model = modelFilter;
+    }
+
+    return params;
+  };
+
+  const loadActivity = async (page = currentPage) => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.get("activity/");
+      const response = await apiClient.get("activity/", {
+        params: buildActivityParams(page),
+      });
 
       setLogs(response.data.logs || []);
       setUsers(response.data.users || []);
+      setModelOptions(response.data.model_options || []);
+
       setPeriodDays(response.data.period_days || 30);
+
+      setTotalLogs(response.data.total_count || 0);
+      setFilteredCount(response.data.count || 0);
+
+      setTotalPages(response.data.total_pages || 1);
+
+      if (response.data.page && response.data.page !== currentPage) {
+        setCurrentPage(response.data.page);
+      }
     } catch (err) {
       console.error("Błąd pobierania logów aktywności:", err);
 
@@ -162,12 +211,30 @@ function ActivityLogPage({ onLogout }) {
   };
 
   useEffect(() => {
-    if (canViewActivity) {
-      loadActivity();
-    } else {
+    if (!canViewActivity) {
       setLoading(false);
+
+      return;
     }
-  }, [canViewActivity]);
+
+    const timeoutId = window.setTimeout(
+      () => {
+        loadActivity(currentPage);
+      },
+      searchText.trim() ? 300 : 0,
+    );
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    canViewActivity,
+    currentPage,
+    searchText,
+    actionFilter,
+    userFilter,
+    modelFilter,
+  ]);
 
   const formatDateTime = (value) => {
     if (!value) {
@@ -364,62 +431,49 @@ function ActivityLogPage({ onLogout }) {
     return "—";
   };
 
-  const filteredLogs = useMemo(() => {
-    const normalizedSearch = searchText.trim().toLowerCase();
+  const handleSearchChange = (event) => {
+    setCurrentPage(1);
 
-    return logs.filter((log) => {
-      if (actionFilter && String(log.action) !== actionFilter) {
-        return false;
-      }
+    setSearchText(event.target.value);
+  };
 
-      if (userFilter && String(log.actor?.id) !== userFilter) {
-        return false;
-      }
+  const handleActionFilterChange = (event) => {
+    setCurrentPage(1);
 
-      if (modelFilter && log.model !== modelFilter) {
-        return false;
-      }
+    setActionFilter(event.target.value);
+  };
 
-      if (!normalizedSearch) {
-        return true;
-      }
+  const handleUserFilterChange = (event) => {
+    setCurrentPage(1);
 
-      const actor = log.actor?.name?.toLowerCase() || "";
+    setUserFilter(event.target.value);
+  };
 
-      const object = log.object_repr?.toLowerCase() || "";
+  const handleModelFilterChange = (event) => {
+    setCurrentPage(1);
 
-      const model = log.model_label?.toLowerCase() || "";
-
-      const action = log.action_label?.toLowerCase() || "";
-
-      return (
-        actor.includes(normalizedSearch) ||
-        object.includes(normalizedSearch) ||
-        model.includes(normalizedSearch) ||
-        action.includes(normalizedSearch)
-      );
-    });
-  }, [logs, searchText, actionFilter, userFilter, modelFilter]);
-
-  const modelOptions = useMemo(() => {
-    const models = new Map();
-
-    logs.forEach((log) => {
-      if (log.model && log.model_label) {
-        models.set(log.model, log.model_label);
-      }
-    });
-
-    return Array.from(models.entries()).sort((a, b) =>
-      a[1].localeCompare(b[1], "pl"),
-    );
-  }, [logs]);
+    setModelFilter(event.target.value);
+  };
 
   const clearFilters = () => {
+    setCurrentPage(1);
+
     setSearchText("");
     setActionFilter("");
     setUserFilter("");
     setModelFilter("");
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage((page) => page - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((page) => page + 1);
+    }
   };
 
   return (
@@ -440,7 +494,7 @@ function ActivityLogPage({ onLogout }) {
 
             <button
               className="activity-refresh-button"
-              onClick={loadActivity}
+              onClick={() => loadActivity(currentPage)}
               disabled={loading}
             >
               {loading ? "Odświeżanie..." : "Odśwież"}
@@ -451,13 +505,13 @@ function ActivityLogPage({ onLogout }) {
             <div className="activity-summary-card">
               <span>Wszystkie zdarzenia</span>
 
-              <strong>{logs.length}</strong>
+              <strong>{totalLogs}</strong>
             </div>
 
             <div className="activity-summary-card">
               <span>Po filtrach</span>
 
-              <strong>{filteredLogs.length}</strong>
+              <strong>{filteredCount}</strong>
             </div>
 
             <div className="activity-summary-card">
@@ -475,17 +529,14 @@ function ActivityLogPage({ onLogout }) {
                 type="text"
                 placeholder="Użytkownik, obiekt, typ..."
                 value={searchText}
-                onChange={(event) => setSearchText(event.target.value)}
+                onChange={handleSearchChange}
               />
             </div>
 
             <div className="activity-filter-container">
               <label>Akcja</label>
 
-              <select
-                value={actionFilter}
-                onChange={(event) => setActionFilter(event.target.value)}
-              >
+              <select value={actionFilter} onChange={handleActionFilterChange}>
                 <option value="">Wszystkie akcje</option>
 
                 <option value="0">Dodano</option>
@@ -501,10 +552,7 @@ function ActivityLogPage({ onLogout }) {
             <div className="activity-filter-container">
               <label>Użytkownik</label>
 
-              <select
-                value={userFilter}
-                onChange={(event) => setUserFilter(event.target.value)}
-              >
+              <select value={userFilter} onChange={handleUserFilterChange}>
                 <option value="">Wszyscy użytkownicy</option>
 
                 {users.map((activityUser) => (
@@ -518,15 +566,12 @@ function ActivityLogPage({ onLogout }) {
             <div className="activity-filter-container">
               <label>Typ obiektu</label>
 
-              <select
-                value={modelFilter}
-                onChange={(event) => setModelFilter(event.target.value)}
-              >
+              <select value={modelFilter} onChange={handleModelFilterChange}>
                 <option value="">Wszystkie obiekty</option>
 
-                {modelOptions.map(([model, label]) => (
-                  <option key={model} value={model}>
-                    {label}
+                {modelOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>
@@ -548,12 +593,13 @@ function ActivityLogPage({ onLogout }) {
           {!loading && !error && (
             <>
               <div className="activity-results-info">
-                Wyświetlono <strong>{filteredLogs.length}</strong> z{" "}
-                <strong>{logs.length}</strong> zdarzeń
+                Na tej stronie: <strong>{logs.length}</strong> • Po filtrach:{" "}
+                <strong>{filteredCount}</strong> • Wszystkich:{" "}
+                <strong>{totalLogs}</strong>
               </div>
 
               <div className="activity-list">
-                {filteredLogs.map((log) => {
+                {logs.map((log) => {
                   const visibleChanges = getVisibleChanges(log);
 
                   return (
@@ -624,7 +670,7 @@ function ActivityLogPage({ onLogout }) {
                   );
                 })}
 
-                {filteredLogs.length === 0 && (
+                {logs.length === 0 && (
                   <div className="activity-empty">
                     <h3>Brak logów</h3>
 
@@ -634,6 +680,32 @@ function ActivityLogPage({ onLogout }) {
                   </div>
                 )}
               </div>
+
+              {totalPages > 1 && (
+                <div className="activity-pagination">
+                  <button
+                    type="button"
+                    className="activity-pagination-button"
+                    onClick={handlePreviousPage}
+                    disabled={currentPage <= 1 || loading}
+                  >
+                    ← Poprzednia
+                  </button>
+
+                  <span className="activity-pagination-info">
+                    Strona {currentPage} z {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    className="activity-pagination-button"
+                    onClick={handleNextPage}
+                    disabled={currentPage >= totalPages || loading}
+                  >
+                    Następna →
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>

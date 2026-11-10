@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
+import { fetchAllPages } from "../api/pagination";
 import "./AddVehicleDocumentPage.css";
 
 function EditVehicleDocumentPage({ onLogout }) {
@@ -28,14 +29,14 @@ function EditVehicleDocumentPage({ onLogout }) {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [documentResponse, vehiclesResponse] = await Promise.all([
+        const [documentResponse, vehiclesData] = await Promise.all([
           apiClient.get(`vehicle-documents/${id}/`),
-          apiClient.get("vehicles/"),
+          fetchAllPages(apiClient, "vehicles/"),
         ]);
 
         const document = documentResponse.data;
 
-        setVehicles(vehiclesResponse.data);
+        setVehicles(vehiclesData);
         setExistingFile(document.file);
 
         setFormData({

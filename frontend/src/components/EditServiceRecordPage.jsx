@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
+import { fetchAllPages } from "../api/pagination";
 import "./AddServiceRecordPage.css";
 
 function EditServiceRecordPage({ onLogout }) {
@@ -24,14 +25,14 @@ function EditServiceRecordPage({ onLogout }) {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [recordResponse, vehiclesResponse] = await Promise.all([
+        const [recordResponse, vehiclesData] = await Promise.all([
           apiClient.get(`service-records/${id}/`),
-          apiClient.get("vehicles/"),
+          fetchAllPages(apiClient, "vehicles/"),
         ]);
 
         const record = recordResponse.data;
 
-        setVehicles(vehiclesResponse.data);
+        setVehicles(vehiclesData);
 
         setFormData({
           vehicle: String(record.vehicle),

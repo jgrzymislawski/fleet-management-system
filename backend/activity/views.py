@@ -709,9 +709,7 @@ class OrganizationActivityView(
                 ),
             )
 
-        if (
-            membership.role != "admin"
-        ):
+        if membership.role != "admin":
             return Response(
                 {
                     "detail": (
@@ -730,9 +728,7 @@ class OrganizationActivityView(
 
         date_from = (
             timezone.now()
-            - timedelta(
-                days=30
-            )
+            - timedelta(days=30)
         )
 
         queryset = (
@@ -752,19 +748,51 @@ class OrganizationActivityView(
         organization_logs = []
 
         for log_entry in queryset:
-            if (
-                log_belongs_to_organization(
-                    log_entry,
-                    organization,
-                )
+            if log_belongs_to_organization(
+                log_entry,
+                organization,
             ):
                 organization_logs.append(
                     log_entry
                 )
 
+        total_count = len(
+            organization_logs
+        )
+
+        model_options_map = {}
+
+        for log_entry in organization_logs:
+            if not log_entry.content_type:
+                continue
+
+            model_name = (
+                log_entry
+                .content_type
+                .model
+            )
+
+            model_options_map[
+                model_name
+            ] = get_model_label(
+                log_entry
+            )
+
+        model_options = [
+            {
+                "value": model,
+                "label": label,
+            }
+            for model, label in sorted(
+                model_options_map.items(),
+                key=lambda item: (
+                    item[1].casefold()
+                ),
+            )
+        ]
+
         action_filter = (
-            request
-            .query_params
+            request.query_params
             .get(
                 "action",
                 "",
@@ -774,8 +802,7 @@ class OrganizationActivityView(
         )
 
         user_filter = (
-            request
-            .query_params
+            request.query_params
             .get(
                 "user",
                 "",
@@ -784,8 +811,7 @@ class OrganizationActivityView(
         )
 
         model_filter = (
-            request
-            .query_params
+            request.query_params
             .get(
                 "model",
                 "",
@@ -795,8 +821,7 @@ class OrganizationActivityView(
         )
 
         search = (
-            request
-            .query_params
+            request.query_params
             .get(
                 "search",
                 "",
@@ -806,24 +831,17 @@ class OrganizationActivityView(
         )
 
         action_mapping = {
-            "create": (
-                LogEntry.Action.CREATE
-            ),
-            "update": (
-                LogEntry.Action.UPDATE
-            ),
-            "delete": (
-                LogEntry.Action.DELETE
-            ),
-            "access": (
-                LogEntry.Action.ACCESS
-            ),
+            "0": LogEntry.Action.CREATE,
+            "1": LogEntry.Action.UPDATE,
+            "2": LogEntry.Action.DELETE,
+            "3": LogEntry.Action.ACCESS,
+            "create": LogEntry.Action.CREATE,
+            "update": LogEntry.Action.UPDATE,
+            "delete": LogEntry.Action.DELETE,
+            "access": LogEntry.Action.ACCESS,
         }
 
-        if (
-            action_filter
-            in action_mapping
-        ):
+        if action_filter in action_mapping:
             organization_logs = [
                 log_entry
                 for log_entry
@@ -883,12 +901,89 @@ class OrganizationActivityView(
                     in get_model_label(
                         log_entry
                     ).lower()
+                    or search
+                    in ACTION_LABELS.get(
+                        log_entry.action,
+                        "Inna akcja",
+                    ).lower()
                 )
             ]
 
+        filtered_count = len(
+            organization_logs
+        )
+
+        try:
+            page = int(
+                request.query_params.get(
+                    "page",
+                    1,
+                )
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
+            page = 1
+
+        try:
+            page_size = int(
+                request.query_params.get(
+                    "page_size",
+                    20,
+                )
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
+            page_size = 20
+
+        page = max(
+            page,
+            1,
+        )
+
+        page_size = min(
+            max(
+                page_size,
+                1,
+            ),
+            100,
+        )
+
+        total_pages = max(
+            1,
+            (
+                filtered_count
+                + page_size
+                - 1
+            )
+            // page_size,
+        )
+
+        if page > total_pages:
+            page = total_pages
+
+        start_index = (
+            (page - 1)
+            * page_size
+        )
+
+        end_index = (
+            start_index
+            + page_size
+        )
+
+        page_logs = (
+            organization_logs[
+                start_index:end_index
+            ]
+        )
+
         logs = []
 
-        for log_entry in organization_logs:
+        for log_entry in page_logs:
             actor = (
                 log_entry.actor
             )
@@ -938,10 +1033,7 @@ class OrganizationActivityView(
                         log_entry
                         .content_type
                         .model
-                        if (
-                            log_entry
-                            .content_type
-                        )
+                        if log_entry.content_type
                         else None
                     ),
 
@@ -1014,12 +1106,44 @@ class OrganizationActivityView(
                 ),
 
                 "count": (
-                    len(logs)
+                    filtered_count
                 ),
 
-                "logs": logs,
+                "total_count": (
+                    total_count
+                ),
 
-                "users": users,
+                "page": (
+                    page
+                ),
+
+                "page_size": (
+                    page_size
+                ),
+
+                "total_pages": (
+                    total_pages
+                ),
+
+                "has_previous": (
+                    page > 1
+                ),
+
+                "has_next": (
+                    page < total_pages
+                ),
+
+                "logs": (
+                    logs
+                ),
+
+                "users": (
+                    users
+                ),
+
+                "model_options": (
+                    model_options
+                ),
             },
             status=(
                 status.HTTP_200_OK

@@ -1,13 +1,15 @@
 from io import BytesIO
+from datetime import timedelta
 
 from django.http import HttpResponse
+from django.db.models import Q
 from django.utils import timezone
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-
+from rest_framework.pagination import PageNumberPagination
 from auditlog.context import set_actor
 
 from organizations.models import (
@@ -268,15 +270,366 @@ def create_xlsx_response(
     return response
 
 
+class VehiclePagination(
+    PageNumberPagination
+):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
 class VehicleViewSet(
     viewsets.ModelViewSet
 ):
     queryset = Vehicle.active_objects.all()
     serializer_class = VehicleSerializer
+    pagination_class = VehiclePagination
 
     def get_queryset(self):
-        return get_accessible_vehicles(
-            self.request.user
+        queryset = (
+            get_accessible_vehicles(
+                self.request.user
+            )
+            .select_related(
+                "company",
+                "driver",
+            )
+        )
+
+        search = (
+            self.request.query_params
+            .get(
+                "search",
+                "",
+            )
+            .strip()
+        )
+
+        if search:
+            queryset = queryset.filter(
+                Q(
+                    brand__icontains=search
+                )
+                | Q(
+                    model__icontains=search
+                )
+                | Q(
+                    registration_number__icontains=search
+                )
+                | Q(
+                    vin__icontains=search
+                )
+                | Q(
+                    branch__icontains=search
+                )
+            )
+
+        brands = self._get_csv_values(
+            "brand"
+        )
+
+        if brands:
+            queryset = queryset.filter(
+                brand__in=brands
+            )
+
+        years = self._get_csv_values(
+            "year"
+        )
+
+        if years:
+            valid_years = []
+
+            for year in years:
+                try:
+                    valid_years.append(
+                        int(year)
+                    )
+                except (
+                    TypeError,
+                    ValueError,
+                ):
+                    continue
+
+            if valid_years:
+                queryset = queryset.filter(
+                    year__in=valid_years
+                )
+
+        vehicle_types = (
+            self._get_csv_values(
+                "vehicle_type"
+            )
+        )
+
+        if vehicle_types:
+            queryset = queryset.filter(
+                vehicle_type__in=(
+                    vehicle_types
+                )
+            )
+
+        statuses = self._get_csv_values(
+            "status"
+        )
+
+        if statuses:
+            queryset = queryset.filter(
+                status__in=statuses
+            )
+
+        branches = self._get_csv_values(
+            "branch"
+        )
+
+        if branches:
+            include_empty_branch = (
+                "Brak oddziału"
+                in branches
+            )
+
+            actual_branches = [
+                branch
+                for branch in branches
+                if branch
+                != "Brak oddziału"
+            ]
+
+            branch_query = Q()
+
+            if actual_branches:
+                branch_query |= Q(
+                    branch__in=(
+                        actual_branches
+                    )
+                )
+
+            if include_empty_branch:
+                branch_query |= (
+                    Q(branch__isnull=True)
+                    | Q(branch="")
+                )
+
+            queryset = queryset.filter(
+                branch_query
+            )
+
+        if (
+            self.request.query_params
+            .get(
+                "recent"
+            )
+            == "1"
+        ):
+            recent_date = (
+                timezone.localdate()
+                - timedelta(
+                    days=30
+                )
+            )
+
+            queryset = queryset.filter(
+                created_at__date__gte=(
+                    recent_date
+                )
+            )
+
+        ordering = (
+            self.request.query_params
+            .get(
+                "ordering",
+                "",
+            )
+            .strip()
+        )
+
+        ordering_map = {
+            "vehicle": (
+                "brand",
+                "model",
+            ),
+            "registration_number": (
+                "registration_number",
+            ),
+            "vehicle_type": (
+                "vehicle_type",
+            ),
+            "branch": (
+                "branch",
+            ),
+            "year": (
+                "year",
+            ),
+            "mileage": (
+                "mileage",
+            ),
+            "status": (
+                "status",
+            ),
+        }
+
+        descending = ordering.startswith(
+            "-"
+        )
+
+        ordering_key = (
+            ordering[1:]
+            if descending
+            else ordering
+        )
+
+        fields = ordering_map.get(
+            ordering_key
+        )
+
+        if fields:
+            if descending:
+                fields = tuple(
+                    f"-{field}"
+                    for field in fields
+                )
+
+            queryset = queryset.order_by(
+                *fields
+            )
+
+        else:
+            queryset = queryset.order_by(
+                "brand",
+                "model",
+                "registration_number",
+            )
+
+        return queryset
+
+    def _get_csv_values(
+        self,
+        parameter_name,
+    ):
+        raw_value = (
+            self.request.query_params
+            .get(
+                parameter_name,
+                "",
+            )
+        )
+
+        if not raw_value:
+            return []
+
+        return [
+            value.strip()
+            for value
+            in raw_value.split(",")
+            if value.strip()
+        ]
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="filter-options",
+    )
+    def filter_options(
+        self,
+        request,
+    ):
+        queryset = (
+            get_accessible_vehicles(
+                request.user
+            )
+        )
+
+        brands = list(
+            queryset
+            .exclude(
+                brand__isnull=True
+            )
+            .exclude(
+                brand=""
+            )
+            .values_list(
+                "brand",
+                flat=True,
+            )
+            .distinct()
+            .order_by(
+                "brand"
+            )
+        )
+
+        years = list(
+            queryset
+            .values_list(
+                "year",
+                flat=True,
+            )
+            .distinct()
+            .order_by(
+                "-year"
+            )
+        )
+
+        vehicle_types = list(
+            queryset
+            .values_list(
+                "vehicle_type",
+                flat=True,
+            )
+            .distinct()
+            .order_by(
+                "vehicle_type"
+            )
+        )
+
+        statuses = list(
+            queryset
+            .values_list(
+                "status",
+                flat=True,
+            )
+            .distinct()
+            .order_by(
+                "status"
+            )
+        )
+
+        raw_branches = list(
+            queryset
+            .values_list(
+                "branch",
+                flat=True,
+            )
+            .distinct()
+        )
+
+        branches = sorted(
+            {
+                (
+                    branch.strip()
+                    if isinstance(
+                        branch,
+                        str,
+                    )
+                    and branch.strip()
+                    else "Brak oddziału"
+                )
+                for branch in raw_branches
+            },
+            key=lambda value: (
+                value.casefold()
+            ),
+        )
+
+        return Response(
+            {
+                "brands": brands,
+                "years": years,
+                "vehicle_types": (
+                    vehicle_types
+                ),
+                "statuses": statuses,
+                "branches": branches,
+            }
         )
 
     @action(
@@ -789,12 +1142,19 @@ class VehicleViewSet(
         ):
             instance.soft_delete()
 
+class ServiceRecordPagination(
+    PageNumberPagination
+):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
 
 class ServiceRecordViewSet(
     viewsets.ModelViewSet
 ):
     queryset = ServiceRecord.objects.all()
     serializer_class = ServiceRecordSerializer
+    pagination_class = ServiceRecordPagination
 
     def get_queryset(self):
         vehicles = get_accessible_vehicles(
@@ -805,6 +1165,9 @@ class ServiceRecordViewSet(
             ServiceRecord.objects
             .filter(
                 vehicle__in=vehicles
+            )
+            .select_related(
+                "vehicle"
             )
         )
 
@@ -819,7 +1182,10 @@ class ServiceRecordViewSet(
                 vehicle_id=vehicle_id
             )
 
-        return queryset
+        return queryset.order_by(
+            "-service_date",
+            "-created_at",
+        )
 
     @action(
         detail=False,
@@ -959,9 +1325,116 @@ class ServiceRecordViewSet(
             instance.delete()
 
 
+class VehicleDocumentPagination(
+    PageNumberPagination
+):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
 class VehicleDocumentViewSet(
     viewsets.ModelViewSet
 ):
+    queryset = VehicleDocument.objects.all()
+    serializer_class = VehicleDocumentSerializer
+    pagination_class = VehicleDocumentPagination
+
+    def get_queryset(self):
+        vehicles = get_accessible_vehicles(
+            self.request.user
+        )
+
+        queryset = (
+            VehicleDocument.objects
+            .filter(
+                vehicle__in=vehicles
+            )
+            .select_related(
+                "vehicle"
+            )
+        )
+
+        vehicle_id = (
+            self.request.query_params.get(
+                "vehicle"
+            )
+        )
+
+        if vehicle_id:
+            queryset = queryset.filter(
+                vehicle_id=vehicle_id
+            )
+
+        return queryset.order_by(
+            "-created_at"
+        )
+
+    def perform_create(
+        self,
+        serializer,
+    ):
+        vehicle = (
+            serializer.validated_data.get(
+                "vehicle"
+            )
+        )
+
+        ensure_vehicle_edit_permission(
+            self.request.user,
+            vehicle,
+        )
+
+        with set_actor(
+            self.request.user
+        ):
+            serializer.save()
+
+    def perform_update(
+        self,
+        serializer,
+    ):
+        document = self.get_object()
+
+        old_vehicle = (
+            document.vehicle
+        )
+
+        ensure_vehicle_edit_permission(
+            self.request.user,
+            old_vehicle,
+        )
+
+        new_vehicle = (
+            serializer.validated_data.get(
+                "vehicle",
+                old_vehicle,
+            )
+        )
+
+        ensure_vehicle_edit_permission(
+            self.request.user,
+            new_vehicle,
+        )
+
+        with set_actor(
+            self.request.user
+        ):
+            serializer.save()
+
+    def perform_destroy(
+        self,
+        instance,
+    ):
+        ensure_vehicle_edit_permission(
+            self.request.user,
+            instance.vehicle,
+        )
+
+        with set_actor(
+            self.request.user
+        ):
+            instance.delete()
     queryset = VehicleDocument.objects.all()
     serializer_class = VehicleDocumentSerializer
 

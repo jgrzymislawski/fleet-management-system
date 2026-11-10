@@ -1,6 +1,7 @@
 from io import BytesIO
 
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponse
 from django.utils import timezone
 
@@ -8,6 +9,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from auditlog.context import set_actor
@@ -82,6 +84,14 @@ def ensure_driver_management_permission(user):
     )
 
 
+class DriverPagination(
+    PageNumberPagination
+):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
 class DriverViewSet(
     viewsets.ModelViewSet
 ):
@@ -90,6 +100,7 @@ class DriverViewSet(
     permission_classes = [
         IsAuthenticated,
     ]
+    pagination_class = DriverPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -99,16 +110,113 @@ class DriverViewSet(
         )
 
         if membership is not None:
-            return Driver.active_objects.filter(
-                organization=(
-                    membership.organization
+            queryset = (
+                Driver.active_objects
+                .filter(
+                    organization=(
+                        membership.organization
+                    )
                 )
             )
 
-        if user_is_superuser(user):
-            return Driver.active_objects.all()
+        elif user_is_superuser(user):
+            queryset = (
+                Driver.active_objects
+                .all()
+            )
 
-        return Driver.active_objects.none()
+        else:
+            return (
+                Driver.active_objects
+                .none()
+            )
+
+        search = (
+            self.request.query_params
+            .get(
+                "search",
+                "",
+            )
+            .strip()
+        )
+
+        if search:
+            queryset = queryset.filter(
+                Q(
+                    first_name__icontains=search
+                )
+                | Q(
+                    last_name__icontains=search
+                )
+                | Q(
+                    license_number__icontains=search
+                )
+                | Q(
+                    phone_number__icontains=search
+                )
+            )
+
+        ordering = (
+            self.request.query_params
+            .get(
+                "ordering",
+                "",
+            )
+            .strip()
+        )
+
+        ordering_map = {
+            "first_name": (
+                "first_name",
+                "last_name",
+            ),
+            "last_name": (
+                "last_name",
+                "first_name",
+            ),
+            "license_number": (
+                "license_number",
+            ),
+            "phone_number": (
+                "phone_number",
+            ),
+            "hired_at": (
+                "hired_at",
+            ),
+        }
+
+        descending = ordering.startswith(
+            "-"
+        )
+
+        ordering_key = (
+            ordering[1:]
+            if descending
+            else ordering
+        )
+
+        fields = ordering_map.get(
+            ordering_key
+        )
+
+        if fields:
+            if descending:
+                fields = tuple(
+                    f"-{field}"
+                    for field in fields
+                )
+
+            queryset = queryset.order_by(
+                *fields
+            )
+
+        else:
+            queryset = queryset.order_by(
+                "last_name",
+                "first_name",
+            )
+
+        return queryset
 
     @action(
         detail=False,
@@ -507,6 +615,12 @@ class DriverViewSet(
 
                 instance.soft_delete()
 
+class DriverVehicleAssignmentPagination(
+    PageNumberPagination
+):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
 
 class DriverVehicleAssignmentViewSet(
     viewsets.ModelViewSet
@@ -522,6 +636,9 @@ class DriverVehicleAssignmentViewSet(
     permission_classes = [
         IsAuthenticated,
     ]
+    pagination_class = (
+        DriverVehicleAssignmentPagination
+    )
 
     def get_queryset(self):
         user = self.request.user
@@ -551,34 +668,57 @@ class DriverVehicleAssignmentViewSet(
                 ),
             )
 
-            if membership.role == "admin":
-                return queryset
+            if membership.role != "admin":
+                company_ids = (
+                    membership
+                    .company_accesses
+                    .filter(
+                        company__is_active=True
+                    )
+                    .values_list(
+                        "company_id",
+                        flat=True,
+                    )
+                )
 
-            company_ids = (
-                membership
-                .company_accesses
-                .filter(
-                    company__is_active=True
+                queryset = queryset.filter(
+                    vehicle__company_id__in=(
+                        company_ids
+                    ),
+                    vehicle__company__is_active=True,
                 )
-                .values_list(
-                    "company_id",
-                    flat=True,
-                )
+
+        elif not user_is_superuser(user):
+            return (
+                DriverVehicleAssignment.objects
+                .none()
             )
 
-            return queryset.filter(
-                vehicle__company_id__in=(
-                    company_ids
-                ),
-                vehicle__company__is_active=True,
+        vehicle_id = (
+            self.request.query_params.get(
+                "vehicle"
+            )
+        )
+
+        if vehicle_id:
+            queryset = queryset.filter(
+                vehicle_id=vehicle_id
             )
 
-        if user_is_superuser(user):
-            return queryset
+        driver_id = (
+            self.request.query_params.get(
+                "driver"
+            )
+        )
 
-        return (
-            DriverVehicleAssignment.objects
-            .none()
+        if driver_id:
+            queryset = queryset.filter(
+                driver_id=driver_id
+            )
+
+        return queryset.order_by(
+            "-start_date",
+            "-created_at",
         )
 
     def check_write_access(

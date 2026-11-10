@@ -321,6 +321,75 @@
     cursor: not-allowed;
 }
 
+.service-history-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 22px;
+    padding: 14px 16px;
+    border: 1px solid #E1DAD4;
+    border-radius: 8px;
+    background-color: #FAF5F2;
+}
+
+.service-history-pagination-button {
+    min-width: 118px;
+    height: 38px;
+    padding: 0 14px;
+    border: 1px solid #D8D1CA;
+    border-radius: 6px;
+    background-color: #FFFFFF;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.service-history-pagination-button:hover:not(:disabled) {
+    border-color: #1A1A1A;
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.service-history-pagination-button:disabled {
+    border-color: #E4DED8;
+    background-color: #F4F0EC;
+    color: #AAA39D;
+    cursor: not-allowed;
+}
+
+.service-history-pagination-info {
+    min-width: 120px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: #55504B;
+}
+
+@media (max-width: 600px) {
+    .service-history-pagination {
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .service-history-pagination-button {
+        min-width: 0;
+        flex: 1;
+        padding: 0 10px;
+    }
+
+    .service-history-pagination-info {
+        min-width: auto;
+        white-space: nowrap;
+    }
+}
+
 @media (max-width: 1200px) {
     .statistics-cards {
         grid-template-columns: repeat(2, 1fr);

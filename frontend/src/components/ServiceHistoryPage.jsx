@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
+import { fetchAllPages } from "../api/pagination";
 import { useAuth } from "../context/AuthContext";
 import "./ServiceHistoryPage.css";
 
@@ -11,6 +12,10 @@ function ServiceHistoryPage({ onLogout }) {
   const { user, canEditCompany } = useAuth();
 
   const [serviceRecords, setServiceRecords] = useState([]);
+  const [totalServiceRecords, setTotalServiceRecords] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
+
   const [vehicles, setVehicles] = useState([]);
   const [error, setError] = useState(null);
   const [exporting, setExporting] = useState(false);
@@ -19,33 +24,52 @@ function ServiceHistoryPage({ onLogout }) {
     user?.role === "admin" ||
     user?.companies?.some((company) => company.role === "editor");
 
+  const loadServiceRecords = async (page = currentPage) => {
+    try {
+      const response = await apiClient.get("service-records/", {
+        params: {
+          page,
+          page_size: pageSize,
+        },
+      });
+
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+
+      const count = Array.isArray(response.data)
+        ? response.data.length
+        : response.data.count || 0;
+
+      setServiceRecords(data);
+      setTotalServiceRecords(count);
+      setError(null);
+    } catch (err) {
+      console.error("Błąd pobierania historii napraw:", err);
+
+      setError("Nie udało się pobrać historii napraw.");
+    }
+  };
+
   useEffect(() => {
-    const loadData = async () => {
+    const loadVehicles = async () => {
       try {
-        const [serviceResponse, vehiclesResponse] = await Promise.all([
-          apiClient.get("service-records/"),
-          apiClient.get("vehicles/"),
-        ]);
+        const vehiclesData = await fetchAllPages(apiClient, "vehicles/");
 
-        const serviceData = Array.isArray(serviceResponse.data)
-          ? serviceResponse.data
-          : serviceResponse.data.results || [];
-
-        const vehiclesData = Array.isArray(vehiclesResponse.data)
-          ? vehiclesResponse.data
-          : vehiclesResponse.data.results || [];
-
-        setServiceRecords(serviceData);
         setVehicles(vehiclesData);
       } catch (err) {
-        console.error("Błąd pobierania historii napraw:", err);
+        console.error("Błąd pobierania pojazdów:", err);
 
-        setError("Nie udało się pobrać historii napraw.");
+        setError("Nie udało się pobrać listy pojazdów.");
       }
     };
 
-    loadData();
+    loadVehicles();
   }, []);
+
+  useEffect(() => {
+    loadServiceRecords(currentPage);
+  }, [currentPage]);
 
   const getVehicle = (vehicleId) => {
     return vehicles.find((vehicle) => Number(vehicle.id) === Number(vehicleId));
@@ -86,11 +110,11 @@ function ServiceHistoryPage({ onLogout }) {
     try {
       await apiClient.delete(`service-records/${record.id}/`);
 
-      setServiceRecords((currentRecords) =>
-        currentRecords.filter(
-          (currentRecord) => currentRecord.id !== record.id,
-        ),
-      );
+      if (serviceRecords.length === 1 && currentPage > 1) {
+        setCurrentPage((page) => page - 1);
+      } else {
+        await loadServiceRecords(currentPage);
+      }
     } catch (err) {
       console.error("Błąd usuwania wpisu:", err);
 
@@ -115,9 +139,8 @@ function ServiceHistoryPage({ onLogout }) {
   };
 
   const handleExport = async () => {
-    if (serviceRecords.length === 0) {
+    if (totalServiceRecords === 0) {
       setError("Brak wpisów do wyeksportowania.");
-
       return;
     }
 
@@ -125,12 +148,10 @@ function ServiceHistoryPage({ onLogout }) {
       setExporting(true);
       setError(null);
 
-      const serviceRecordIds = serviceRecords.map((record) => record.id);
-
       const response = await apiClient.post(
         "service-records/export/",
         {
-          service_record_ids: serviceRecordIds,
+          service_record_ids: [],
         },
         {
           responseType: "blob",
@@ -151,20 +172,19 @@ function ServiceHistoryPage({ onLogout }) {
       document.body.appendChild(link);
 
       link.click();
-
       link.remove();
 
       window.URL.revokeObjectURL(downloadUrl);
     } catch (err) {
       console.error("Błąd eksportu historii napraw:", err);
 
-      console.error("Odpowiedź backendu:", err.response?.data);
-
       setError("Nie udało się wyeksportować historii napraw.");
     } finally {
       setExporting(false);
     }
   };
+
+  const totalPages = Math.max(1, Math.ceil(totalServiceRecords / pageSize));
 
   return (
     <div className="dashboard-layout">
@@ -184,7 +204,7 @@ function ServiceHistoryPage({ onLogout }) {
             <button
               className="service-history-export"
               onClick={handleExport}
-              disabled={exporting || serviceRecords.length === 0}
+              disabled={exporting || totalServiceRecords === 0}
             >
               {exporting ? "Eksportowanie..." : "Eksportuj"}
             </button>
@@ -203,7 +223,8 @@ function ServiceHistoryPage({ onLogout }) {
         {error && <p className="service-history-error">{error}</p>}
 
         <div className="service-history-count">
-          Liczba wpisów: {serviceRecords.length}
+          Na tej stronie: {serviceRecords.length} • Łącznie:{" "}
+          {totalServiceRecords}
         </div>
 
         <div className="service-history-table">
@@ -291,6 +312,32 @@ function ServiceHistoryPage({ onLogout }) {
             </div>
           )}
         </div>
+
+        {totalPages > 1 && (
+          <div className="service-history-pagination">
+            <button
+              type="button"
+              className="service-history-pagination-button"
+              onClick={() => setCurrentPage((page) => page - 1)}
+              disabled={currentPage <= 1}
+            >
+              ← Poprzednia
+            </button>
+
+            <span className="service-history-pagination-info">
+              Strona {currentPage} z {totalPages}
+            </span>
+
+            <button
+              type="button"
+              className="service-history-pagination-button"
+              onClick={() => setCurrentPage((page) => page + 1)}
+              disabled={currentPage >= totalPages}
+            >
+              Następna →
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );

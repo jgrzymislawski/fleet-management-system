@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import VehicleForm from "./VehicleForm";
 import apiClient from "../api/client";
+import { fetchAllPages } from "../api/pagination";
 import { useAuth } from "../context/AuthContext";
 import "./AddVehiclePage.css";
 
@@ -43,10 +44,13 @@ function EditVehiclePage({ onLogout }) {
 
     const loadData = async () => {
       try {
-        const [vehicleResponse, driversResponse, companiesResponse] =
+        const [vehicleResponse, driversData, companiesResponse] =
           await Promise.all([
             apiClient.get(`vehicles/${id}/`),
-            apiClient.get("drivers/"),
+            fetchAllPages(
+              apiClient,
+              "drivers/",
+            ),
             apiClient.get("companies/"),
           ]);
 
@@ -57,7 +61,7 @@ function EditVehiclePage({ onLogout }) {
           return;
         }
 
-        setDrivers(driversResponse.data);
+        setDrivers(driversData);
 
         if (user?.role === "admin") {
           setCompanies(companiesResponse.data);

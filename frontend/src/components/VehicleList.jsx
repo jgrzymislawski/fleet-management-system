@@ -7,6 +7,10 @@ import "./VehicleList.css";
 
 function VehicleList() {
   const [vehicles, setVehicles] = useState([]);
+  const [totalVehicles, setTotalVehicles] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
+
   const [error, setError] = useState(null);
 
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -17,6 +21,14 @@ function VehicleList() {
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [selectedStatuses, setSelectedStatuses] = useState([]);
   const [selectedBranches, setSelectedBranches] = useState([]);
+
+  const [filterOptions, setFilterOptions] = useState({
+    brands: [],
+    years: [],
+    vehicle_types: [],
+    statuses: [],
+    branches: [],
+  });
 
   const [searchText, setSearchText] = useState("");
 
@@ -47,15 +59,65 @@ function VehicleList() {
     user?.role === "admin" ||
     user?.companies?.some((company) => company.role === "editor");
 
-  const loadVehicles = async () => {
+  const buildVehicleParams = (page = currentPage) => {
+    const params = {
+      page,
+      page_size: pageSize,
+    };
+
+    const normalizedSearchText = searchText.trim();
+
+    if (normalizedSearchText) {
+      params.search = normalizedSearchText;
+    }
+
+    if (selectedBrands.length > 0) {
+      params.brand = selectedBrands.join(",");
+    }
+
+    if (selectedYears.length > 0) {
+      params.year = selectedYears.join(",");
+    }
+
+    if (selectedTypes.length > 0) {
+      params.vehicle_type = selectedTypes.join(",");
+    }
+
+    if (selectedStatuses.length > 0) {
+      params.status = selectedStatuses.join(",");
+    }
+
+    if (selectedBranches.length > 0) {
+      params.branch = selectedBranches.join(",");
+    }
+
+    if (recentOnly) {
+      params.recent = "1";
+    }
+
+    if (sortField) {
+      params.ordering = sortDirection === "desc" ? `-${sortField}` : sortField;
+    }
+
+    return params;
+  };
+
+  const loadVehicles = async (page = currentPage) => {
     try {
-      const response = await apiClient.get("vehicles/");
+      const response = await apiClient.get("vehicles/", {
+        params: buildVehicleParams(page),
+      });
 
       const data = Array.isArray(response.data)
         ? response.data
         : response.data.results || [];
 
+      const count = Array.isArray(response.data)
+        ? response.data.length
+        : response.data.count || 0;
+
       setVehicles(data);
+      setTotalVehicles(count);
       setError(null);
     } catch (err) {
       console.error(err);
@@ -64,9 +126,58 @@ function VehicleList() {
     }
   };
 
+  const loadFilterOptions = async () => {
+    try {
+      const response = await apiClient.get("vehicles/filter-options/");
+
+      setFilterOptions({
+        brands: response.data.brands || [],
+        years: response.data.years || [],
+        vehicle_types: response.data.vehicle_types || [],
+        statuses: response.data.statuses || [],
+        branches: response.data.branches || [],
+      });
+    } catch (err) {
+      console.error("Nie udało się pobrać opcji filtrów:", err);
+    }
+  };
+
   useEffect(() => {
-    loadVehicles();
+    loadFilterOptions();
   }, []);
+
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      loadVehicles(1);
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    searchText,
+    selectedBrands,
+    selectedYears,
+    selectedTypes,
+    selectedStatuses,
+    selectedBranches,
+    sortField,
+    sortDirection,
+    recentOnly,
+  ]);
+
+  useEffect(() => {
+    if (currentPage === 1) {
+      return;
+    }
+
+    loadVehicles(currentPage);
+  }, [currentPage]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -109,14 +220,14 @@ function VehicleList() {
 
     apiClient
       .delete(`vehicles/${vehicle.id}/`)
-      .then(() => {
-        setVehicles((currentVehicles) =>
-          currentVehicles.filter(
-            (currentVehicle) => currentVehicle.id !== vehicle.id,
-          ),
-        );
-
+      .then(async () => {
         setOpenMenuId(null);
+
+        if (vehicles.length === 1 && currentPage > 1) {
+          setCurrentPage((page) => page - 1);
+        } else {
+          await loadVehicles(currentPage);
+        }
       })
       .catch((err) => {
         console.error("Błąd usuwania pojazdu:", err);
@@ -219,141 +330,35 @@ function VehicleList() {
     return sortDirection === "asc" ? "↑" : "↓";
   };
 
-  const brands = [...new Set(vehicles.map((vehicle) => vehicle.brand))].sort(
-    (a, b) =>
-      a.localeCompare(b, "pl", {
-        sensitivity: "base",
-      }),
-  );
+  const brands = filterOptions.brands;
 
-  const years = [
-    ...new Set(vehicles.map((vehicle) => String(vehicle.year))),
-  ].sort((a, b) => Number(b) - Number(a));
+  const years = filterOptions.years.map((year) => String(year));
 
-  const types = [...new Set(vehicles.map((vehicle) => vehicle.vehicle_type))];
+  const types = filterOptions.vehicle_types;
 
-  const statuses = [...new Set(vehicles.map((vehicle) => vehicle.status))];
+  const statuses = filterOptions.statuses;
 
-  const branches = [
-    ...new Set(vehicles.map((vehicle) => getBranchName(vehicle.branch))),
-  ].sort((a, b) =>
-    a.localeCompare(b, "pl", {
-      sensitivity: "base",
-    }),
-  );
+  const branches = filterOptions.branches;
 
-  const filteredVehicles = vehicles.filter((vehicle) => {
-    const matchesBrand =
-      selectedBrands.length === 0 || selectedBrands.includes(vehicle.brand);
+  const filteredVehicles = vehicles;
 
-    const matchesYear =
-      selectedYears.length === 0 ||
-      selectedYears.includes(String(vehicle.year));
+  const sortedVehicles = vehicles;
 
-    const matchesType =
-      selectedTypes.length === 0 ||
-      selectedTypes.includes(vehicle.vehicle_type);
+  const totalPages = Math.max(1, Math.ceil(totalVehicles / pageSize));
 
-    const matchesStatus =
-      selectedStatuses.length === 0 ||
-      selectedStatuses.includes(vehicle.status);
-
-    const vehicleBranch = getBranchName(vehicle.branch);
-
-    const matchesBranch =
-      selectedBranches.length === 0 || selectedBranches.includes(vehicleBranch);
-
-    const normalizedSearchText = searchText.toLowerCase().trim();
-
-    const brand = vehicle.brand?.toLowerCase() || "";
-
-    const model = vehicle.model?.toLowerCase() || "";
-
-    const registrationNumber = vehicle.registration_number?.toLowerCase() || "";
-
-    const vin = vehicle.vin?.toLowerCase() || "";
-
-    const branch = vehicle.branch?.toLowerCase().trim() || "";
-
-    const matchesSearch =
-      normalizedSearchText === "" ||
-      brand.includes(normalizedSearchText) ||
-      model.includes(normalizedSearchText) ||
-      registrationNumber.includes(normalizedSearchText) ||
-      vin.includes(normalizedSearchText) ||
-      branch.includes(normalizedSearchText);
-
-    const thirtyDaysAgo = new Date();
-
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    thirtyDaysAgo.setHours(0, 0, 0, 0);
-
-    const createdAt = new Date(vehicle.created_at);
-
-    const matchesRecent = !recentOnly || createdAt >= thirtyDaysAgo;
-
-    return (
-      matchesBrand &&
-      matchesYear &&
-      matchesType &&
-      matchesStatus &&
-      matchesBranch &&
-      matchesSearch &&
-      matchesRecent
-    );
-  });
-
-  const sortedVehicles = [...filteredVehicles].sort((a, b) => {
-    if (!sortField) {
-      return 0;
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setSelectedVehicleIds([]);
+      setCurrentPage((page) => page - 1);
     }
+  };
 
-    let valueA;
-    let valueB;
-
-    if (sortField === "vehicle") {
-      valueA = `${a.brand} ${a.model}`;
-      valueB = `${b.brand} ${b.model}`;
-    } else if (sortField === "registration_number") {
-      valueA = a.registration_number;
-      valueB = b.registration_number;
-    } else if (sortField === "vehicle_type") {
-      valueA = getVehicleTypeName(a.vehicle_type);
-
-      valueB = getVehicleTypeName(b.vehicle_type);
-    } else if (sortField === "branch") {
-      valueA = getBranchName(a.branch);
-      valueB = getBranchName(b.branch);
-    } else if (sortField === "year") {
-      valueA = Number(a.year);
-      valueB = Number(b.year);
-    } else if (sortField === "mileage") {
-      valueA = Number(a.mileage);
-      valueB = Number(b.mileage);
-    } else if (sortField === "status") {
-      valueA = getStatusName(a.status);
-      valueB = getStatusName(b.status);
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setSelectedVehicleIds([]);
+      setCurrentPage((page) => page + 1);
     }
-
-    if (sortField === "year" || sortField === "mileage") {
-      if (sortDirection === "asc") {
-        return valueA - valueB;
-      }
-
-      return valueB - valueA;
-    }
-
-    const comparison = String(valueA).localeCompare(String(valueB), "pl", {
-      sensitivity: "base",
-    });
-
-    if (sortDirection === "asc") {
-      return comparison;
-    }
-
-    return -comparison;
-  });
+  };
 
   const editableVisibleVehicleIds = sortedVehicles
     .filter((vehicle) => canEditCompany(vehicle.company))
@@ -476,7 +481,16 @@ function VehicleList() {
       setBulkValue("");
       setSelectedVehicleIds([]);
 
-      await loadVehicles();
+      if (
+        bulkAction === "delete" &&
+        vehicles.length > 0 &&
+        response.data.deleted >= vehicles.length &&
+        currentPage > 1
+      ) {
+        setCurrentPage((page) => page - 1);
+      } else {
+        await loadVehicles(currentPage);
+      }
     } catch (err) {
       console.error("Błąd operacji masowej:", err);
       console.error("Odpowiedź backendu:", err.response?.data);
@@ -565,7 +579,7 @@ function VehicleList() {
   };
 
   const handleExport = async () => {
-    if (sortedVehicles.length === 0) {
+    if (totalVehicles === 0) {
       setError("Brak pojazdów do wyeksportowania.");
 
       return;
@@ -575,15 +589,19 @@ function VehicleList() {
       setExporting(true);
       setError(null);
 
-      const vehicleIds = sortedVehicles.map((vehicle) => vehicle.id);
+      const exportParams = buildVehicleParams(1);
+
+      delete exportParams.page;
+      delete exportParams.page_size;
 
       const response = await apiClient.post(
         "vehicles/export/",
         {
-          vehicle_ids: vehicleIds,
+          vehicle_ids: [],
         },
         {
           responseType: "blob",
+          params: exportParams,
         },
       );
 
@@ -630,7 +648,7 @@ function VehicleList() {
           <button
             className="export-vehicles-button"
             onClick={handleExport}
-            disabled={exporting || sortedVehicles.length === 0}
+            disabled={exporting || totalVehicles === 0}
           >
             {exporting ? "Eksportowanie..." : "Eksportuj"}
           </button>
@@ -892,7 +910,11 @@ function VehicleList() {
               onClick={() => handleFilterClick("branch")}
             >
               <span>
-                {getFilterText(selectedBranches, "Wszystkie oddziały")}
+                {selectedBranches.length === 0
+                  ? "Wszystkie oddziały"
+                  : selectedBranches.length === 1
+                    ? selectedBranches[0]
+                    : `${selectedBranches.length} wybrane`}
               </span>
 
               <span className="filter-arrow">
@@ -1094,7 +1116,7 @@ function VehicleList() {
       )}
 
       <div className="vehicles-results-info">
-        Wyświetlono {filteredVehicles.length} z {vehicles.length} pojazdów
+        Na tej stronie: {vehicles.length} • Znaleziono: {totalVehicles}
       </div>
 
       <div className="vehicles-table">
@@ -1272,6 +1294,32 @@ function VehicleList() {
         )}
       </div>
 
+      {totalPages > 1 && (
+        <div className="vehicles-pagination">
+          <button
+            type="button"
+            className="vehicles-pagination-button"
+            onClick={handlePreviousPage}
+            disabled={currentPage <= 1}
+          >
+            ← Poprzednia
+          </button>
+
+          <span className="vehicles-pagination-info">
+            Strona {currentPage} z {totalPages}
+          </span>
+
+          <button
+            type="button"
+            className="vehicles-pagination-button"
+            onClick={handleNextPage}
+            disabled={currentPage >= totalPages}
+          >
+            Następna →
+          </button>
+        </div>
+      )}
+
       {bulkAction && (
         <div className="vehicles-bulk-overlay">
           <div className="vehicles-bulk-modal">
@@ -1391,7 +1439,15 @@ function VehicleList() {
       {importModalOpen && (
         <VehicleImportModal
           onClose={() => setImportModalOpen(false)}
-          onImported={loadVehicles}
+          onImported={async () => {
+            await loadFilterOptions();
+
+            if (currentPage === 1) {
+              loadVehicles(1);
+            } else {
+              setCurrentPage(1);
+            }
+          }}
         />
       )}
     </div>

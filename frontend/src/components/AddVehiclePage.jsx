@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import VehicleForm from "./VehicleForm";
 import apiClient from "../api/client";
+import { fetchAllPages } from "../api/pagination";
 import { useAuth } from "../context/AuthContext";
 import "./AddVehiclePage.css";
 
@@ -51,12 +52,15 @@ function AddVehiclePage({ onLogout }) {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [driversResponse, companiesResponse] = await Promise.all([
-          apiClient.get("drivers/"),
+        const [driversData, companiesResponse] = await Promise.all([
+          fetchAllPages(
+            apiClient,
+            "drivers/",
+          ),
           apiClient.get("companies/"),
         ]);
 
-        setDrivers(driversResponse.data);
+        setDrivers(driversData);
 
         if (user?.role === "admin") {
           setCompanies(companiesResponse.data);

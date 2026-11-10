@@ -7,6 +7,10 @@ import "./DriverList.css";
 
 function DriverList() {
   const [drivers, setDrivers] = useState([]);
+  const [totalDrivers, setTotalDrivers] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
+
   const [error, setError] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [searchText, setSearchText] = useState("");
@@ -26,15 +30,41 @@ function DriverList() {
 
   const canManageDrivers = user?.role === "admin";
 
-  const loadDrivers = async () => {
+  const buildDriverParams = (page = currentPage) => {
+    const params = {
+      page,
+      page_size: pageSize,
+    };
+
+    const normalizedSearchText = searchText.trim();
+
+    if (normalizedSearchText) {
+      params.search = normalizedSearchText;
+    }
+
+    if (sortField) {
+      params.ordering = sortDirection === "desc" ? `-${sortField}` : sortField;
+    }
+
+    return params;
+  };
+
+  const loadDrivers = async (page = currentPage) => {
     try {
-      const response = await apiClient.get("drivers/");
+      const response = await apiClient.get("drivers/", {
+        params: buildDriverParams(page),
+      });
 
       const data = Array.isArray(response.data)
         ? response.data
         : response.data.results || [];
 
+      const count = Array.isArray(response.data)
+        ? response.data.length
+        : response.data.count || 0;
+
       setDrivers(data);
+      setTotalDrivers(count);
       setError(null);
     } catch (err) {
       console.error(err);
@@ -44,8 +74,27 @@ function DriverList() {
   };
 
   useEffect(() => {
-    loadDrivers();
-  }, []);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      loadDrivers(1);
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchText, sortField, sortDirection]);
+
+  useEffect(() => {
+    if (currentPage === 1) {
+      return;
+    }
+
+    loadDrivers(currentPage);
+  }, [currentPage]);
 
   const handleMenuClick = (driverId) => {
     if (openMenuId === driverId) {
@@ -66,18 +115,18 @@ function DriverList() {
 
     apiClient
       .delete(`drivers/${driver.id}/`)
-      .then(() => {
-        setDrivers((currentDrivers) =>
-          currentDrivers.filter(
-            (currentDriver) => currentDriver.id !== driver.id,
-          ),
-        );
-
+      .then(async () => {
         setSelectedDriverIds((currentIds) =>
           currentIds.filter((driverId) => driverId !== driver.id),
         );
 
         setOpenMenuId(null);
+
+        if (drivers.length === 1 && currentPage > 1) {
+          setCurrentPage((page) => page - 1);
+        } else {
+          await loadDrivers(currentPage);
+        }
       })
       .catch((err) => {
         console.error("Błąd usuwania kierowcy:", err);
@@ -114,76 +163,25 @@ function DriverList() {
     return new Date(date).toLocaleDateString("pl-PL");
   };
 
-  const normalizedSearchText = searchText.toLowerCase().trim();
+  const filteredDrivers = drivers;
 
-  const filteredDrivers = drivers.filter((driver) => {
-    if (!normalizedSearchText) {
-      return true;
+  const sortedDrivers = drivers;
+
+  const totalPages = Math.max(1, Math.ceil(totalDrivers / pageSize));
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setSelectedDriverIds([]);
+      setCurrentPage((page) => page - 1);
     }
+  };
 
-    const firstName = driver.first_name?.toLowerCase() || "";
-    const lastName = driver.last_name?.toLowerCase() || "";
-    const licenseNumber = driver.license_number?.toLowerCase() || "";
-    const phoneNumber = driver.phone_number?.toLowerCase() || "";
-
-    const fullName = `${firstName} ${lastName}`;
-
-    return (
-      fullName.includes(normalizedSearchText) ||
-      firstName.includes(normalizedSearchText) ||
-      lastName.includes(normalizedSearchText) ||
-      licenseNumber.includes(normalizedSearchText) ||
-      phoneNumber.includes(normalizedSearchText)
-    );
-  });
-
-  const sortedDrivers = [...filteredDrivers].sort((a, b) => {
-    if (!sortField) {
-      return 0;
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setSelectedDriverIds([]);
+      setCurrentPage((page) => page + 1);
     }
-
-    let valueA;
-    let valueB;
-
-    if (sortField === "first_name") {
-      valueA = a.first_name || "";
-      valueB = b.first_name || "";
-    }
-
-    if (sortField === "last_name") {
-      valueA = a.last_name || "";
-      valueB = b.last_name || "";
-    }
-
-    if (sortField === "license_number") {
-      valueA = a.license_number || "";
-      valueB = b.license_number || "";
-    }
-
-    if (sortField === "phone_number") {
-      valueA = a.phone_number || "";
-      valueB = b.phone_number || "";
-    }
-
-    if (sortField === "hired_at") {
-      valueA = a.hired_at ? new Date(a.hired_at) : new Date(0);
-      valueB = b.hired_at ? new Date(b.hired_at) : new Date(0);
-    }
-
-    if (sortField === "hired_at") {
-      if (sortDirection === "asc") {
-        return valueA - valueB;
-      }
-
-      return valueB - valueA;
-    }
-
-    const comparison = String(valueA).localeCompare(String(valueB), "pl", {
-      sensitivity: "base",
-    });
-
-    return sortDirection === "asc" ? comparison : -comparison;
-  });
+  };
 
   const visibleDriverIds = canManageDrivers
     ? sortedDrivers.map((driver) => driver.id)
@@ -262,7 +260,15 @@ function DriverList() {
       setSelectedDriverIds([]);
       setBulkDeleteOpen(false);
 
-      await loadDrivers();
+      if (
+        response.data.deleted >= drivers.length &&
+        drivers.length > 0 &&
+        currentPage > 1
+      ) {
+        setCurrentPage((page) => page - 1);
+      } else {
+        await loadDrivers(currentPage);
+      }
     } catch (err) {
       console.error("Błąd masowego usuwania kierowców:", err);
 
@@ -293,7 +299,7 @@ function DriverList() {
     return `flotivo-kierowcy-${today}.xlsx`;
   };
 
-  const downloadDriverExport = async (driverIds) => {
+  const downloadDriverExport = async (driverIds, params = {}) => {
     const response = await apiClient.post(
       "drivers/export/",
       {
@@ -301,6 +307,7 @@ function DriverList() {
       },
       {
         responseType: "blob",
+        params,
       },
     );
 
@@ -325,7 +332,7 @@ function DriverList() {
   };
 
   const handleExport = async () => {
-    if (sortedDrivers.length === 0) {
+    if (totalDrivers === 0) {
       setError("Brak kierowców do wyeksportowania.");
 
       return;
@@ -335,9 +342,12 @@ function DriverList() {
       setExporting(true);
       setError(null);
 
-      const driverIds = sortedDrivers.map((driver) => driver.id);
+      const exportParams = buildDriverParams(1);
 
-      await downloadDriverExport(driverIds);
+      delete exportParams.page;
+      delete exportParams.page_size;
+
+      await downloadDriverExport([], exportParams);
     } catch (err) {
       console.error("Błąd eksportu kierowców:", err);
       console.error("Odpowiedź backendu:", err.response?.data);
@@ -382,7 +392,7 @@ function DriverList() {
           <button
             className="export-drivers-button"
             onClick={handleExport}
-            disabled={exporting || sortedDrivers.length === 0}
+            disabled={exporting || totalDrivers === 0}
           >
             {exporting ? "Eksportowanie..." : "Eksportuj"}
           </button>
@@ -460,7 +470,7 @@ function DriverList() {
       )}
 
       <div className="drivers-results-info">
-        Wyświetlono: {sortedDrivers.length} z {drivers.length}
+        Na tej stronie: {drivers.length} • Znaleziono: {totalDrivers}
       </div>
 
       <div className="drivers-table">
@@ -602,6 +612,32 @@ function DriverList() {
         )}
       </div>
 
+      {totalPages > 1 && (
+        <div className="drivers-pagination">
+          <button
+            type="button"
+            className="drivers-pagination-button"
+            onClick={handlePreviousPage}
+            disabled={currentPage <= 1}
+          >
+            ← Poprzednia
+          </button>
+
+          <span className="drivers-pagination-info">
+            Strona {currentPage} z {totalPages}
+          </span>
+
+          <button
+            type="button"
+            className="drivers-pagination-button"
+            onClick={handleNextPage}
+            disabled={currentPage >= totalPages}
+          >
+            Następna →
+          </button>
+        </div>
+      )}
+
       {bulkDeleteOpen && (
         <div className="drivers-bulk-overlay">
           <div className="drivers-bulk-modal">
@@ -655,7 +691,13 @@ function DriverList() {
       {importModalOpen && (
         <DriverImportModal
           onClose={() => setImportModalOpen(false)}
-          onImported={loadDrivers}
+          onImported={() => {
+            if (currentPage === 1) {
+              loadDrivers(1);
+            } else {
+              setCurrentPage(1);
+            }
+          }}
         />
       )}
     </div>

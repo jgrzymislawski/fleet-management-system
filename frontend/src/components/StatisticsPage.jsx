@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
+import { fetchAllPages } from "../api/pagination";
 import "./StatisticsPage.css";
 
 function StatisticsPage({ onLogout }) {
@@ -17,18 +18,10 @@ function StatisticsPage({ onLogout }) {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [vehiclesResponse, serviceResponse] = await Promise.all([
-          apiClient.get("vehicles/"),
-          apiClient.get("service-records/"),
+        const [vehiclesData, serviceData] = await Promise.all([
+          fetchAllPages(apiClient, "vehicles/"),
+          fetchAllPages(apiClient, "service-records/"),
         ]);
-
-        const vehiclesData = Array.isArray(vehiclesResponse.data)
-          ? vehiclesResponse.data
-          : vehiclesResponse.data.results || [];
-
-        const serviceData = Array.isArray(serviceResponse.data)
-          ? serviceResponse.data
-          : serviceResponse.data.results || [];
 
         setVehicles(vehiclesData);
         setServiceRecords(serviceData);

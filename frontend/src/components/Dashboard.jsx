@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
+import { fetchAllPages } from "../api/pagination";
 import { useAuth } from "../context/AuthContext";
 
 function Dashboard({ onLogout }) {
@@ -16,29 +17,24 @@ function Dashboard({ onLogout }) {
 
   const canViewDriverAlerts = user?.role === "admin";
 
-  const getResponseData = (response) => {
-    if (Array.isArray(response.data)) {
-      return response.data;
-    }
-
-    return response.data.results || [];
-  };
-
   useEffect(() => {
     const loadDashboard = async () => {
       try {
-        const [vehiclesResponse, driversResponse, documentsResponse] =
+        const [vehicles, drivers, documents] =
           await Promise.all([
-            apiClient.get("vehicles/"),
-            apiClient.get("drivers/"),
-            apiClient.get("vehicle-documents/"),
+            fetchAllPages(
+              apiClient,
+              "vehicles/",
+            ),
+            fetchAllPages(
+              apiClient,
+              "drivers/",
+            ),
+            fetchAllPages(
+              apiClient,
+              "vehicle-documents/",
+            ),
           ]);
-
-        const vehicles = getResponseData(vehiclesResponse);
-
-        const drivers = getResponseData(driversResponse);
-
-        const documents = getResponseData(documentsResponse);
 
         setVehicleCount(vehicles.length);
         setDriverCount(drivers.length);

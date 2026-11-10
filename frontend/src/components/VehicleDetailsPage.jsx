@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
+import { fetchAllPages } from "../api/pagination";
 import { useAuth } from "../context/AuthContext";
 import "./VehicleDetailsPage.css";
 
@@ -46,13 +47,13 @@ function VehicleDetailsPage({ onLogout }) {
         }
 
         try {
-          const serviceResponse = await apiClient.get(
-            `service-records/?vehicle=${id}`,
+          const serviceData = await fetchAllPages(
+            apiClient,
+            "service-records/",
+            {
+              vehicle: id,
+            },
           );
-
-          const serviceData = Array.isArray(serviceResponse.data)
-            ? serviceResponse.data
-            : serviceResponse.data.results || [];
 
           setServiceRecords(serviceData);
         } catch (serviceError) {
@@ -60,13 +61,13 @@ function VehicleDetailsPage({ onLogout }) {
         }
 
         try {
-          const documentsResponse = await apiClient.get(
-            `vehicle-documents/?vehicle=${id}`,
+          const documentsData = await fetchAllPages(
+            apiClient,
+            "vehicle-documents/",
+            {
+              vehicle: id,
+            },
           );
-
-          const documentsData = Array.isArray(documentsResponse.data)
-            ? documentsResponse.data
-            : documentsResponse.data.results || [];
 
           setDocuments(documentsData);
         } catch (documentsError) {
@@ -74,16 +75,12 @@ function VehicleDetailsPage({ onLogout }) {
         }
 
         try {
-          const assignmentsResponse = await apiClient.get(
+          const vehicleAssignments = await fetchAllPages(
+            apiClient,
             "driver-assignments/",
-          );
-
-          const assignmentsData = Array.isArray(assignmentsResponse.data)
-            ? assignmentsResponse.data
-            : assignmentsResponse.data.results || [];
-
-          const vehicleAssignments = assignmentsData.filter(
-            (assignment) => Number(assignment.vehicle) === Number(id),
+            {
+              vehicle: id,
+            },
           );
 
           setDriverAssignments(vehicleAssignments);
