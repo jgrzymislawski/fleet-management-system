@@ -1,18 +1,29 @@
 import os
-from pathlib import Path
+
 from datetime import timedelta
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(
+    BASE_DIR / ".env"
+)
 
 
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv(
+    "SECRET_KEY"
+)
 
-DEBUG = os.getenv("DEBUG", "False") == "True"
+DEBUG = (
+    os.getenv(
+        "DEBUG",
+        "False",
+    )
+    == "True"
+)
 
 ALLOWED_HOSTS = [
     "localhost",
@@ -37,7 +48,7 @@ INSTALLED_APPS = [
     "assignments",
     "organizations",
     "notifications",
-
+    "contact",
 ]
 
 
@@ -59,14 +70,26 @@ ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "BACKEND": (
+            "django.template.backends.django."
+            "DjangoTemplates"
+        ),
         "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
+                (
+                    "django.template."
+                    "context_processors.request"
+                ),
+                (
+                    "django.contrib.auth."
+                    "context_processors.auth"
+                ),
+                (
+                    "django.contrib.messages."
+                    "context_processors.messages"
+                ),
             ],
         },
     },
@@ -78,28 +101,56 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB"),
-        "USER": os.getenv("POSTGRES_USER"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT"),
+        "ENGINE": (
+            "django.db.backends.postgresql"
+        ),
+        "NAME": os.getenv(
+            "POSTGRES_DB"
+        ),
+        "USER": os.getenv(
+            "POSTGRES_USER"
+        ),
+        "PASSWORD": os.getenv(
+            "POSTGRES_PASSWORD"
+        ),
+        "HOST": os.getenv(
+            "DB_HOST"
+        ),
+        "PORT": os.getenv(
+            "DB_PORT"
+        ),
     }
 }
 
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "NAME": (
+            "django.contrib.auth."
+            "password_validation."
+            "UserAttributeSimilarityValidator"
+        ),
     },
     {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "NAME": (
+            "django.contrib.auth."
+            "password_validation."
+            "MinimumLengthValidator"
+        ),
     },
     {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+        "NAME": (
+            "django.contrib.auth."
+            "password_validation."
+            "CommonPasswordValidator"
+        ),
     },
     {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+        "NAME": (
+            "django.contrib.auth."
+            "password_validation."
+            "NumericPasswordValidator"
+        ),
     },
 ]
 
@@ -118,17 +169,28 @@ STATIC_URL = "static/"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        (
+            "rest_framework_simplejwt."
+            "authentication."
+            "JWTAuthentication"
+        ),
     ),
     "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
+        (
+            "rest_framework.permissions."
+            "IsAuthenticated"
+        ),
     ),
 }
 
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=15
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=7
+    ),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
 }
@@ -140,12 +202,20 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
+
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+
+MEDIA_ROOT = (
+    BASE_DIR / "media"
+)
+
 
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND",
-    "django.core.mail.backends.console.EmailBackend",
+    (
+        "django.core.mail.backends."
+        "console.EmailBackend"
+    ),
 )
 
 EMAIL_HOST = os.getenv(
@@ -181,4 +251,9 @@ EMAIL_USE_TLS = (
 DEFAULT_FROM_EMAIL = os.getenv(
     "DEFAULT_FROM_EMAIL",
     "Flotivo <no-reply@flotivo.local>",
+)
+
+CONTACT_EMAIL = os.getenv(
+    "CONTACT_EMAIL",
+    EMAIL_HOST_USER,
 )

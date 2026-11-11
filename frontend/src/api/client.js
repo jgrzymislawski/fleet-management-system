@@ -4,10 +4,16 @@ const apiClient = axios.create({
   baseURL: "http://127.0.0.1:8000/api/",
 });
 
+const publicEndpoints = ["token/", "token/refresh/", "contact/"];
+
+const isPublicEndpoint = (url = "") => {
+  return publicEndpoints.some((endpoint) => url.endsWith(endpoint));
+};
+
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token");
 
-  if (token) {
+  if (token && !isPublicEndpoint(config.url)) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
@@ -20,17 +26,31 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      console.log("Access token wygasł - próbuję go odświeżyć");
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
 
+    const isUnauthorized = error.response?.status === 401;
+
+    const isPublicRequest = isPublicEndpoint(originalRequest.url);
+
+    if (isUnauthorized && isPublicRequest) {
+      return Promise.reject(error);
+    }
+
+    if (isUnauthorized && !originalRequest._retry) {
       originalRequest._retry = true;
 
       const refreshToken = localStorage.getItem("refresh_token");
 
       if (!refreshToken) {
         localStorage.removeItem("access_token");
+
         localStorage.removeItem("refresh_token");
-        window.location.href = "/login";
+
+        if (window.location.pathname !== "/login") {
+          window.location.href = "/login";
+        }
 
         return Promise.reject(error);
       }
@@ -45,24 +65,25 @@ apiClient.interceptors.response.use(
 
         const newAccessToken = response.data.access;
 
-        console.log("Access token został poprawnie odświeżony");
-
         localStorage.setItem("access_token", newAccessToken);
 
         if (response.data.refresh) {
           localStorage.setItem("refresh_token", response.data.refresh);
         }
 
+        originalRequest.headers = originalRequest.headers || {};
+
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
         return apiClient(originalRequest);
       } catch (refreshError) {
-        console.error("Nie udało się odświeżyć tokenu:", refreshError);
-
         localStorage.removeItem("access_token");
+
         localStorage.removeItem("refresh_token");
 
-        window.location.href = "/login";
+        if (window.location.pathname !== "/login") {
+          window.location.href = "/login";
+        }
 
         return Promise.reject(refreshError);
       }

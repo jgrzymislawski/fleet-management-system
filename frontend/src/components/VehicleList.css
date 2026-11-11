@@ -875,7 +875,187 @@
     font-weight: 500;
     color: #55504B;
 }
+.vehicle-delete-overlay {
+  position: fixed;
+  inset: 0;
 
+  z-index: 1500;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(20, 20, 20, 0.45);
+
+  backdrop-filter: blur(2px);
+}
+
+
+.vehicle-delete-modal {
+  width: 100%;
+  max-width: 420px;
+
+  padding: 30px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #E1DAD4;
+  border-radius: 14px;
+
+  background: #FAF5F2;
+
+  box-shadow:
+    0 20px 60px
+    rgba(0, 0, 0, 0.22);
+
+  text-align: center;
+}
+
+
+.vehicle-delete-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 42px;
+  height: 42px;
+
+  margin: 0 auto 18px;
+
+  border-radius: 50%;
+
+  background: #FCE8E8;
+  color: #A33A3A;
+
+  font-size: 20px;
+  font-weight: 700;
+}
+
+
+.vehicle-delete-modal h2 {
+  margin: 0 0 10px;
+
+  color: #1A1A1A;
+
+  font-size: 22px;
+  font-weight: 600;
+}
+
+
+.vehicle-delete-modal p {
+  margin: 0;
+
+  color: #6A625C;
+
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+
+.vehicle-delete-registration {
+  display: inline-block;
+
+  margin-top: 10px;
+  padding: 5px 10px;
+
+  border-radius: 6px;
+
+  background: #EEE8E2;
+
+  color: #4F4843;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+
+.vehicle-delete-warning {
+  margin-top: 16px !important;
+
+  color: #8B4A4A !important;
+}
+
+
+.vehicle-delete-actions {
+  display: flex;
+  justify-content: flex-end;
+
+  gap: 10px;
+
+  margin-top: 26px;
+}
+
+
+.vehicle-delete-cancel,
+.vehicle-delete-confirm {
+  min-width: 120px;
+
+  padding: 10px 16px;
+
+  border-radius: 7px;
+
+  font-family: "Poppins", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+
+.vehicle-delete-cancel {
+  border: 1px solid #CFC8C2;
+
+  background: transparent;
+
+  color: #1A1A1A;
+}
+
+
+.vehicle-delete-cancel:hover:not(:disabled) {
+  background: #EEE8E2;
+}
+
+
+.vehicle-delete-confirm {
+  border: none;
+
+  background: #A33A3A;
+
+  color: #FFFFFF;
+}
+
+
+.vehicle-delete-confirm:hover:not(:disabled) {
+  background: #8F3131;
+}
+
+
+.vehicle-delete-cancel:disabled,
+.vehicle-delete-confirm:disabled {
+  opacity: 0.55;
+
+  cursor: not-allowed;
+}
+
+
+@media (max-width: 500px) {
+  .vehicle-delete-modal {
+    padding: 24px 20px;
+  }
+
+
+  .vehicle-delete-actions {
+    flex-direction: column-reverse;
+  }
+
+
+  .vehicle-delete-cancel,
+  .vehicle-delete-confirm {
+    width: 100%;
+  }
+}
 @media (max-width: 600px) {
     .vehicles-pagination {
         gap: 8px;

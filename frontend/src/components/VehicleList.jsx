@@ -45,6 +45,9 @@ function VehicleList() {
   const [bulkUpdating, setBulkUpdating] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
 
+  const [vehicleToDelete, setVehicleToDelete] = useState(null);
+  const [deletingVehicle, setDeletingVehicle] = useState(false);
+
   const navigate = useNavigate();
 
   const { user, canEditCompany } = useAuth();
@@ -198,31 +201,36 @@ function VehicleList() {
   };
 
   const handleDelete = (vehicle) => {
-    const confirmed = window.confirm(
-      `Czy na pewno chcesz usunąć pojazd ${vehicle.brand} ${vehicle.model} (${vehicle.registration_number})?`,
-    );
+    setOpenMenuId(null);
+    setVehicleToDelete(vehicle);
+  };
 
-    if (!confirmed) {
+  const confirmDeleteVehicle = async () => {
+    if (!vehicleToDelete) {
       return;
     }
 
-    apiClient
-      .delete(`vehicles/${vehicle.id}/`)
-      .then(async () => {
-        setOpenMenuId(null);
+    try {
+      setDeletingVehicle(true);
+      setError(null);
 
-        if (vehicles.length === 1 && currentPage > 1) {
-          setCurrentPage((page) => page - 1);
-        } else {
-          await loadVehicles(currentPage);
-        }
-      })
-      .catch((err) => {
-        console.error("Błąd usuwania pojazdu:", err);
-        console.error("Odpowiedź backendu:", err.response?.data);
+      await apiClient.delete(`vehicles/${vehicleToDelete.id}/`);
 
-        setError("Nie udało się usunąć pojazdu.");
-      });
+      setVehicleToDelete(null);
+
+      if (vehicles.length === 1 && currentPage > 1) {
+        setCurrentPage((page) => page - 1);
+      } else {
+        await loadVehicles(currentPage);
+      }
+    } catch (err) {
+      console.error("Błąd usuwania pojazdu:", err);
+      console.error("Odpowiedź backendu:", err.response?.data);
+
+      setError("Nie udało się usunąć pojazdu.");
+    } finally {
+      setDeletingVehicle(false);
+    }
   };
 
   const toggleSelectedValue = (value, selectedValues, setSelectedValues) => {
@@ -1565,6 +1573,60 @@ function VehicleList() {
                   : bulkAction === "delete"
                     ? "Usuń zaznaczone"
                     : "Zastosuj zmiany"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {vehicleToDelete && (
+        <div className="vehicle-delete-overlay">
+          <div
+            className="vehicle-delete-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="vehicle-delete-title"
+          >
+            <div className="vehicle-delete-icon" aria-hidden="true">
+              !
+            </div>
+
+            <h2 id="vehicle-delete-title">Usunąć pojazd?</h2>
+
+            <p>
+              Czy na pewno chcesz usunąć
+              <strong>
+                {" "}
+                {vehicleToDelete.brand} {vehicleToDelete.model}
+              </strong>
+              ?
+            </p>
+
+            <span className="vehicle-delete-registration">
+              {vehicleToDelete.registration_number}
+            </span>
+
+            <p className="vehicle-delete-warning">
+              Pojazd zostanie usunięty z listy.
+            </p>
+
+            <div className="vehicle-delete-actions">
+              <button
+                type="button"
+                className="vehicle-delete-cancel"
+                onClick={() => setVehicleToDelete(null)}
+                disabled={deletingVehicle}
+              >
+                Anuluj
+              </button>
+
+              <button
+                type="button"
+                className="vehicle-delete-confirm"
+                onClick={confirmDeleteVehicle}
+                disabled={deletingVehicle}
+              >
+                {deletingVehicle ? "Usuwanie..." : "Usuń pojazd"}
               </button>
             </div>
           </div>

@@ -60,6 +60,10 @@ urlpatterns = [
         "api/activity/",
         include("activity.urls"),
     ),
+    path(
+        "api/contact/",
+        include("contact.urls"),
+    ),
 ]
 
 

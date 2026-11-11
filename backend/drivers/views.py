@@ -177,6 +177,12 @@ class DriverViewSet(
             "license_number": (
                 "license_number",
             ),
+            "license_expiry_date": (
+                "license_expiry_date",
+            ),
+            "medical_exam_expiry_date": (
+                "medical_exam_expiry_date",
+            ),
             "phone_number": (
                 "phone_number",
             ),

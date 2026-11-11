@@ -17,9 +17,8 @@ function OfferPage() {
           <h1>Wszystko, czego potrzebujesz do zarządzania flotą.</h1>
 
           <p>
-            Flotivo pozwala uporządkować informacje o pojazdach, kontrolować
-            ważne terminy i mieć najważniejsze dane dotyczące floty zawsze pod
-            ręką.
+            Flotivo to intuicyjny system, który ułatwia zarządzanie pojazdami
+            firmowymi, kontrolowanie kosztów i monitorowanie ważnych terminów.
           </p>
         </section>
 
@@ -28,44 +27,35 @@ function OfferPage() {
             <span>01</span>
             <h2>Zarządzanie pojazdami</h2>
             <p>
-              Dodawaj nowe pojazdy, przeglądaj swoją flotę oraz aktualizuj i
-              usuwaj zapisane informacje.
+              Dodawaj, edytuj i zarządzaj pojazdami swojej firmy w prosty
+              sposób.
             </p>
           </div>
 
           <div className="offer-card">
             <span>02</span>
             <h2>Przeglądy i ubezpieczenia</h2>
-            <p>
-              Kontroluj terminy przeglądów technicznych i polis OC, aby nie
-              przegapić ważnych terminów.
-            </p>
+            <p>Monitoruj ważność przeglądów technicznych i polis OC.</p>
           </div>
 
           <div className="offer-card">
             <span>03</span>
             <h2>Filtrowanie pojazdów</h2>
-            <p>
-              Szybko odnajduj potrzebne pojazdy dzięki możliwości filtrowania
-              danych według wybranych kategorii.
-            </p>
+            <p>Szybko odnajduj pojazdy dzięki wygodnym filtrom.</p>
           </div>
 
           <div className="offer-card">
             <span>04</span>
             <h2>Statystyki</h2>
-            <p>
-              Przeglądaj najważniejsze statystyki swojej floty i kontroluj
-              informacje związane z pojazdami.
-            </p>
+            <p>Analizuj najważniejsze dane i miej pełny obraz swojej floty.</p>
           </div>
 
           <div className="offer-card">
             <span>05</span>
             <h2>Kierowcy i przypisania</h2>
             <p>
-              Zarządzaj informacjami o kierowcach i sprawdzaj, kto korzysta z
-              poszczególnych pojazdów.
+              Zarządzaj danymi kierowców i wygodnie przypisuj im pojazdy
+              firmowe.
             </p>
           </div>
 
@@ -73,8 +63,8 @@ function OfferPage() {
             <span>06</span>
             <h2>Bezpieczny dostęp</h2>
             <p>
-              Dostęp do panelu wymaga zalogowania, a po zakończeniu pracy możesz
-              bezpiecznie wylogować się z systemu.
+              Chroń dane swojej floty dzięki dostępowi wymagającemu logowania
+              oraz możliwości bezpiecznego wylogowania z systemu.
             </p>
           </div>
         </section>

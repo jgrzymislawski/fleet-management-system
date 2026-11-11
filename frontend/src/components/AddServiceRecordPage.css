@@ -1,206 +1,418 @@
 .service-record-form-header {
-    margin-bottom: 30px;
+  margin-bottom: 24px;
 }
+
 
 .service-record-form-header h1 {
-    margin: 12px 0 8px;
-    font-size: 32px;
-    color: #1A1A1A;
+  margin: 10px 0 7px;
+
+  font-size: 30px;
+  font-weight: 600;
+
+  color: #1A1A1A;
 }
+
 
 .service-record-form-header p {
-    margin: 0;
-    font-size: 14px;
-    color: #666666;
+  margin: 0;
+
+  font-size: 13px;
+
+  color: #666666;
 }
+
 
 .service-record-back {
-    padding: 0;
-    border: none;
-    background: transparent;
-    font-family: 'Poppins', sans-serif;
-    font-size: 13px;
-    color: #777777;
-    cursor: pointer;
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  font-family: "Poppins", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+
+  color: #777777;
+
+  cursor: pointer;
 }
+
 
 .service-record-back:hover {
-    color: #1A1A1A;
+  color: #1A1A1A;
 }
+
 
 .service-record-form {
-    max-width: 850px;
-    padding: 25px;
-    border: 1px solid #D8D1CA;
-    border-radius: 8px;
-    background-color: #FAF5F2;
+  width: 100%;
+  max-width: none;
+
+  padding: 30px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #D8D1CA;
+  border-radius: 8px;
+
+  background-color: #FAF5F2;
 }
+
 
 .service-record-error {
-    margin-top: 0;
-    margin-bottom: 20px;
-    color: #A33A3A;
-    font-size: 13px;
+  margin: 0 0 22px;
+
+  padding: 10px 12px;
+
+  border: 1px solid #E6CACA;
+  border-radius: 6px;
+
+  background-color: #FCE8E8;
+
+  color: #A33A3A;
+
+  font-size: 13px;
 }
+
 
 .service-record-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  column-gap: 24px;
+  row-gap: 20px;
 }
+
 
 .service-record-field {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+
+  gap: 7px;
+
+  min-width: 0;
+
+  margin-bottom: 22px;
 }
 
+
 .service-record-field label {
-    font-size: 12px;
-    font-weight: 500;
-    color: #555555;
+  font-size: 12px;
+  font-weight: 500;
+
+  color: #555555;
 }
+
 
 .service-record-field input,
 .service-record-field select,
 .service-record-field textarea {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 11px 12px;
-    border: 1px solid #D8D1CA;
-    border-radius: 7px;
-    background-color: #FFFFFF;
-    font-family: 'Poppins', sans-serif;
-    font-size: 13px;
-    color: #1A1A1A;
+  width: 100%;
+
+  box-sizing: border-box;
+
+  padding: 11px 12px;
+
+  border: 1px solid #D8D1CA;
+  border-radius: 7px;
+
+  background-color: #FFFFFF;
+
+  font-family: "Poppins", sans-serif;
+  font-size: 13px;
+
+  color: #1A1A1A;
+
+  outline: none;
+
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
-.service-record-field textarea {
-    resize: vertical;
+
+.service-record-field input {
+  height: 43px;
 }
+
+
+.service-record-field textarea {
+  min-height: 130px;
+
+  resize: vertical;
+
+  line-height: 1.6;
+}
+
+
+.service-record-field input::placeholder,
+.service-record-field textarea::placeholder {
+  color: #999999;
+}
+
+
+.service-record-field input:hover,
+.service-record-field select:hover,
+.service-record-field textarea:hover {
+  border-color: #AFA8A1;
+}
+
 
 .service-record-field input:focus,
 .service-record-field select:focus,
 .service-record-field textarea:focus {
-    outline: none;
-    border-color: #1A1A1A;
+  border-color: #1A1A1A;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(26, 26, 26, 0.05);
 }
 
+
+.service-record-field input:disabled,
 .service-record-field select:disabled {
-    background-color: #EFEAE6;
-    color: #777777;
-    cursor: not-allowed;
+  background-color: #EFEAE6;
+
+  color: #777777;
+
+  cursor: not-allowed;
 }
+
+
+.service-record-vehicle-field {
+  margin-bottom: 24px;
+}
+
+
+.service-record-description {
+  margin-bottom: 0;
+}
+
 
 .service-record-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
+  display: flex;
+  justify-content: flex-end;
+
+  gap: 10px;
+
+  margin-top: 28px;
 }
+
 
 .service-record-cancel,
 .service-record-submit {
-    padding: 10px 17px;
-    border-radius: 7px;
-    font-family: 'Poppins', sans-serif;
-    font-size: 12px;
-    cursor: pointer;
+  min-width: 120px;
+
+  padding: 10px 17px;
+
+  border-radius: 7px;
+
+  font-family: "Poppins", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    opacity 0.15s ease;
 }
+
 
 .service-record-cancel {
-    border: 1px solid #D8D1CA;
-    background-color: transparent;
-    color: #1A1A1A;
+  border: 1px solid #D8D1CA;
+
+  background-color: transparent;
+
+  color: #1A1A1A;
 }
+
 
 .service-record-submit {
-    border: none;
-    background-color: #1A1A1A;
-    color: #FFFFFF;
+  border: none;
+
+  background-color: #1A1A1A;
+
+  color: #FFFFFF;
 }
+
 
 .service-record-cancel:hover {
-    background-color: #EFEAE6;
+  background-color: #EFEAE6;
 }
+
 
 .service-record-submit:hover {
-    opacity: 0.9;
+  background-color: #333333;
 }
 
-@media (max-width: 900px) {
-    .service-record-form {
-        max-width: 100%;
-    }
 
-    .service-record-grid {
-        grid-template-columns: 1fr;
-        gap: 0;
-    }
-
-    .service-record-actions {
-        flex-direction: column-reverse;
-    }
-
-    .service-record-cancel,
-    .service-record-submit {
-        width: 100%;
-    }
-}
 .service-record-vehicle-search {
-    position: relative;
+  position: relative;
+
+  width: 100%;
 }
+
 
 .service-record-vehicle-results {
-    position: absolute;
-    top: calc(100% + 5px);
-    left: 0;
-    right: 0;
-    z-index: 20;
-    max-height: 260px;
-    overflow-y: auto;
-    border: 1px solid #D8D1CA;
-    border-radius: 7px;
-    background-color: #FFFFFF;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  position: absolute;
+
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+
+  z-index: 20;
+
+  max-height: 280px;
+
+  overflow-y: auto;
+
+  border: 1px solid #D8D1CA;
+  border-radius: 7px;
+
+  background-color: #FFFFFF;
+
+  box-shadow:
+    0 8px 20px
+    rgba(0, 0, 0, 0.08);
 }
+
 
 .service-record-vehicle-option {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-    padding: 11px 13px;
-    border: none;
-    border-bottom: 1px solid #EEE8E3;
-    background-color: #FFFFFF;
-    font-family: 'Poppins', sans-serif;
-    text-align: left;
-    cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  width: 100%;
+
+  gap: 20px;
+
+  padding: 11px 13px;
+
+  border: none;
+  border-bottom: 1px solid #EEE8E3;
+
+  background-color: #FFFFFF;
+
+  font-family: "Poppins", sans-serif;
+
+  text-align: left;
+
+  cursor: pointer;
 }
+
 
 .service-record-vehicle-option:last-child {
-    border-bottom: none;
+  border-bottom: none;
 }
+
 
 .service-record-vehicle-option:hover {
-    background-color: #F5F1EA;
+  background-color: #F5F1EA;
 }
+
 
 .service-record-vehicle-option span {
-    font-size: 13px;
-    color: #1A1A1A;
+  font-size: 13px;
+
+  color: #1A1A1A;
 }
+
 
 .service-record-vehicle-option strong {
-    font-size: 12px;
-    color: #555555;
+  font-size: 12px;
+
+  color: #555555;
 }
 
+
 .service-record-vehicle-empty {
-    padding: 15px;
-    font-size: 12px;
-    color: #777777;
-    text-align: center;
+  padding: 15px;
+
+  font-size: 12px;
+
+  color: #777777;
+
+  text-align: center;
+}
+
+
+@media (max-width: 1500px) {
+  .service-record-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+
+@media (max-width: 900px) {
+  .service-record-form-header {
+    margin-bottom: 20px;
+  }
+
+
+  .service-record-form-header h1 {
+    font-size: 27px;
+  }
+
+
+  .service-record-form {
+    padding: 24px;
+  }
+
+
+  .service-record-grid {
+    grid-template-columns: 1fr;
+
+    gap: 0;
+  }
+
+
+  .service-record-field {
+    margin-bottom: 18px;
+  }
+
+
+  .service-record-actions {
+    flex-direction: column-reverse;
+
+    margin-top: 22px;
+  }
+
+
+  .service-record-cancel,
+  .service-record-submit {
+    width: 100%;
+  }
+}
+
+
+@media (max-width: 600px) {
+  .service-record-form {
+    padding: 20px 18px;
+
+    border-radius: 7px;
+  }
+
+
+  .service-record-form-header h1 {
+    font-size: 25px;
+  }
+
+
+  .service-record-field textarea {
+    min-height: 110px;
+  }
+
+
+  .service-record-vehicle-option {
+    align-items: flex-start;
+    flex-direction: column;
+
+    gap: 3px;
+  }
 }

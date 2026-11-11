@@ -19,11 +19,12 @@ function HomePage() {
           </div>
 
           <div className="home-description">
-            <h2>Dołącz do nas i już dziś uszereguj swoją flotę.</h2>
+            <h2>Dołącz do nas już dziś i lepiej zarządzaj swoją flotą! </h2>
 
             <p>
-              Kontroluj wydatki, ubezpieczenia, przeglądy oraz najważniejsze
-              informacje dotyczące swoich pojazdów w jednym miejscu.
+              Wszystkie pojazdy, kierowcy, koszty i ważne terminy w jednym
+              miejscu. Flotivo pomaga firmom uporządkować zarządzanie flotą,
+              ograniczyć formalności i zyskać pełną kontrolę nad pojazdami.
             </p>
             <div className="home-actions">
               <button
@@ -45,7 +46,7 @@ function HomePage() {
         <section className="home-features">
           <div className="home-features-heading">
             <h2>Wszystko pod kontrolą</h2>
-            <p>Najważniejsze elementy zarządzania flotą w jednym miejscu.</p>
+            <p>Zarządzaj swoją flotą w jednym miejscu. </p>
           </div>
 
           <div className="home-features-grid">
@@ -53,8 +54,9 @@ function HomePage() {
               <span className="home-feature-number">01</span>
               <h3>Pojazdy</h3>
               <p>
-                Przechowuj najważniejsze informacje o swoich pojazdach i miej do
-                nich szybki dostęp.
+                Zarządzaj pojazdami w jednym miejscu. Przechowuj ich dane,
+                monitoruj stan floty i uzyskuj szybki dostęp do najważniejszych
+                informacji.
               </p>
             </div>
 
@@ -62,8 +64,8 @@ function HomePage() {
               <span className="home-feature-number">02</span>
               <h3>Kierowcy</h3>
               <p>
-                Zarządzaj kierowcami oraz kontroluj przypisania pracowników do
-                konkretnych pojazdów.
+                Uporządkuj informacje o kierowcach i zarządzaj przypisaniem
+                pojazdów do pracowników.
               </p>
             </div>
 
@@ -71,8 +73,9 @@ function HomePage() {
               <span className="home-feature-number">03</span>
               <h3>Terminy</h3>
               <p>
-                Pilnuj ważnych terminów związanych z przeglądami technicznymi i
-                ubezpieczeniami.
+                Kontroluj daty przeglądów technicznych i ważność polis
+                ubezpieczeniowych. Miej najważniejsze terminy w jednym miejscu i
+                unikaj niepotrzebnych opóźnień.
               </p>
             </div>
           </div>

@@ -1,19 +1,26 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+
 import Sidebar from "./sidebar/Sidebar";
+
 import apiClient from "../api/client";
 import { fetchAllPages } from "../api/pagination";
+
 import "./AddVehicleDocumentPage.css";
 
 function AddVehicleDocumentPage({ onLogout }) {
   const navigate = useNavigate();
+
   const [searchParams] = useSearchParams();
 
   const vehicleFromUrl = searchParams.get("vehicle");
 
   const [vehicles, setVehicles] = useState([]);
+
   const [loading, setLoading] = useState(true);
+
   const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({
@@ -31,9 +38,11 @@ function AddVehicleDocumentPage({ onLogout }) {
     const loadVehicles = async () => {
       try {
         const vehiclesData = await fetchAllPages(apiClient, "vehicles/");
+
         setVehicles(vehiclesData);
       } catch (err) {
         console.error("Błąd pobierania pojazdów:", err);
+
         setError("Nie udało się pobrać listy pojazdów.");
       } finally {
         setLoading(false);
@@ -66,20 +75,24 @@ function AddVehicleDocumentPage({ onLogout }) {
 
     if (!formData.vehicle) {
       setError("Wybierz pojazd.");
+
       return;
     }
 
     if (!formData.document_type) {
       setError("Wybierz typ dokumentu.");
+
       return;
     }
 
     setSaving(true);
+
     setError("");
 
     const data = new FormData();
 
     data.append("vehicle", formData.vehicle);
+
     data.append("document_type", formData.document_type);
 
     if (formData.document_number) {
@@ -120,6 +133,7 @@ function AddVehicleDocumentPage({ onLogout }) {
       }
     } catch (err) {
       console.error("Błąd dodawania dokumentu:", err);
+
       console.error("Odpowiedź backendu:", err.response?.data);
 
       const fileError = err.response?.data?.file?.[0];
@@ -131,6 +145,14 @@ function AddVehicleDocumentPage({ onLogout }) {
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (vehicleFromUrl) {
+      navigate(`/vehicles/${vehicleFromUrl}`);
+    } else {
+      navigate("/vehicles");
     }
   };
 
@@ -160,11 +182,7 @@ function AddVehicleDocumentPage({ onLogout }) {
             <button
               type="button"
               className="document-form-back"
-              onClick={() =>
-                vehicleFromUrl
-                  ? navigate(`/vehicles/${vehicleFromUrl}`)
-                  : navigate("/vehicles")
-              }
+              onClick={handleCancel}
             >
               ← Wróć
             </button>
@@ -219,13 +237,21 @@ function AddVehicleDocumentPage({ onLogout }) {
                 required
               >
                 <option value="">Wybierz typ</option>
+
                 <option value="oc">OC</option>
+
                 <option value="ac">AC</option>
+
                 <option value="registration">Dowód rejestracyjny</option>
+
                 <option value="inspection">Przegląd techniczny</option>
+
                 <option value="leasing">Umowa leasingowa</option>
+
                 <option value="warranty">Gwarancja</option>
+
                 <option value="assistance">Assistance</option>
+
                 <option value="other">Inny</option>
               </select>
             </div>
@@ -240,6 +266,21 @@ function AddVehicleDocumentPage({ onLogout }) {
                 value={formData.document_number}
                 onChange={handleChange}
                 placeholder="Np. POL/123456"
+              />
+            </div>
+
+            <div className="document-form-group">
+              <label htmlFor="cost">Koszt</label>
+
+              <input
+                id="cost"
+                name="cost"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.cost}
+                onChange={handleChange}
+                placeholder="0.00"
               />
             </div>
 
@@ -268,21 +309,6 @@ function AddVehicleDocumentPage({ onLogout }) {
             </div>
 
             <div className="document-form-group">
-              <label htmlFor="cost">Koszt</label>
-
-              <input
-                id="cost"
-                name="cost"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.cost}
-                onChange={handleChange}
-                placeholder="0.00"
-              />
-            </div>
-
-            <div className="document-form-group">
               <label htmlFor="file">Plik</label>
 
               <input
@@ -299,7 +325,7 @@ function AddVehicleDocumentPage({ onLogout }) {
               </span>
             </div>
 
-            <div className="document-form-group document-form-full">
+            <div className="document-form-group document-form-full document-form-notes">
               <label htmlFor="notes">Notatki</label>
 
               <textarea
@@ -317,11 +343,8 @@ function AddVehicleDocumentPage({ onLogout }) {
             <button
               type="button"
               className="document-form-cancel"
-              onClick={() =>
-                vehicleFromUrl
-                  ? navigate(`/vehicles/${vehicleFromUrl}`)
-                  : navigate("/vehicles")
-              }
+              onClick={handleCancel}
+              disabled={saving}
             >
               Anuluj
             </button>

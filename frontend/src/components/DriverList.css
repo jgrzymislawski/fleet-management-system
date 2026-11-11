@@ -121,15 +121,17 @@
     display: grid;
     grid-template-columns:
         44px
-        minmax(120px, 1fr)
-        minmax(140px, 1fr)
-        minmax(180px, 1.25fr)
+        minmax(95px, 0.8fr)
+        minmax(110px, 0.9fr)
+        minmax(145px, 1.1fr)
+        minmax(125px, 1fr)
+        minmax(125px, 1fr)
+        minmax(115px, 0.9fr)
         minmax(130px, 0.9fr)
-        minmax(150px, 0.9fr)
-        70px;
-    column-gap: 20px;
+        60px;
+    column-gap: 16px;
     align-items: center;
-    padding: 17px 25px;
+    padding: 17px 22px;
 }
 
 .drivers-table-header {
@@ -141,7 +143,7 @@
 }
 
 .drivers-table-row {
-    min-height: 58px;
+    min-height: 72px;
     border-bottom: 1px solid #E1DAD4;
     transition: background-color 0.15s ease;
 }
@@ -208,12 +210,58 @@
     cursor: not-allowed;
 }
 
+.driver-expiry-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+}
+
+.driver-expiry-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.driver-expiry-date {
+    color: #3F3A36;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.driver-expiry-valid {
+    background-color: #E4EFE6;
+    color: #365B3A;
+}
+
+.driver-expiry-warning {
+    background-color: #F3E8D5;
+    color: #795A28;
+}
+
+.driver-expiry-expired {
+    background-color: #F3E1E1;
+    color: #A33A3A;
+}
+
+.driver-expiry-none {
+    background-color: #E8E8E8;
+    color: #666666;
+}
+
 .driver-actions {
     position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 70px;
+    width: 60px;
 }
 
 .driver-actions-button {
@@ -479,7 +527,159 @@
     cursor: not-allowed;
 }
 
-@media (max-width: 1100px) {
+.drivers-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 22px;
+    padding: 14px 16px;
+    border: 1px solid #E1DAD4;
+    border-radius: 8px;
+    background-color: #FAF5F2;
+}
+
+.drivers-pagination-button {
+    min-width: 118px;
+    height: 38px;
+    padding: 0 14px;
+    border: 1px solid #D8D1CA;
+    border-radius: 6px;
+    background-color: #FFFFFF;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.drivers-pagination-button:hover:not(:disabled) {
+    border-color: #1A1A1A;
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.drivers-pagination-button:disabled {
+    border-color: #E4DED8;
+    background-color: #F4F0EC;
+    color: #AAA39D;
+    cursor: not-allowed;
+}
+
+.drivers-pagination-info {
+    min-width: 120px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: #55504B;
+}
+
+.driver-delete-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(20, 20, 20, 0.45);
+    backdrop-filter: blur(2px);
+}
+
+.driver-delete-modal {
+    width: 100%;
+    max-width: 420px;
+    padding: 30px;
+    box-sizing: border-box;
+    border: 1px solid #E1DAD4;
+    border-radius: 14px;
+    background-color: #FAF5F2;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+    text-align: center;
+}
+
+.driver-delete-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    background-color: #FCE8E8;
+    color: #A33A3A;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.driver-delete-modal h2 {
+    margin: 0 0 10px;
+    color: #1A1A1A;
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.driver-delete-modal p {
+    margin: 0;
+    color: #6A625C;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.driver-delete-warning {
+    margin-top: 16px !important;
+    color: #8B4A4A !important;
+}
+
+.driver-delete-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 26px;
+}
+
+.driver-delete-cancel,
+.driver-delete-confirm {
+    min-width: 120px;
+    padding: 10px 16px;
+    border-radius: 7px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.driver-delete-cancel {
+    border: 1px solid #CFC8C2;
+    background-color: transparent;
+    color: #1A1A1A;
+}
+
+.driver-delete-cancel:hover:not(:disabled) {
+    background-color: #EEE8E2;
+}
+
+.driver-delete-confirm {
+    border: none;
+    background-color: #A33A3A;
+    color: #FFFFFF;
+}
+
+.driver-delete-confirm:hover:not(:disabled) {
+    background-color: #8F3131;
+}
+
+.driver-delete-cancel:disabled,
+.driver-delete-confirm:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+@media (max-width: 1450px) {
     .drivers-table {
         overflow-x: auto;
     }
@@ -488,7 +688,7 @@
     .drivers-table-row,
     .drivers-table-header-bulk,
     .drivers-table-row-bulk {
-        min-width: 1050px;
+        min-width: 1400px;
     }
 }
 
@@ -543,57 +743,6 @@
     }
 }
 
-.drivers-pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    margin-top: 22px;
-    padding: 14px 16px;
-    border: 1px solid #E1DAD4;
-    border-radius: 8px;
-    background-color: #FAF5F2;
-}
-
-.drivers-pagination-button {
-    min-width: 118px;
-    height: 38px;
-    padding: 0 14px;
-    border: 1px solid #D8D1CA;
-    border-radius: 6px;
-    background-color: #FFFFFF;
-    color: #1A1A1A;
-    font-family: 'Poppins', sans-serif;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition:
-        background-color 0.15s ease,
-        border-color 0.15s ease,
-        color 0.15s ease;
-}
-
-.drivers-pagination-button:hover:not(:disabled) {
-    border-color: #1A1A1A;
-    background-color: #1A1A1A;
-    color: #FFFFFF;
-}
-
-.drivers-pagination-button:disabled {
-    border-color: #E4DED8;
-    background-color: #F4F0EC;
-    color: #AAA39D;
-    cursor: not-allowed;
-}
-
-.drivers-pagination-info {
-    min-width: 120px;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 500;
-    color: #55504B;
-}
-
 @media (max-width: 600px) {
     .drivers-pagination {
         gap: 8px;
@@ -612,3 +761,17 @@
     }
 }
 
+@media (max-width: 500px) {
+    .driver-delete-modal {
+        padding: 24px 20px;
+    }
+
+    .driver-delete-actions {
+        flex-direction: column-reverse;
+    }
+
+    .driver-delete-cancel,
+    .driver-delete-confirm {
+        width: 100%;
+    }
+}

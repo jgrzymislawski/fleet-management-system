@@ -181,10 +181,6 @@ function DriverForm({
               );
             })}
           </div>
-
-          <p className="driver-form-categories-help">
-            Możesz zaznaczyć kilka kategorii.
-          </p>
         </div>
       </div>
 

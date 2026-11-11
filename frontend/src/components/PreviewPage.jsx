@@ -62,7 +62,7 @@ function PreviewPage() {
 
           <div className="preview-text">
             <span>03</span>
-            <h2>Kierowcy i przypisania</h2>
+            <h2>Kierowcy</h2>
             <p>
               Zarządzaj informacjami o kierowcach i kontroluj przypisania
               kierowców do pojazdów.

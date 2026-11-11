@@ -3,167 +3,61 @@
     justify-content: space-between;
     align-items: center;
     gap: 20px;
-    margin-bottom: 30px;
+    margin-bottom: 28px;
 }
 
 .service-history-header h1 {
     margin: 0 0 8px;
     font-size: 32px;
+    font-weight: 600;
     color: #1A1A1A;
 }
 
 .service-history-header p {
     margin: 0;
     font-size: 14px;
+    font-weight: 300;
     color: #666666;
 }
 
-.service-history-add {
-    padding: 11px 17px;
-    border: none;
-    border-radius: 7px;
-    background-color: #1A1A1A;
-    color: #FFFFFF;
-    font-family: 'Poppins', sans-serif;
-    font-size: 12px;
-    cursor: pointer;
-}
-
-.service-history-add:hover {
-    opacity: 0.9;
-}
-
-.service-history-error {
-    margin-bottom: 15px;
-    color: #A33A3A;
-    font-size: 13px;
-}
-
-.service-history-count {
-    margin-bottom: 15px;
-    font-size: 12px;
-    color: #777777;
-}
-
-.service-history-table {
-    border: 1px solid #D8D1CA;
-    border-radius: 8px;
-    overflow: hidden;
-    background-color: #FAF5F2;
-}
-
-.service-history-table-header,
-.service-history-row {
-    display: grid;
-    grid-template-columns: 1.4fr 1.8fr 1fr 1fr 1fr auto;
-    gap: 20px;
-    align-items: center;
-}
-
-.service-history-table-header {
-    padding: 14px 18px;
-    background-color: #EDE7E2;
-    font-size: 11px;
-    font-weight: 600;
-    color: #555555;
-}
-
-.service-history-row {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 16px 18px;
-    border-top: 1px solid #DED8D2;
-    background-color: #FFFFFF;
-    font-family: 'Poppins', sans-serif;
-    text-align: left;
-    cursor: pointer;
-}
-
-.service-history-row:hover {
-    background-color: #F7F3EF;
-}
-
-.service-history-vehicle,
-.service-history-repair {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.service-history-vehicle-name,
-.service-history-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #1A1A1A;
-}
-
-.service-history-registration,
-.service-history-description {
-    font-size: 11px;
-    color: #777777;
-}
-
-.service-history-row > span,
-.service-history-row > strong {
-    font-size: 12px;
-}
-
-.service-history-row > strong {
-    color: #1A1A1A;
-}
-
-.service-history-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.service-history-actions button {
-    padding: 6px 10px;
-    border: 1px solid #D8D1CA;
-    border-radius: 6px;
-    background-color: #FFFFFF;
-    font-family: 'Poppins', sans-serif;
-    font-size: 11px;
-    color: #1A1A1A;
-    cursor: pointer;
-}
-
-.service-history-actions button:hover {
-    background-color: #F5F1EA;
-}
-
-.service-history-actions .service-history-delete {
-    color: #A33A3A;
-}
-
-.service-history-actions .service-history-delete:hover {
-    background-color: #F3E1E1;
-}
-
-.service-history-empty {
-    padding: 35px;
-    text-align: center;
-    font-size: 13px;
-    color: #777777;
-}
 .service-history-header-actions {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
+.service-history-add {
+    padding: 11px 17px;
+    border: none;
+    border-radius: 6px;
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        opacity 0.15s ease;
+}
+
+.service-history-add:hover {
+    background-color: #333333;
+}
+
 .service-history-export {
-    padding: 12px 20px;
+    padding: 11px 18px;
     border: 1px solid #1A1A1A;
     border-radius: 6px;
     background-color: transparent;
     color: #1A1A1A;
     font-family: 'Poppins', sans-serif;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
-    transition: 0.2s ease;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
 }
 
 .service-history-export:hover:not(:disabled) {
@@ -175,18 +69,423 @@
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+.service-history-error {
+    margin-bottom: 15px;
+    padding: 10px 12px;
+    border: 1px solid #E6CACA;
+    border-radius: 6px;
+    background-color: #FCE8E8;
+    color: #A33A3A;
+    font-size: 13px;
+}
+
+/* ========================================
+   WYSZUKIWARKA I FILTRY
+======================================== */
+
+.service-history-tools {
+    margin-bottom: 20px;
+    padding: 16px;
+    border: 1px solid #D8D1CA;
+    border-radius: 8px;
+    background-color: #FAF5F2;
+}
+
+.service-history-search-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.service-history-search,
+.service-history-vehicle-filter {
+    height: 40px;
+    box-sizing: border-box;
+    border: 1px solid #D8D1CA;
+    border-radius: 6px;
+    background-color: #FFFFFF;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    outline: none;
+}
+
+.service-history-search {
+    flex: 1;
+    min-width: 240px;
+    padding: 0 12px;
+}
+
+.service-history-search::placeholder {
+    color: #999999;
+}
+
+.service-history-vehicle-filter {
+    width: 280px;
+    padding: 0 10px;
+}
+
+.service-history-search:hover,
+.service-history-vehicle-filter:hover {
+    border-color: #AFA8A1;
+}
+
+.service-history-search:focus,
+.service-history-vehicle-filter:focus {
+    border-color: #1A1A1A;
+    box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.04);
+}
+
+.service-history-clear {
+    height: 40px;
+    padding: 0 14px;
+    border: 1px solid #D8D1CA;
+    border-radius: 6px;
+    background-color: transparent;
+    color: #666666;
+    font-family: 'Poppins', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.service-history-clear:hover {
+    background-color: #EEE8E2;
+    color: #1A1A1A;
+}
+
+.service-history-filters {
+    display: grid;
+    grid-template-columns:
+        repeat(4, minmax(140px, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #E1DAD4;
+}
+
+.service-history-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.service-history-filter-group label {
+    font-size: 10px;
+    font-weight: 500;
+    color: #666666;
+}
+
+.service-history-filter-group input {
+    width: 100%;
+    height: 38px;
+    padding: 0 10px;
+    box-sizing: border-box;
+    border: 1px solid #D8D1CA;
+    border-radius: 6px;
+    background-color: #FFFFFF;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    outline: none;
+}
+
+.service-history-filter-group input:hover {
+    border-color: #AFA8A1;
+}
+
+.service-history-filter-group input:focus {
+    border-color: #1A1A1A;
+    box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.04);
+}
+
+/* ========================================
+   LICZNIK
+======================================== */
+
+.service-history-count {
+    margin-bottom: 14px;
+    font-size: 12px;
+    color: #777777;
+}
+
+/* ========================================
+   TABELA
+======================================== */
+
+.service-history-table {
+    width: 100%;
+    border: 1px solid #D8D1CA;
+    border-radius: 8px;
+    overflow: visible;
+    background-color: #FAF5F2;
+}
+
+.service-history-table-header,
+.service-history-row {
+    display: grid;
+    grid-template-columns:
+        minmax(170px, 1.25fr)
+        minmax(220px, 1.65fr)
+        minmax(110px, 0.8fr)
+        minmax(120px, 0.85fr)
+        minmax(110px, 0.75fr)
+        minmax(150px, 0.9fr);
+    column-gap: 24px;
+    align-items: center;
+}
+
+.service-history-table-header {
+    padding: 15px 20px;
+    background-color: #F0EAE5;
+    border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid #D8D1CA;
+    font-size: 12px;
+    font-weight: 600;
+    color: #3F3A36;
+}
+
+.service-history-sort-button {
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #3F3A36;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.service-history-sort-button:hover {
+    color: #1A1A1A;
+}
+
+.service-history-table-header > span:last-child {
+    text-align: center;
+}
+
+.service-history-row {
+    width: 100%;
+    min-height: 70px;
+    box-sizing: border-box;
+    padding: 15px 20px;
+    border-bottom: 1px solid #E1DAD4;
+    background-color: #FAF5F2;
+    font-family: 'Poppins', sans-serif;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.service-history-row:last-child {
+    border-bottom: none;
+    border-radius: 0 0 8px 8px;
+}
+
+.service-history-row:hover {
+    background-color: #F5F1EA;
+}
+
+.service-history-table-header > *,
+.service-history-row > * {
+    min-width: 0;
+}
+
+.service-history-vehicle,
+.service-history-repair {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.service-history-vehicle-name,
+.service-history-title {
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1A1A1A;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.service-history-registration {
+    width: fit-content;
+    padding: 3px 7px;
+    border-radius: 5px;
+    background-color: #EEE8E2;
+    font-size: 10px;
+    font-weight: 500;
+    color: #6A625C;
+}
+
+.service-history-description {
+    overflow: hidden;
+    font-size: 11px;
+    color: #777777;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.service-history-row > span,
+.service-history-row > strong {
+    font-size: 12px;
+    color: #3F3A36;
+}
+
+.service-history-row > strong {
+    font-weight: 600;
+    color: #1A1A1A;
+}
+
+/* ========================================
+   AKCJE
+======================================== */
+
+.service-history-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.service-history-actions button {
+    min-width: 62px;
+    padding: 7px 11px;
+    border: 1px solid #D8D1CA;
+    border-radius: 6px;
+    background-color: #FFFFFF;
+    font-family: 'Poppins', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: #1A1A1A;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.service-history-actions button:hover {
+    border-color: #AFA8A1;
+    background-color: #EEE8E2;
+}
+
+.service-history-actions .service-history-delete {
+    border-color: #E0CACA;
+    color: #A33A3A;
+}
+
+.service-history-actions .service-history-delete:hover {
+    border-color: #C76868;
+    background-color: #F3E1E1;
+}
+
+/* ========================================
+   BRAK WYNIKÓW
+======================================== */
+
+.service-history-empty {
+    padding: 40px 25px;
+    text-align: center;
+    font-size: 13px;
+    color: #777777;
+}
+
+/* ========================================
+   PAGINACJA
+======================================== */
+
+.service-history-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 22px;
+    padding: 14px 16px;
+    border: 1px solid #E1DAD4;
+    border-radius: 8px;
+    background-color: #FAF5F2;
+}
+
+.service-history-pagination-button {
+    min-width: 118px;
+    height: 38px;
+    padding: 0 14px;
+    border: 1px solid #D8D1CA;
+    border-radius: 6px;
+    background-color: #FFFFFF;
+    color: #1A1A1A;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.service-history-pagination-button:hover:not(:disabled) {
+    border-color: #1A1A1A;
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+.service-history-pagination-button:disabled {
+    border-color: #E4DED8;
+    background-color: #F4F0EC;
+    color: #AAA39D;
+    cursor: not-allowed;
+}
+
+.service-history-pagination-info {
+    min-width: 120px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: #55504B;
+}
+
+/* ========================================
+   RESPONSYWNOŚĆ
+======================================== */
+
 @media (max-width: 1200px) {
+    .service-history-search-row {
+        flex-wrap: wrap;
+    }
+
+    .service-history-search {
+        flex-basis: 100%;
+    }
+
+    .service-history-vehicle-filter {
+        flex: 1;
+        width: auto;
+    }
+
+    .service-history-filters {
+        grid-template-columns:
+            repeat(2, minmax(140px, 1fr));
+    }
+
     .service-history-table {
         overflow-x: auto;
     }
 
-    .service-history-header-actions {
-        flex-wrap: wrap;
-    }
-
     .service-history-table-header,
     .service-history-row {
-        min-width: 900px;
+        min-width: 1050px;
+    }
+
+    .service-history-header-actions {
+        flex-wrap: wrap;
     }
 }
 
@@ -194,9 +493,64 @@
     .service-history-header {
         align-items: flex-start;
         flex-direction: column;
+        gap: 20px;
     }
 
+    .service-history-header-actions {
+        width: 100%;
+    }
+
+    .service-history-export,
+    .service-history-add {
+        flex: 1;
+    }
+}
+
+@media (max-width: 650px) {
+    .service-history-tools {
+        padding: 14px;
+    }
+
+    .service-history-search-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .service-history-search,
+    .service-history-vehicle-filter,
+    .service-history-clear {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .service-history-filters {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .service-history-header-actions {
+        flex-direction: column;
+    }
+
+    .service-history-export,
     .service-history-add {
         width: 100%;
+    }
+
+    .service-history-pagination {
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .service-history-pagination-button {
+        min-width: 0;
+        flex: 1;
+        padding: 0 10px;
+    }
+
+    .service-history-pagination-info {
+        min-width: auto;
+        white-space: nowrap;
     }
 }

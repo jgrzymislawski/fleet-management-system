@@ -2,155 +2,347 @@
   margin-bottom: 24px;
 }
 
+
 .document-form-header h1 {
-  margin: 12px 0 6px;
+  margin: 10px 0 7px;
+
   font-size: 30px;
-  color: #1a1a1a;
+  font-weight: 600;
+
+  color: #1A1A1A;
 }
+
 
 .document-form-header p {
   margin: 0;
-  color: #6b6b6b;
+
+  font-size: 13px;
+
+  color: #666666;
 }
+
 
 .document-form-back {
   padding: 0;
+
   border: none;
-  background: none;
-  font: inherit;
-  color: #666;
+
+  background: transparent;
+
+  font-family: "Poppins", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+
+  color: #777777;
+
   cursor: pointer;
 }
 
+
 .document-form-back:hover {
-  color: #1a1a1a;
+  color: #1A1A1A;
 }
 
+
 .document-form-card {
-  max-width: 900px;
-  padding: 28px;
-  background: #ffffff;
-  border: 1px solid #e7e2de;
-  border-radius: 10px;
+  width: 100%;
+  max-width: none;
+
+  padding: 30px;
+
+  box-sizing: border-box;
+
+  background: #FAF5F2;
+
+  border: 1px solid #D8D1CA;
+  border-radius: 8px;
 }
+
 
 .document-form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  column-gap: 24px;
+  row-gap: 22px;
 }
+
 
 .document-form-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+
+  gap: 7px;
+
+  min-width: 0;
 }
+
 
 .document-form-full {
   grid-column: 1 / -1;
 }
 
+
 .document-form-group label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1a1a1a;
+  font-size: 12px;
+  font-weight: 500;
+
+  color: #1A1A1A;
 }
+
 
 .document-form-group input,
 .document-form-group select,
 .document-form-group textarea {
   width: 100%;
+
   box-sizing: border-box;
-  padding: 12px 14px;
-  border: 1px solid #d8d3cf;
-  border-radius: 8px;
-  background: #ffffff;
-  font: inherit;
-  color: #1a1a1a;
+
+  border: 1px solid #D8D1CA;
+  border-radius: 7px;
+
+  background: #FFFFFF;
+
+  font-family: "Poppins", sans-serif;
+  font-size: 13px;
+
+  color: #1A1A1A;
+
   outline: none;
+
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
 }
+
+
+.document-form-group input,
+.document-form-group select {
+  height: 43px;
+
+  padding: 0 12px;
+}
+
+
+.document-form-group textarea {
+  min-height: 130px;
+
+  padding: 12px;
+
+  resize: vertical;
+
+  line-height: 1.6;
+}
+
+
+.document-form-group input::placeholder,
+.document-form-group textarea::placeholder {
+  color: #999999;
+}
+
+
+.document-form-group input:hover:not(:disabled),
+.document-form-group select:hover:not(:disabled),
+.document-form-group textarea:hover {
+  border-color: #AFA8A1;
+}
+
 
 .document-form-group input:focus,
 .document-form-group select:focus,
 .document-form-group textarea:focus {
-  border-color: #1a1a1a;
+  border-color: #1A1A1A;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(26, 26, 26, 0.05);
 }
+
 
 .document-form-group input:disabled {
-  background: #f5f1ea;
-  color: #555;
+  background: #EFEAE6;
+
+  color: #555555;
+
+  cursor: not-allowed;
 }
 
-.document-form-group textarea {
-  resize: vertical;
+
+.document-form-file-info {
+  margin-top: 2px;
+
+  font-size: 11px;
+
+  color: #777777;
+
+  line-height: 1.5;
 }
+
+
+.document-form-notes {
+  margin-top: 2px;
+}
+
 
 .document-form-error {
-  margin-bottom: 20px;
-  padding: 12px 14px;
-  border-radius: 8px;
-  background: #fff0f0;
-  color: #a12626;
+  margin: 0 0 22px;
+
+  padding: 10px 12px;
+
+  border: 1px solid #E6CACA;
+  border-radius: 6px;
+
+  background: #FCE8E8;
+
+  color: #A33A3A;
+
+  font-size: 13px;
 }
+
 
 .document-form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+
+  gap: 10px;
+
   margin-top: 28px;
 }
 
+
 .document-form-cancel,
 .document-form-save {
-  padding: 11px 18px;
-  border-radius: 8px;
-  font: inherit;
-  font-weight: 600;
+  min-width: 120px;
+
+  padding: 10px 17px;
+
+  border-radius: 7px;
+
+  font-family: "Poppins", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+
   cursor: pointer;
+
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
 }
+
 
 .document-form-cancel {
-  border: 1px solid #d8d3cf;
-  background: #ffffff;
-  color: #1a1a1a;
+  border: 1px solid #D8D1CA;
+
+  background: transparent;
+
+  color: #1A1A1A;
 }
+
 
 .document-form-save {
-  border: 1px solid #1a1a1a;
-  background: #1a1a1a;
-  color: #ffffff;
+  border: 1px solid #1A1A1A;
+
+  background: #1A1A1A;
+
+  color: #FFFFFF;
 }
 
+
+.document-form-cancel:hover:not(:disabled) {
+  background: #EEE8E2;
+}
+
+
+.document-form-save:hover:not(:disabled) {
+  background: #333333;
+
+  border-color: #333333;
+}
+
+
+.document-form-cancel:disabled,
 .document-form-save:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
+
   cursor: not-allowed;
 }
 
-@media (max-width: 700px) {
+
+@media (max-width: 1400px) {
+  .document-form-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+
+    column-gap: 20px;
+  }
+}
+
+
+@media (max-width: 800px) {
+  .document-form-header {
+    margin-bottom: 20px;
+  }
+
+
+  .document-form-header h1 {
+    font-size: 27px;
+  }
+
+
+  .document-form-card {
+    padding: 24px;
+  }
+
+
   .document-form-grid {
     grid-template-columns: 1fr;
+
+    gap: 18px;
   }
+
 
   .document-form-full {
     grid-column: auto;
   }
 
-  .document-form-card {
-    padding: 20px;
-  }
 
   .document-form-actions {
     flex-direction: column-reverse;
+
+    margin-top: 24px;
   }
+
 
   .document-form-cancel,
   .document-form-save {
     width: 100%;
   }
 }
-.document-form-file-info {
-  margin-top: 4px;
-  font-size: 13px;
-  color: #6b6b6b;
-  line-height: 1.4;
+
+
+@media (max-width: 600px) {
+  .document-form-card {
+    padding: 20px 18px;
+
+    border-radius: 7px;
+  }
+
+
+  .document-form-header h1 {
+    font-size: 25px;
+  }
+
+
+  .document-form-group textarea {
+    min-height: 110px;
+  }
+
+
+  .document-form-file-info {
+    font-size: 10px;
+  }
 }

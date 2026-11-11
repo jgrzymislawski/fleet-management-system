@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import Sidebar from "./sidebar/Sidebar";
+
 import apiClient from "../api/client";
 import { fetchAllPages } from "../api/pagination";
 import { useAuth } from "../context/AuthContext";
+
 import "./ServiceHistoryPage.css";
 
 function ServiceHistoryPage({ onLogout }) {
@@ -13,24 +16,80 @@ function ServiceHistoryPage({ onLogout }) {
 
   const [serviceRecords, setServiceRecords] = useState([]);
   const [totalServiceRecords, setTotalServiceRecords] = useState(0);
+
   const [currentPage, setCurrentPage] = useState(1);
+
   const pageSize = 20;
 
   const [vehicles, setVehicles] = useState([]);
+
   const [error, setError] = useState(null);
+
   const [exporting, setExporting] = useState(false);
+
+  const [searchText, setSearchText] = useState("");
+
+  const [selectedVehicle, setSelectedVehicle] = useState("");
+
+  const [dateFrom, setDateFrom] = useState("");
+
+  const [dateTo, setDateTo] = useState("");
+
+  const [costMin, setCostMin] = useState("");
+
+  const [costMax, setCostMax] = useState("");
+
+  const [sortField, setSortField] = useState("service_date");
+
+  const [sortDirection, setSortDirection] = useState("desc");
 
   const canAddServiceRecord =
     user?.role === "admin" ||
     user?.companies?.some((company) => company.role === "editor");
 
+  const buildServiceParams = (page = currentPage) => {
+    const params = {
+      page,
+      page_size: pageSize,
+    };
+
+    const normalizedSearch = searchText.trim();
+
+    if (normalizedSearch) {
+      params.search = normalizedSearch;
+    }
+
+    if (selectedVehicle) {
+      params.vehicle = selectedVehicle;
+    }
+
+    if (dateFrom) {
+      params.date_from = dateFrom;
+    }
+
+    if (dateTo) {
+      params.date_to = dateTo;
+    }
+
+    if (costMin !== "") {
+      params.cost_min = costMin;
+    }
+
+    if (costMax !== "") {
+      params.cost_max = costMax;
+    }
+
+    if (sortField) {
+      params.ordering = sortDirection === "desc" ? `-${sortField}` : sortField;
+    }
+
+    return params;
+  };
+
   const loadServiceRecords = async (page = currentPage) => {
     try {
       const response = await apiClient.get("service-records/", {
-        params: {
-          page,
-          page_size: pageSize,
-        },
+        params: buildServiceParams(page),
       });
 
       const data = Array.isArray(response.data)
@@ -42,10 +101,14 @@ function ServiceHistoryPage({ onLogout }) {
         : response.data.count || 0;
 
       setServiceRecords(data);
+
       setTotalServiceRecords(count);
+
       setError(null);
     } catch (err) {
       console.error("Błąd pobierania historii napraw:", err);
+
+      console.error("Odpowiedź backendu:", err.response?.data);
 
       setError("Nie udało się pobrać historii napraw.");
     }
@@ -68,8 +131,24 @@ function ServiceHistoryPage({ onLogout }) {
   }, []);
 
   useEffect(() => {
-    loadServiceRecords(currentPage);
-  }, [currentPage]);
+    const timeoutId = window.setTimeout(() => {
+      loadServiceRecords(currentPage);
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    currentPage,
+    searchText,
+    selectedVehicle,
+    dateFrom,
+    dateTo,
+    costMin,
+    costMax,
+    sortField,
+    sortDirection,
+  ]);
 
   const getVehicle = (vehicleId) => {
     return vehicles.find((vehicle) => Number(vehicle.id) === Number(vehicleId));
@@ -97,6 +176,90 @@ function ServiceHistoryPage({ onLogout }) {
       maximumFractionDigits: 2,
     })} zł`;
   };
+
+  const handleSort = (field) => {
+    setCurrentPage(1);
+
+    if (sortField === field) {
+      setSortDirection((currentDirection) =>
+        currentDirection === "asc" ? "desc" : "asc",
+      );
+
+      return;
+    }
+
+    setSortField(field);
+
+    setSortDirection("asc");
+  };
+
+  const getSortArrow = (field) => {
+    if (sortField !== field) {
+      return "";
+    }
+
+    return sortDirection === "asc" ? " ↑" : " ↓";
+  };
+
+  const handleSearchChange = (event) => {
+    setCurrentPage(1);
+
+    setSearchText(event.target.value);
+  };
+
+  const handleVehicleChange = (event) => {
+    setCurrentPage(1);
+
+    setSelectedVehicle(event.target.value);
+  };
+
+  const handleDateFromChange = (event) => {
+    setCurrentPage(1);
+
+    setDateFrom(event.target.value);
+  };
+
+  const handleDateToChange = (event) => {
+    setCurrentPage(1);
+
+    setDateTo(event.target.value);
+  };
+
+  const handleCostMinChange = (event) => {
+    setCurrentPage(1);
+
+    setCostMin(event.target.value);
+  };
+
+  const handleCostMaxChange = (event) => {
+    setCurrentPage(1);
+
+    setCostMax(event.target.value);
+  };
+
+  const clearFilters = () => {
+    setCurrentPage(1);
+
+    setSearchText("");
+
+    setSelectedVehicle("");
+
+    setDateFrom("");
+
+    setDateTo("");
+
+    setCostMin("");
+
+    setCostMax("");
+  };
+
+  const filtersActive =
+    searchText.trim() !== "" ||
+    selectedVehicle !== "" ||
+    dateFrom !== "" ||
+    dateTo !== "" ||
+    costMin !== "" ||
+    costMax !== "";
 
   const handleDelete = async (record) => {
     const confirmed = window.confirm(
@@ -141,12 +304,20 @@ function ServiceHistoryPage({ onLogout }) {
   const handleExport = async () => {
     if (totalServiceRecords === 0) {
       setError("Brak wpisów do wyeksportowania.");
+
       return;
     }
 
     try {
       setExporting(true);
+
       setError(null);
+
+      const exportParams = buildServiceParams(1);
+
+      delete exportParams.page;
+
+      delete exportParams.page_size;
 
       const response = await apiClient.post(
         "service-records/export/",
@@ -155,6 +326,7 @@ function ServiceHistoryPage({ onLogout }) {
         },
         {
           responseType: "blob",
+          params: exportParams,
         },
       );
 
@@ -167,11 +339,13 @@ function ServiceHistoryPage({ onLogout }) {
       const link = document.createElement("a");
 
       link.href = downloadUrl;
+
       link.download = getExportFilename(response);
 
       document.body.appendChild(link);
 
       link.click();
+
       link.remove();
 
       window.URL.revokeObjectURL(downloadUrl);
@@ -222,18 +396,136 @@ function ServiceHistoryPage({ onLogout }) {
 
         {error && <p className="service-history-error">{error}</p>}
 
+        <div className="service-history-tools">
+          <div className="service-history-search-row">
+            <input
+              className="service-history-search"
+              type="text"
+              value={searchText}
+              onChange={handleSearchChange}
+              placeholder="Szukaj po pojeździe, rejestracji, naprawie lub opisie..."
+            />
+
+            <select
+              className="service-history-vehicle-filter"
+              value={selectedVehicle}
+              onChange={handleVehicleChange}
+            >
+              <option value="">Wszystkie pojazdy</option>
+
+              {vehicles.map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.brand} {vehicle.model} -{" "}
+                  {vehicle.registration_number}
+                </option>
+              ))}
+            </select>
+
+            {filtersActive && (
+              <button
+                type="button"
+                className="service-history-clear"
+                onClick={clearFilters}
+              >
+                Wyczyść filtry
+              </button>
+            )}
+          </div>
+
+          <div className="service-history-filters">
+            <div className="service-history-filter-group">
+              <label htmlFor="service-date-from">Data od</label>
+
+              <input
+                id="service-date-from"
+                type="date"
+                value={dateFrom}
+                onChange={handleDateFromChange}
+              />
+            </div>
+
+            <div className="service-history-filter-group">
+              <label htmlFor="service-date-to">Data do</label>
+
+              <input
+                id="service-date-to"
+                type="date"
+                value={dateTo}
+                onChange={handleDateToChange}
+              />
+            </div>
+
+            <div className="service-history-filter-group">
+              <label htmlFor="service-cost-min">Koszt od</label>
+
+              <input
+                id="service-cost-min"
+                type="number"
+                min="0"
+                step="0.01"
+                value={costMin}
+                onChange={handleCostMinChange}
+                placeholder="0,00"
+              />
+            </div>
+
+            <div className="service-history-filter-group">
+              <label htmlFor="service-cost-max">Koszt do</label>
+
+              <input
+                id="service-cost-max"
+                type="number"
+                min="0"
+                step="0.01"
+                value={costMax}
+                onChange={handleCostMaxChange}
+                placeholder="np. 5000"
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="service-history-count">
-          Na tej stronie: {serviceRecords.length} • Łącznie:{" "}
+          Na tej stronie: {serviceRecords.length} • Znaleziono:{" "}
           {totalServiceRecords}
         </div>
 
         <div className="service-history-table">
           <div className="service-history-table-header">
-            <span>Pojazd</span>
+            <button
+              className="service-history-sort-button"
+              onClick={() => handleSort("vehicle")}
+            >
+              Pojazd
+              {getSortArrow("vehicle")}
+            </button>
+
             <span>Naprawa</span>
-            <span>Data</span>
-            <span>Przebieg</span>
-            <span>Koszt</span>
+
+            <button
+              className="service-history-sort-button"
+              onClick={() => handleSort("service_date")}
+            >
+              Data
+              {getSortArrow("service_date")}
+            </button>
+
+            <button
+              className="service-history-sort-button"
+              onClick={() => handleSort("mileage")}
+            >
+              Przebieg
+              {getSortArrow("mileage")}
+            </button>
+
+            <button
+              className="service-history-sort-button"
+              onClick={() => handleSort("cost")}
+            >
+              Koszt
+              {getSortArrow("cost")}
+            </button>
+
             <span>Akcje</span>
           </div>
 
@@ -308,7 +600,7 @@ function ServiceHistoryPage({ onLogout }) {
 
           {serviceRecords.length === 0 && !error && (
             <div className="service-history-empty">
-              Brak wpisów w historii napraw.
+              Nie znaleziono wpisów spełniających wybrane kryteria.
             </div>
           )}
         </div>

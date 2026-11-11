@@ -1,20 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+
 import Sidebar from "./sidebar/Sidebar";
+
 import apiClient from "../api/client";
 import { fetchAllPages } from "../api/pagination";
+
 import "./AddServiceRecordPage.css";
 
 function AddServiceRecordPage({ onLogout }) {
   const navigate = useNavigate();
+
   const [searchParams] = useSearchParams();
 
   const vehicleFromUrl = searchParams.get("vehicle") || "";
 
   const [vehicles, setVehicles] = useState([]);
+
   const [error, setError] = useState(null);
 
   const [vehicleSearch, setVehicleSearch] = useState("");
+
   const [showVehicleResults, setShowVehicleResults] = useState(false);
 
   const vehicleSearchRef = useRef(null);
@@ -48,6 +54,7 @@ function AddServiceRecordPage({ onLogout }) {
         }
       } catch (err) {
         console.error("Błąd pobierania pojazdów:", err);
+
         setError("Nie udało się pobrać listy pojazdów.");
       }
     };
@@ -85,6 +92,7 @@ function AddServiceRecordPage({ onLogout }) {
     const value = event.target.value;
 
     setVehicleSearch(value);
+
     setShowVehicleResults(true);
 
     setFormData((currentFormData) => ({
@@ -114,7 +122,9 @@ function AddServiceRecordPage({ onLogout }) {
     }
 
     const brand = vehicle.brand?.toLowerCase() || "";
+
     const model = vehicle.model?.toLowerCase() || "";
+
     const registration = vehicle.registration_number?.toLowerCase() || "";
 
     return (
@@ -131,16 +141,22 @@ function AddServiceRecordPage({ onLogout }) {
 
     if (!formData.vehicle) {
       setError("Wybierz pojazd.");
+
       return;
     }
 
     try {
       const dataToSend = {
         vehicle: Number(formData.vehicle),
+
         service_date: formData.service_date,
+
         title: formData.title,
+
         description: formData.description,
+
         mileage: formData.mileage ? Number(formData.mileage) : null,
+
         cost: formData.cost || "0.00",
       };
 
@@ -188,7 +204,7 @@ function AddServiceRecordPage({ onLogout }) {
         <form className="service-record-form" onSubmit={handleSubmit}>
           {error && <p className="service-record-error">{error}</p>}
 
-          <div className="service-record-field">
+          <div className="service-record-field service-record-vehicle-field">
             <label htmlFor="vehicle-search">Pojazd</label>
 
             <div
@@ -291,7 +307,7 @@ function AddServiceRecordPage({ onLogout }) {
             </div>
           </div>
 
-          <div className="service-record-field">
+          <div className="service-record-field service-record-description">
             <label htmlFor="description">Opis</label>
 
             <textarea

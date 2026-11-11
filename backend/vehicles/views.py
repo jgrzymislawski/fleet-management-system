@@ -1178,9 +1178,12 @@ class ServiceRecordViewSet(
         )
 
         vehicle_id = (
-            self.request.query_params.get(
-                "vehicle"
+            self.request.query_params
+            .get(
+                "vehicle",
+                "",
             )
+            .strip()
         )
 
         if vehicle_id:
@@ -1188,10 +1191,149 @@ class ServiceRecordViewSet(
                 vehicle_id=vehicle_id
             )
 
-        return queryset.order_by(
-            "-service_date",
-            "-created_at",
+        search = (
+            self.request.query_params
+            .get(
+                "search",
+                "",
+            )
+            .strip()
         )
+
+        if search:
+            queryset = queryset.filter(
+                Q(
+                    vehicle__brand__icontains=search
+                )
+                | Q(
+                    vehicle__model__icontains=search
+                )
+                | Q(
+                    vehicle__registration_number__icontains=search
+                )
+                | Q(
+                    title__icontains=search
+                )
+                | Q(
+                    description__icontains=search
+                )
+            )
+
+        date_from = (
+            self.request.query_params
+            .get(
+                "date_from",
+                "",
+            )
+            .strip()
+        )
+
+        if date_from:
+            queryset = queryset.filter(
+                service_date__gte=date_from
+            )
+
+        date_to = (
+            self.request.query_params
+            .get(
+                "date_to",
+                "",
+            )
+            .strip()
+        )
+
+        if date_to:
+            queryset = queryset.filter(
+                service_date__lte=date_to
+            )
+
+        cost_min = (
+            self.request.query_params
+            .get(
+                "cost_min",
+                "",
+            )
+            .strip()
+        )
+
+        if cost_min:
+            queryset = queryset.filter(
+                cost__gte=cost_min
+            )
+
+        cost_max = (
+            self.request.query_params
+            .get(
+                "cost_max",
+                "",
+            )
+            .strip()
+        )
+
+        if cost_max:
+            queryset = queryset.filter(
+                cost__lte=cost_max
+            )
+
+        ordering = (
+            self.request.query_params
+            .get(
+                "ordering",
+                "",
+            )
+            .strip()
+        )
+
+        ordering_map = {
+            "vehicle": (
+                "vehicle__brand",
+                "vehicle__model",
+                "vehicle__registration_number",
+            ),
+            "service_date": (
+                "service_date",
+                "created_at",
+            ),
+            "mileage": (
+                "mileage",
+            ),
+            "cost": (
+                "cost",
+            ),
+        }
+
+        descending = ordering.startswith(
+            "-"
+        )
+
+        ordering_key = (
+            ordering[1:]
+            if descending
+            else ordering
+        )
+
+        fields = ordering_map.get(
+            ordering_key
+        )
+
+        if fields:
+            if descending:
+                fields = tuple(
+                    f"-{field}"
+                    for field in fields
+                )
+
+            queryset = queryset.order_by(
+                *fields
+            )
+
+        else:
+            queryset = queryset.order_by(
+                "-service_date",
+                "-created_at",
+            )
+
+        return queryset
 
     @action(
         detail=False,
@@ -1212,6 +1354,7 @@ class ServiceRecordViewSet(
                     "service_record_ids",
                 )
             )
+
         except ValueError as exc:
             return Response(
                 {
@@ -1222,7 +1365,9 @@ class ServiceRecordViewSet(
 
         queryset = (
             self.get_queryset()
-            .select_related("vehicle")
+            .select_related(
+                "vehicle"
+            )
         )
 
         if service_record_ids:
@@ -1237,21 +1382,24 @@ class ServiceRecordViewSet(
 
         if service_record_ids:
             service_records = [
-                records_by_id[record_id]
+                records_by_id[
+                    record_id
+                ]
                 for record_id
                 in service_record_ids
-                if record_id in records_by_id
+                if record_id
+                in records_by_id
             ]
+
         else:
             service_records = list(
-                queryset.order_by(
-                    "-service_date",
-                    "-created_at",
-                )
+                queryset
             )
 
-        workbook = create_service_workbook(
-            service_records
+        workbook = (
+            create_service_workbook(
+                service_records
+            )
         )
 
         filename = (
@@ -1269,7 +1417,8 @@ class ServiceRecordViewSet(
         serializer,
     ):
         vehicle = (
-            serializer.validated_data.get(
+            serializer.validated_data
+            .get(
                 "vehicle"
             )
         )
@@ -1288,7 +1437,9 @@ class ServiceRecordViewSet(
         self,
         serializer,
     ):
-        service_record = self.get_object()
+        service_record = (
+            self.get_object()
+        )
 
         old_vehicle = (
             service_record.vehicle
@@ -1300,7 +1451,8 @@ class ServiceRecordViewSet(
         )
 
         new_vehicle = (
-            serializer.validated_data.get(
+            serializer.validated_data
+            .get(
                 "vehicle",
                 old_vehicle,
             )

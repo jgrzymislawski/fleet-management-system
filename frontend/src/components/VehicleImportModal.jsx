@@ -164,11 +164,9 @@ function VehicleImportModal({ onClose, onImported }) {
 
           <ol>
             <li>Pobierz przygotowany szablon XLSX.</li>
-
             <li>Uzupełnij dane pojazdów.</li>
-
             <li>Nie zmieniaj nazw kolumn w pierwszym wierszu.</li>
-
+            <li>Kolejność kolumn może być dowolna.</li>
             <li>Wybierz uzupełniony plik i rozpocznij import.</li>
           </ol>
         </div>
