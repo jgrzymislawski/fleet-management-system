@@ -183,3 +183,48 @@
 .preview-cta button:hover {
     background-color: #EDEDED;
 }
+.preview-image {
+    width: 100%;
+    overflow: hidden;
+
+    border: 1px solid #D8D1CA;
+    border-radius: 10px;
+
+    background-color: #FAF5F2;
+
+    box-shadow:
+        0 8px 30px
+        rgba(0, 0, 0, 0.06);
+}
+
+.preview-image img {
+    display: block;
+
+    width: 100%;
+    height: auto;
+
+    object-fit: contain;
+}
+
+.preview-image-large {
+    width: 100%;
+}
+
+.preview-main .preview-image {
+    min-width: 0;
+}
+
+.preview-section .preview-image {
+    min-width: 0;
+}
+
+@media (max-width: 900px) {
+    .preview-image {
+        width: 100%;
+    }
+
+    .preview-image img {
+        width: 100%;
+        height: auto;
+    }
+}

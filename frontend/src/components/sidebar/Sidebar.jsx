@@ -18,7 +18,7 @@ function Sidebar({ onLogout }) {
             className="sidebar-item"
             onClick={() => navigate("/dashboard")}
           >
-            Dashboard
+            Pulpit
           </button>
 
           <button

@@ -20,21 +20,11 @@ function Dashboard({ onLogout }) {
   useEffect(() => {
     const loadDashboard = async () => {
       try {
-        const [vehicles, drivers, documents] =
-          await Promise.all([
-            fetchAllPages(
-              apiClient,
-              "vehicles/",
-            ),
-            fetchAllPages(
-              apiClient,
-              "drivers/",
-            ),
-            fetchAllPages(
-              apiClient,
-              "vehicle-documents/",
-            ),
-          ]);
+        const [vehicles, drivers, documents] = await Promise.all([
+          fetchAllPages(apiClient, "vehicles/"),
+          fetchAllPages(apiClient, "drivers/"),
+          fetchAllPages(apiClient, "vehicle-documents/"),
+        ]);
 
         setVehicleCount(vehicles.length);
         setDriverCount(drivers.length);
@@ -136,7 +126,7 @@ function Dashboard({ onLogout }) {
 
         setRecentVehicles(recent);
       } catch (error) {
-        console.error("Nie udało się pobrać danych dashboardu:", error);
+        console.error("Nie udało się pobrać danych pulpitu:", error);
       }
     };
 
@@ -148,7 +138,7 @@ function Dashboard({ onLogout }) {
       <Sidebar onLogout={onLogout} />
 
       <main className="dashboard-content">
-        <h1>Dashboard</h1>
+        <h1>Pulpit</h1>
 
         <p>Witaj w panelu zarządzania flotą Flotivo.</p>
 

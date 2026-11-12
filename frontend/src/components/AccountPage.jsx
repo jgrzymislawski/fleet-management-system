@@ -74,93 +74,99 @@ function AccountPage({ onLogout }) {
           </div>
         </div>
 
-        <div className="account-card">
-          <h2>Dane użytkownika</h2>
+        <div className="account-grid">
+          <div className="account-card">
+            <h2>Dane użytkownika</h2>
 
-          <div className="account-details-grid">
-            <div className="account-detail">
-              <span className="account-detail-label">Nazwa użytkownika</span>
+            <div className="account-details-grid">
+              <div className="account-detail">
+                <span className="account-detail-label">Nazwa użytkownika</span>
 
-              <span className="account-detail-value">{user.username}</span>
-            </div>
+                <span className="account-detail-value">{user.username}</span>
+              </div>
 
-            <div className="account-detail">
-              <span className="account-detail-label">E-mail</span>
+              <div className="account-detail">
+                <span className="account-detail-label">E-mail</span>
 
-              <span className="account-detail-value">
-                {user.email || "Nie podano"}
-              </span>
-            </div>
+                <span className="account-detail-value">
+                  {user.email || "Nie podano"}
+                </span>
+              </div>
 
-            <div className="account-detail">
-              <span className="account-detail-label">Rola</span>
+              <div className="account-detail">
+                <span className="account-detail-label">Rola</span>
 
-              <span className="account-detail-value">
-                {getRoleName(user.role)}
-              </span>
-            </div>
+                <span className="account-detail-value">
+                  {getRoleName(user.role)}
+                </span>
+              </div>
 
-            <div className="account-detail">
-              <span className="account-detail-label">Organizacja</span>
+              <div className="account-detail">
+                <span className="account-detail-label">Organizacja</span>
 
-              <span className="account-detail-value">
-                {user.organization?.name || "Brak organizacji"}
-              </span>
+                <span className="account-detail-value">
+                  {user.organization?.name || "Brak organizacji"}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="account-card">
-          <h2>Dostęp do spółek</h2>
+          <div className="account-card">
+            <h2>Dostęp do spółek</h2>
 
-          {user.companies?.length > 0 ? (
-            <div className="account-companies">
-              {user.companies.map((company) => (
-                <div className="account-company" key={company.id}>
-                  <div>
-                    <span className="account-company-name">{company.name}</span>
+            {user.companies?.length > 0 ? (
+              <div className="account-companies">
+                {user.companies.map((company) => (
+                  <div className="account-company" key={company.id}>
+                    <div>
+                      <span className="account-company-name">
+                        {company.name}
+                      </span>
 
-                    <span className="account-company-role">
-                      {getCompanyRoleName(company.role)}
-                    </span>
+                      <span className="account-company-role">
+                        {getCompanyRoleName(company.role)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="account-empty">Brak przypisanych spółek.</p>
-          )}
-        </div>
+                ))}
+              </div>
+            ) : (
+              <p className="account-empty">Brak przypisanych spółek.</p>
+            )}
+          </div>
 
-        <div className="account-card">
-          <h2>Bezpieczeństwo</h2>
+          <div className="account-card">
+            <h2>Bezpieczeństwo</h2>
 
-          <p className="account-card-description">
-            Możesz zmienić hasło używane do logowania do systemu.
-          </p>
+            <p className="account-card-description">
+              Możesz zmienić hasło używane do logowania do systemu.
+            </p>
 
-          <button
-            className="account-primary-button"
-            onClick={() => navigate("/account/change-password")}
-          >
-            Zmień hasło
-          </button>
-        </div>
+            <button
+              type="button"
+              className="account-primary-button"
+              onClick={() => navigate("/account/change-password")}
+            >
+              Zmień hasło
+            </button>
+          </div>
 
-        <div className="account-card">
-          <h2>Powiadomienia</h2>
+          <div className="account-card">
+            <h2>Powiadomienia</h2>
 
-          <p className="account-card-description">
-            Zarządzaj wiadomościami e-mail dotyczącymi polis OC, przeglądów
-            technicznych i dokumentów pojazdów.
-          </p>
+            <p className="account-card-description">
+              Zarządzaj wiadomościami e-mail dotyczącymi polis OC, przeglądów
+              technicznych i dokumentów pojazdów.
+            </p>
 
-          <button
-            className="account-primary-button"
-            onClick={() => navigate("/account/notifications")}
-          >
-            Ustawienia powiadomień
-          </button>
+            <button
+              type="button"
+              className="account-primary-button"
+              onClick={() => navigate("/account/notifications")}
+            >
+              Ustawienia powiadomień
+            </button>
+          </div>
         </div>
 
         {user.role === "admin" && (
@@ -173,6 +179,7 @@ function AccountPage({ onLogout }) {
             </p>
 
             <button
+              type="button"
               className="account-primary-button"
               onClick={() => navigate("/admin-panel")}
             >

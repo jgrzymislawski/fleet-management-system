@@ -1,61 +1,163 @@
 .admin-panel-header {
-  margin-bottom: 24px;
+    margin-bottom: 30px;
 }
 
 .admin-panel-header h1 {
-  margin: 0 0 6px;
-  font-size: 28px;
-  color: #1a1a1a;
+    margin: 0 0 10px;
+    font-size: 32px;
+    font-weight: 600;
+    color: #1A1A1A;
 }
 
 .admin-panel-header p {
-  margin: 0;
-  color: #6b6b6b;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 300;
+    color: #666666;
 }
 
 .admin-panel-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
 }
 
 .admin-panel-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
+    min-height: 250px;
+    width: 100%;
 
-  padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
 
-  border: 1px solid #e7e2dc;
-  border-radius: 10px;
+    gap: 16px;
 
-  background: #ffffff;
+    padding: 42px;
 
-  font-family: inherit;
-  text-align: left;
+    box-sizing: border-box;
 
-  cursor: pointer;
+    border: 1px solid #D8D1CA;
+    border-radius: 10px;
+
+    background-color: #FAF5F2;
+
+    font-family: 'Poppins', sans-serif;
+    text-align: left;
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        transform 0.15s ease,
+        box-shadow 0.15s ease;
 }
 
 .admin-panel-card:hover {
-  border-color: #1a1a1a;
+    background-color: #F5F1EA;
+    border-color: #AAA29B;
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 20px
+        rgba(0, 0, 0, 0.05);
+}
+
+.admin-panel-card:active {
+    transform: translateY(0);
 }
 
 .admin-panel-card-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1a1a1a;
+    font-size: 23px;
+    font-weight: 600;
+    color: #1A1A1A;
 }
 
 .admin-panel-card-description {
-  font-size: 14px;
-  line-height: 1.5;
-  color: #6b6b6b;
+    max-width: 650px;
+    font-size: 15px;
+    font-weight: 300;
+    line-height: 1.6;
+    color: #666666;
+}
+
+@media (min-width: 1500px) {
+    .admin-panel-card {
+        min-height: 280px;
+        padding: 48px;
+    }
+
+    .admin-panel-card-title {
+        font-size: 24px;
+    }
+
+    .admin-panel-card-description {
+        font-size: 15px;
+    }
+}
+
+@media (max-width: 1100px) {
+    .admin-panel-grid {
+        gap: 18px;
+    }
+
+    .admin-panel-card {
+        min-height: 170px;
+        padding: 26px;
+    }
 }
 
 @media (max-width: 800px) {
-  .admin-panel-grid {
-    grid-template-columns: 1fr;
-  }
+    .admin-panel-header {
+        margin-bottom: 24px;
+    }
+
+    .admin-panel-header h1 {
+        font-size: 28px;
+    }
+
+    .admin-panel-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-panel-card {
+        min-height: 145px;
+    }
+}
+
+@media (max-width: 600px) {
+    .admin-panel-header h1 {
+        font-size: 26px;
+    }
+
+    .admin-panel-header p {
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .admin-panel-grid {
+        gap: 14px;
+    }
+
+    .admin-panel-card {
+        min-height: 130px;
+        padding: 22px;
+    }
+
+    .admin-panel-card-title {
+        font-size: 19px;
+    }
+
+    .admin-panel-card-description {
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 400px) {
+    .admin-panel-card {
+        padding: 18px;
+    }
 }

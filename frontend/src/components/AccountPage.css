@@ -1,125 +1,188 @@
 .account-header {
-  margin-bottom: 24px;
+    margin-bottom: 24px;
 }
 
 .account-header h1 {
-  margin: 0 0 6px;
-  font-size: 28px;
-  color: #1a1a1a;
+    margin: 0 0 8px;
+    font-size: 32px;
+    font-weight: 600;
+    color: #1A1A1A;
 }
 
 .account-header p {
-  margin: 0;
-  color: #6b6b6b;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 300;
+    color: #666666;
+}
+
+.account-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-bottom: 18px;
 }
 
 .account-card {
-  margin-bottom: 20px;
-  padding: 24px;
-  background: #ffffff;
-  border: 1px solid #e7e2dc;
-  border-radius: 10px;
+    width: 100%;
+    min-width: 0;
+    padding: 20px;
+    box-sizing: border-box;
+    background-color: #FAF5F2;
+    border: 1px solid #D8D1CA;
+    border-radius: 8px;
 }
 
 .account-card h2 {
-  margin: 0 0 20px;
-  font-size: 20px;
-  color: #1a1a1a;
+    margin: 0 0 16px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1A1A1A;
 }
 
 .account-details-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 30px;
+    row-gap: 16px;
 }
 
 .account-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
 }
 
 .account-detail-label {
-  font-size: 13px;
-  color: #777777;
+    font-size: 12px;
+    color: #777777;
 }
 
 .account-detail-value {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a1a1a;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1A1A1A;
 }
 
 .account-companies {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .account-company {
-  padding: 14px 16px;
-  background: #f8f6f3;
-  border-radius: 8px;
+    padding: 12px 14px;
+    border: 1px solid #E8E1DB;
+    border-radius: 7px;
+    background-color: #F5F1ED;
 }
 
 .account-company > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  align-items: center;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
 }
 
 .account-company-name {
-  font-weight: 600;
-  color: #1a1a1a;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1A1A1A;
 }
 
 .account-company-role {
-  font-size: 14px;
-  color: #666666;
+    flex-shrink: 0;
+    padding: 5px 9px;
+    border-radius: 20px;
+    background-color: #E8E3DE;
+    font-size: 11px;
+    font-weight: 500;
+    color: #555555;
 }
 
 .account-card-description {
-  margin: -8px 0 18px;
-  color: #666666;
+    margin: -4px 0 26px;
+    font-size: 13px;
+    font-weight: 300;
+    line-height: 1.5;
+    color: #666666;
 }
 
 .account-primary-button {
-  border: none;
-  border-radius: 8px;
-  padding: 11px 18px;
-  background: #1a1a1a;
-  color: #ffffff;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 40px;
+    margin-top: 10px;
+    padding: 0 16px;
+
+    border: none;
+    border-radius: 6px;
+
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+
+    cursor: pointer;
+
+    transition: background-color 0.15s ease;
 }
 
 .account-primary-button:hover {
-  opacity: 0.85;
+    background-color: #333333;
+}
+
+.account-primary-button:hover {
+    background-color: #333333;
 }
 
 .account-admin-card {
-  background: #faf5f2;
+    margin-bottom: 0;
+    background-color: #F5F1ED;
 }
 
 .account-empty {
-  margin: 0;
-  color: #777777;
+    margin: 0;
+    font-size: 13px;
+    color: #777777;
 }
 
 .account-error {
-  color: #b42318;
+    color: #A33A3A;
+}
+
+@media (max-width: 1100px) {
+    .account-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .account-details-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 700px) {
-  .account-details-grid {
-    grid-template-columns: 1fr;
-  }
+    .account-header h1 {
+        font-size: 28px;
+    }
 
-  .account-company > div {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+    .account-details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .account-company > div {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .account-primary-button {
+        width: 100%;
+    }
 }
