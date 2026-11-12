@@ -387,3 +387,29 @@
     transform: translateY(-2px);
     transition: 0.2s;
 }
+html {
+    scrollbar-width: thin;
+    scrollbar-color: #B7AEA6 transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: #B7AEA6;
+    border-radius: 20px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: #888078;
+}
+
+*::-webkit-scrollbar-corner {
+    background: transparent;
+}
