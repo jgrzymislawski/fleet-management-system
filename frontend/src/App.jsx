@@ -1,100 +1,82 @@
-import { useCallback, useState } from "react";
-import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
-
+import { useCallback } from "react";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import HomePage from "./components/HomePage";
 import Login from "./components/Login";
 import OfferPage from "./components/OfferPage";
 import PreviewPage from "./components/PreviewPage";
 import JoinPage from "./components/JoinPage";
-
 import VehiclesPage from "./components/VehiclesPage";
 import DriversPage from "./components/DriversPage";
 import Dashboard from "./components/Dashboard";
-
 import EditVehiclePage from "./components/EditVehiclePage";
 import AddVehiclePage from "./components/AddVehiclePage";
 import VehicleDetailsPage from "./components/VehicleDetailsPage";
-
 import AddDriverPage from "./components/AddDriverPage";
 import DriverDetailsPage from "./components/DriverDetailsPage";
 import EditDriverPage from "./components/EditDriverPage";
-
 import AlertsPage from "./components/AlertsPage";
-
 import ServiceHistoryPage from "./components/ServiceHistoryPage";
 import AddServiceRecordPage from "./components/AddServiceRecordPage";
 import EditServiceRecordPage from "./components/EditServiceRecordPage";
-
 import StatisticsPage from "./components/StatisticsPage";
 import ReportsPage from "./components/ReportsPage";
-
 import AddVehicleDocumentPage from "./components/AddVehicleDocumentPage";
 import EditVehicleDocumentPage from "./components/EditVehicleDocumentPage";
-
 import AccountPage from "./components/AccountPage";
 import ChangePasswordPage from "./components/ChangePasswordPage";
 import NotificationPreferencesPage from "./components/NotificationPreferencesPage";
-
 import AdminPanelPage from "./components/AdminPanelPage";
 import AdminCompaniesPage from "./components/AdminCompaniesPage";
 import AddCompanyPage from "./components/AddCompanyPage";
 import EditCompanyPage from "./components/EditCompanyPage";
-
 import AdminUsersPage from "./components/AdminUsersPage";
 import AddUserPage from "./components/AddUserPage";
 import EditUserPage from "./components/EditUserPage";
-
 import AdminNotificationSettingsPage from "./components/AdminNotificationSettingsPage";
 import ActivityLogPage from "./components/ActivityLogPage";
-
 import useIdleLogout from "./hooks/useIdleLogout";
 import { useAuth } from "./context/AuthContext";
-
 import "./App.css";
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(
-    () => localStorage.getItem("access_token") !== null,
-  );
-
   const navigate = useNavigate();
+  const { user, loadingUser, loadUser, clearUser } = useAuth();
 
-  const { user, loadingUser, clearUser } = useAuth();
+  const isLoggedIn = Boolean(localStorage.getItem("access_token"));
 
-  const handleLoginSuccess = () => {
-    setIsLoggedIn(true);
-
-    navigate("/dashboard");
-  };
-
-  const handleLogout = () => {
+  const clearSession = useCallback(() => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
-
     clearUser();
+  }, [clearUser]);
 
-    setIsLoggedIn(false);
-
-    navigate("/");
+  const handleLoginSuccess = async () => {
+    await loadUser();
+    navigate("/dashboard", { replace: true });
   };
+
+  const handleLogout = useCallback(() => {
+    clearSession();
+    navigate("/", { replace: true });
+  }, [clearSession, navigate]);
 
   const handleIdleLogout = useCallback(() => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-
-    clearUser();
-
-    setIsLoggedIn(false);
-
-    navigate("/login", {
-      replace: true,
-    });
-  }, [navigate, clearUser]);
+    clearSession();
+    navigate("/login", { replace: true });
+  }, [clearSession, navigate]);
 
   useIdleLogout(isLoggedIn, handleIdleLogout, 15 * 60 * 1000);
 
   const protectedElement = (element) => {
     if (!isLoggedIn) {
+      return <Navigate to="/login" replace />;
+    }
+
+    if (loadingUser) {
+      return <div className="dashboard-route-loading">Ładowanie...</div>;
+    }
+
+    if (!user) {
       return <Navigate to="/login" replace />;
     }
 
@@ -107,10 +89,14 @@ function App() {
     }
 
     if (loadingUser) {
-      return <p>Ładowanie...</p>;
+      return <div className="dashboard-route-loading">Ładowanie...</div>;
     }
 
-    if (user?.role !== "admin") {
+    if (!user) {
+      return <Navigate to="/login" replace />;
+    }
+
+    if (user.role !== "admin") {
       return <Navigate to="/account" replace />;
     }
 
@@ -120,16 +106,19 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
-
       <Route path="/oferta" element={<OfferPage />} />
-
       <Route path="/podglad" element={<PreviewPage />} />
-
       <Route path="/dolacz" element={<JoinPage />} />
 
       <Route
         path="/login"
-        element={<Login onLoginSuccess={handleLoginSuccess} />}
+        element={
+          isLoggedIn && user && !loadingUser ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <Login onLoginSuccess={handleLoginSuccess} />
+          )
+        }
       />
 
       <Route
@@ -295,6 +284,11 @@ function App() {
       <Route
         path="/admin-panel/activity"
         element={adminElement(<ActivityLogPage onLogout={handleLogout} />)}
+      />
+
+      <Route
+        path="*"
+        element={<Navigate to={isLoggedIn ? "/dashboard" : "/"} replace />}
       />
     </Routes>
   );

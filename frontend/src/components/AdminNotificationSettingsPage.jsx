@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
-import api from "../api/client";
+import apiClient from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import "./AdminNotificationSettingsPage.css";
 
 function AdminNotificationSettingsPage({ onLogout }) {
   const navigate = useNavigate();
+  const { user, loadingUser } = useAuth();
 
   const [formData, setFormData] = useState({
     insurance_enabled: true,
@@ -22,25 +24,62 @@ function AdminNotificationSettingsPage({ onLogout }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const canManageNotifications = user?.role === "admin";
+
   useEffect(() => {
+    if (loadingUser || !canManageNotifications) {
+      if (!loadingUser) {
+        setLoading(false);
+      }
+
+      return;
+    }
+
+    let active = true;
+
     const loadSettings = async () => {
       try {
+        setLoading(true);
         setError("");
 
-        const response = await api.get("notifications/admin/settings/");
+        const response = await apiClient.get("notifications/admin/settings/");
 
-        setFormData(response.data);
+        if (!active) return;
+
+        setFormData({
+          insurance_enabled: Boolean(response.data?.insurance_enabled),
+          inspection_enabled: Boolean(response.data?.inspection_enabled),
+          documents_enabled: Boolean(response.data?.documents_enabled),
+          notify_30_days: Boolean(response.data?.notify_30_days),
+          notify_14_days: Boolean(response.data?.notify_14_days),
+          notify_7_days: Boolean(response.data?.notify_7_days),
+          notify_1_day: Boolean(response.data?.notify_1_day),
+        });
       } catch (err) {
+        if (!active) return;
+
         console.error("Błąd pobierania ustawień powiadomień organizacji:", err);
 
-        setError("Nie udało się pobrać ustawień powiadomień organizacji.");
+        if (err.response?.status === 403) {
+          setError(
+            "Nie masz uprawnień do zarządzania powiadomieniami organizacji.",
+          );
+        } else {
+          setError("Nie udało się pobrać ustawień powiadomień organizacji.");
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
     loadSettings();
-  }, []);
+
+    return () => {
+      active = false;
+    };
+  }, [loadingUser, canManageNotifications]);
 
   const handleChange = (event) => {
     const { name, checked } = event.target;
@@ -54,40 +93,110 @@ function AdminNotificationSettingsPage({ onLogout }) {
     setError("");
   };
 
+  const getBackendError = (err) => {
+    const data = err.response?.data;
+
+    if (!data) {
+      return "Nie udało się zapisać ustawień powiadomień organizacji.";
+    }
+
+    if (typeof data === "string") {
+      return data;
+    }
+
+    if (data.detail) {
+      return data.detail;
+    }
+
+    if (data.non_field_errors?.[0]) {
+      return data.non_field_errors[0];
+    }
+
+    const firstError = Object.values(data).find(
+      (value) => Array.isArray(value) && value.length > 0,
+    );
+
+    return (
+      firstError?.[0] ||
+      "Nie udało się zapisać ustawień powiadomień organizacji."
+    );
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (saving) {
+      return;
+    }
+
+    const anyNotificationTypeEnabled =
+      formData.insurance_enabled ||
+      formData.inspection_enabled ||
+      formData.documents_enabled;
+
+    const anyNotificationDayEnabled =
+      formData.notify_30_days ||
+      formData.notify_14_days ||
+      formData.notify_7_days ||
+      formData.notify_1_day;
+
+    if (anyNotificationTypeEnabled && !anyNotificationDayEnabled) {
+      setSuccess("");
+      setError("Wybierz przynajmniej jeden termin przypomnienia.");
+      return;
+    }
 
     try {
       setSaving(true);
       setError("");
       setSuccess("");
 
-      const response = await api.put("notifications/admin/settings/", formData);
+      const response = await apiClient.put(
+        "notifications/admin/settings/",
+        formData,
+      );
 
-      setFormData(response.data);
+      setFormData({
+        insurance_enabled: Boolean(response.data?.insurance_enabled),
+        inspection_enabled: Boolean(response.data?.inspection_enabled),
+        documents_enabled: Boolean(response.data?.documents_enabled),
+        notify_30_days: Boolean(response.data?.notify_30_days),
+        notify_14_days: Boolean(response.data?.notify_14_days),
+        notify_7_days: Boolean(response.data?.notify_7_days),
+        notify_1_day: Boolean(response.data?.notify_1_day),
+      });
 
       setSuccess("Ustawienia powiadomień organizacji zostały zapisane.");
     } catch (err) {
       console.error("Błąd zapisywania ustawień powiadomień organizacji:", err);
 
-      const backendError = err.response?.data?.non_field_errors?.[0];
-
-      setError(
-        backendError ||
-          "Nie udało się zapisać ustawień powiadomień organizacji.",
-      );
+      setError(getBackendError(err));
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
+  if (loadingUser || loading) {
     return (
       <div className="dashboard-layout">
         <Sidebar onLogout={onLogout} />
 
         <main className="dashboard-content">
           <p>Ładowanie ustawień...</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (!canManageNotifications) {
+    return (
+      <div className="dashboard-layout">
+        <Sidebar onLogout={onLogout} />
+
+        <main className="dashboard-content">
+          <div className="admin-notification-message admin-notification-error">
+            Nie masz uprawnień do zarządzania powiadomieniami organizacji.
+          </div>
         </main>
       </div>
     );
@@ -118,13 +227,19 @@ function AdminNotificationSettingsPage({ onLogout }) {
         </div>
 
         {error && (
-          <div className="admin-notification-message admin-notification-error">
+          <div
+            className="admin-notification-message admin-notification-error"
+            role="alert"
+          >
             {error}
           </div>
         )}
 
         {success && (
-          <div className="admin-notification-message admin-notification-success">
+          <div
+            className="admin-notification-message admin-notification-success"
+            role="status"
+          >
             {success}
           </div>
         )}
@@ -148,6 +263,7 @@ function AdminNotificationSettingsPage({ onLogout }) {
                 name="insurance_enabled"
                 checked={formData.insurance_enabled}
                 onChange={handleChange}
+                disabled={saving}
               />
 
               <span className="admin-notification-slider" />
@@ -170,6 +286,7 @@ function AdminNotificationSettingsPage({ onLogout }) {
                 name="inspection_enabled"
                 checked={formData.inspection_enabled}
                 onChange={handleChange}
+                disabled={saving}
               />
 
               <span className="admin-notification-slider" />
@@ -189,6 +306,7 @@ function AdminNotificationSettingsPage({ onLogout }) {
                 name="documents_enabled"
                 checked={formData.documents_enabled}
                 onChange={handleChange}
+                disabled={saving}
               />
 
               <span className="admin-notification-slider" />
@@ -210,6 +328,7 @@ function AdminNotificationSettingsPage({ onLogout }) {
                 name="notify_30_days"
                 checked={formData.notify_30_days}
                 onChange={handleChange}
+                disabled={saving}
               />
 
               <span>30 dni przed</span>
@@ -221,6 +340,7 @@ function AdminNotificationSettingsPage({ onLogout }) {
                 name="notify_14_days"
                 checked={formData.notify_14_days}
                 onChange={handleChange}
+                disabled={saving}
               />
 
               <span>14 dni przed</span>
@@ -232,6 +352,7 @@ function AdminNotificationSettingsPage({ onLogout }) {
                 name="notify_7_days"
                 checked={formData.notify_7_days}
                 onChange={handleChange}
+                disabled={saving}
               />
 
               <span>7 dni przed</span>
@@ -243,6 +364,7 @@ function AdminNotificationSettingsPage({ onLogout }) {
                 name="notify_1_day"
                 checked={formData.notify_1_day}
                 onChange={handleChange}
+                disabled={saving}
               />
 
               <span>1 dzień przed</span>

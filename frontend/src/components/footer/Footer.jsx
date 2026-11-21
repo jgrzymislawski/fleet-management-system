@@ -5,11 +5,17 @@ function Footer() {
   return (
     <footer className="footer">
       <div className="footer-content">
-        <img src={logo} alt="Flotivo" className="footer-logo" />
+        <div className="footer-brand">
+          <img src={logo} alt="Flotivo" className="footer-logo" />
+        </div>
 
-        <p className="footer-contact">Kontakt: flotivo@gmail.com</p>
+        <div className="footer-info">
+          <p className="footer-contact">Kontakt: flotivo@gmail.com</p>
 
-        <p className="footer-copyright">© 2026 Flotivo. All rights reserved.</p>
+          <p className="footer-copyright">
+            © 2026 Flotivo. All rights reserved.
+          </p>
+        </div>
       </div>
     </footer>
   );

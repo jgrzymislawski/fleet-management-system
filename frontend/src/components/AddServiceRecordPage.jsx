@@ -1,26 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-
 import Sidebar from "./sidebar/Sidebar";
-
 import apiClient from "../api/client";
 import { fetchAllPages } from "../api/pagination";
-
+import { useAuth } from "../context/AuthContext";
 import "./AddServiceRecordPage.css";
 
 function AddServiceRecordPage({ onLogout }) {
   const navigate = useNavigate();
-
   const [searchParams] = useSearchParams();
+  const { user, canEditCompany } = useAuth();
 
   const vehicleFromUrl = searchParams.get("vehicle") || "";
 
   const [vehicles, setVehicles] = useState([]);
-
   const [error, setError] = useState(null);
-
+  const [loadingVehicles, setLoadingVehicles] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [vehicleSearch, setVehicleSearch] = useState("");
-
   const [showVehicleResults, setShowVehicleResults] = useState(false);
 
   const vehicleSearchRef = useRef(null);
@@ -34,33 +31,64 @@ function AddServiceRecordPage({ onLogout }) {
     cost: "",
   });
 
+  const canAddServiceRecord =
+    user?.role === "admin" ||
+    user?.companies?.some((company) => company.role === "editor");
+
   useEffect(() => {
+    let active = true;
+
     const loadVehicles = async () => {
       try {
+        setLoadingVehicles(true);
+
         const vehiclesData = await fetchAllPages(apiClient, "vehicles/");
 
-        setVehicles(vehiclesData);
+        if (!active) return;
+
+        const editableVehicles = (
+          Array.isArray(vehiclesData) ? vehiclesData : []
+        ).filter((vehicle) => canEditCompany(vehicle.company));
+
+        setVehicles(editableVehicles);
 
         if (vehicleFromUrl) {
-          const selectedVehicle = vehiclesData.find(
+          const selectedVehicle = editableVehicles.find(
             (vehicle) => Number(vehicle.id) === Number(vehicleFromUrl),
           );
 
           if (selectedVehicle) {
             setVehicleSearch(
-              `${selectedVehicle.brand} ${selectedVehicle.model} - ${selectedVehicle.registration_number}`,
+              `${selectedVehicle.brand || ""} ${
+                selectedVehicle.model || ""
+              } - ${selectedVehicle.registration_number || "Brak rejestracji"}`,
             );
+          } else {
+            setError("Nie masz uprawnień do dodania wpisu dla tego pojazdu.");
           }
         }
       } catch (err) {
-        console.error("Błąd pobierania pojazdów:", err);
+        if (!active) return;
 
+        console.error("Błąd pobierania pojazdów:", err);
         setError("Nie udało się pobrać listy pojazdów.");
+      } finally {
+        if (active) {
+          setLoadingVehicles(false);
+        }
       }
     };
 
-    loadVehicles();
-  }, [vehicleFromUrl]);
+    if (canAddServiceRecord) {
+      loadVehicles();
+    } else {
+      setLoadingVehicles(false);
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [vehicleFromUrl, canAddServiceRecord, canEditCompany]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -72,43 +100,50 @@ function AddServiceRecordPage({ onLogout }) {
       }
     };
 
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setShowVehicleResults(false);
+      }
+    };
+
     document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, []);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
 
-    setFormData((currentFormData) => ({
-      ...currentFormData,
+    setFormData((current) => ({
+      ...current,
       [name]: value,
     }));
   };
 
   const handleVehicleSearchChange = (event) => {
-    const value = event.target.value;
-
-    setVehicleSearch(value);
-
+    setVehicleSearch(event.target.value);
     setShowVehicleResults(true);
 
-    setFormData((currentFormData) => ({
-      ...currentFormData,
+    setFormData((current) => ({
+      ...current,
       vehicle: "",
     }));
   };
 
   const handleVehicleSelect = (vehicle) => {
-    setFormData((currentFormData) => ({
-      ...currentFormData,
+    setFormData((current) => ({
+      ...current,
       vehicle: String(vehicle.id),
     }));
 
     setVehicleSearch(
-      `${vehicle.brand} ${vehicle.model} - ${vehicle.registration_number}`,
+      `${vehicle.brand || ""} ${vehicle.model || ""} - ${
+        vehicle.registration_number || "Brak rejestracji"
+      }`,
     );
 
     setShowVehicleResults(false);
@@ -117,50 +152,58 @@ function AddServiceRecordPage({ onLogout }) {
   const normalizedVehicleSearch = vehicleSearch.toLowerCase().trim();
 
   const filteredVehicles = vehicles.filter((vehicle) => {
-    if (!normalizedVehicleSearch) {
-      return true;
-    }
+    if (!normalizedVehicleSearch) return true;
 
-    const brand = vehicle.brand?.toLowerCase() || "";
+    const searchValue = [
+      vehicle.brand,
+      vehicle.model,
+      vehicle.registration_number,
+      vehicle.vin,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
 
-    const model = vehicle.model?.toLowerCase() || "";
-
-    const registration = vehicle.registration_number?.toLowerCase() || "";
-
-    return (
-      brand.includes(normalizedVehicleSearch) ||
-      model.includes(normalizedVehicleSearch) ||
-      registration.includes(normalizedVehicleSearch)
-    );
+    return searchValue.includes(normalizedVehicleSearch);
   });
+
+  const getBackendError = (err) => {
+    const data = err.response?.data;
+
+    if (!data) return "Nie udało się dodać wpisu serwisowego.";
+    if (typeof data === "string") return data;
+    if (data.detail) return data.detail;
+
+    const firstError = Object.values(data).find(
+      (value) => Array.isArray(value) && value.length > 0,
+    );
+
+    return firstError?.[0] || "Nie udało się dodać wpisu serwisowego.";
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (submitting) return;
 
     setError(null);
 
     if (!formData.vehicle) {
       setError("Wybierz pojazd.");
-
       return;
     }
 
     try {
-      const dataToSend = {
+      setSubmitting(true);
+
+      await apiClient.post("service-records/", {
         vehicle: Number(formData.vehicle),
-
         service_date: formData.service_date,
-
-        title: formData.title,
-
-        description: formData.description,
-
+        title: formData.title.trim(),
+        description: formData.description.trim(),
         mileage: formData.mileage ? Number(formData.mileage) : null,
-
         cost: formData.cost || "0.00",
-      };
-
-      await apiClient.post("service-records/", dataToSend);
+      });
 
       if (vehicleFromUrl) {
         navigate(`/vehicles/${vehicleFromUrl}`);
@@ -169,10 +212,9 @@ function AddServiceRecordPage({ onLogout }) {
       }
     } catch (err) {
       console.error("Błąd dodawania wpisu serwisowego:", err);
-
-      console.error("Odpowiedź backendu:", err.response?.data);
-
-      setError("Nie udało się dodać wpisu serwisowego.");
+      setError(getBackendError(err));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -184,28 +226,44 @@ function AddServiceRecordPage({ onLogout }) {
     }
   };
 
+  if (!canAddServiceRecord) {
+    return (
+      <div className="dashboard-layout">
+        <Sidebar onLogout={onLogout} />
+        <main className="dashboard-content">
+          <p>Nie masz uprawnień do dodawania wpisów serwisowych.</p>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard-layout">
       <Sidebar onLogout={onLogout} />
 
       <main className="dashboard-content">
         <div className="service-record-form-header">
-          <div>
-            <button className="service-record-back" onClick={handleCancel}>
-              ← Wróć
-            </button>
+          <button
+            type="button"
+            className="service-record-back"
+            onClick={handleCancel}
+          >
+            ← Wróć
+          </button>
 
-            <h1>Dodaj wpis serwisowy</h1>
-
-            <p>Dodaj naprawę lub serwis wykonany dla pojazdu.</p>
-          </div>
+          <h1>Dodaj wpis serwisowy</h1>
+          <p>Dodaj naprawę lub serwis wykonany dla pojazdu.</p>
         </div>
 
         <form className="service-record-form" onSubmit={handleSubmit}>
-          {error && <p className="service-record-error">{error}</p>}
+          {error && (
+            <p className="service-record-error" role="alert">
+              {error}
+            </p>
+          )}
 
           <div className="service-record-field service-record-vehicle-field">
-            <label htmlFor="vehicle-search">Pojazd</label>
+            <label htmlFor="vehicle-search">Pojazd *</label>
 
             <div
               className="service-record-vehicle-search"
@@ -217,12 +275,17 @@ function AddServiceRecordPage({ onLogout }) {
                 value={vehicleSearch}
                 onChange={handleVehicleSearchChange}
                 onFocus={() => setShowVehicleResults(true)}
-                placeholder="Wpisz markę, model lub numer rejestracyjny"
-                disabled={vehicleFromUrl !== ""}
+                placeholder={
+                  loadingVehicles
+                    ? "Ładowanie pojazdów..."
+                    : "Wpisz markę, model lub numer rejestracyjny"
+                }
+                disabled={Boolean(vehicleFromUrl) || loadingVehicles}
                 autoComplete="off"
+                required
               />
 
-              {showVehicleResults && vehicleFromUrl === "" && (
+              {showVehicleResults && !vehicleFromUrl && !loadingVehicles && (
                 <div className="service-record-vehicle-results">
                   {filteredVehicles.length > 0 ? (
                     filteredVehicles.map((vehicle) => (
@@ -233,10 +296,14 @@ function AddServiceRecordPage({ onLogout }) {
                         onClick={() => handleVehicleSelect(vehicle)}
                       >
                         <span>
-                          {vehicle.brand} {vehicle.model}
+                          {[vehicle.brand, vehicle.model]
+                            .filter(Boolean)
+                            .join(" ") || "Pojazd"}
                         </span>
 
-                        <strong>{vehicle.registration_number}</strong>
+                        <strong>
+                          {vehicle.registration_number || "Brak rejestracji"}
+                        </strong>
                       </button>
                     ))
                   ) : (
@@ -251,8 +318,7 @@ function AddServiceRecordPage({ onLogout }) {
 
           <div className="service-record-grid">
             <div className="service-record-field">
-              <label htmlFor="service_date">Data serwisu</label>
-
+              <label htmlFor="service_date">Data serwisu *</label>
               <input
                 id="service_date"
                 name="service_date"
@@ -264,14 +330,14 @@ function AddServiceRecordPage({ onLogout }) {
             </div>
 
             <div className="service-record-field">
-              <label htmlFor="title">Rodzaj naprawy / serwisu</label>
-
+              <label htmlFor="title">Rodzaj naprawy / serwisu *</label>
               <input
                 id="title"
                 name="title"
                 type="text"
                 value={formData.title}
                 onChange={handleChange}
+                maxLength={255}
                 placeholder="Np. Wymiana oleju"
                 required
               />
@@ -279,12 +345,12 @@ function AddServiceRecordPage({ onLogout }) {
 
             <div className="service-record-field">
               <label htmlFor="mileage">Przebieg</label>
-
               <input
                 id="mileage"
                 name="mileage"
                 type="number"
                 min="0"
+                step="1"
                 value={formData.mileage}
                 onChange={handleChange}
                 placeholder="Np. 145000"
@@ -293,7 +359,6 @@ function AddServiceRecordPage({ onLogout }) {
 
             <div className="service-record-field">
               <label htmlFor="cost">Koszt</label>
-
               <input
                 id="cost"
                 name="cost"
@@ -309,7 +374,6 @@ function AddServiceRecordPage({ onLogout }) {
 
           <div className="service-record-field service-record-description">
             <label htmlFor="description">Opis</label>
-
             <textarea
               id="description"
               name="description"
@@ -325,12 +389,17 @@ function AddServiceRecordPage({ onLogout }) {
               type="button"
               className="service-record-cancel"
               onClick={handleCancel}
+              disabled={submitting}
             >
               Anuluj
             </button>
 
-            <button type="submit" className="service-record-submit">
-              Dodaj wpis
+            <button
+              type="submit"
+              className="service-record-submit"
+              disabled={submitting || loadingVehicles}
+            >
+              {submitting ? "Dodawanie..." : "Dodaj wpis"}
             </button>
           </div>
         </form>

@@ -2,280 +2,207 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-
   margin-bottom: 24px;
 }
 
-
 .add-vehicle-header h1 {
   margin: 0 0 6px;
-
   font-size: 30px;
   font-weight: 600;
 }
 
-
 .add-vehicle-header p {
   margin: 0;
-
   font-size: 13px;
   font-weight: 300;
-
   color: #666666;
 }
 
-
 .cancel-vehicle-button {
   padding: 9px 16px;
-
   border: 1px solid #CFC8C2;
   border-radius: 6px;
-
   background-color: transparent;
-
   font-family: "Poppins", sans-serif;
   font-size: 13px;
-
   cursor: pointer;
 }
-
 
 .cancel-vehicle-button:hover {
   background-color: #EEE8E2;
 }
 
-
 .add-vehicle-form {
   width: 100%;
   max-width: none;
-
   padding: 32px 30px 36px;
-
   box-sizing: border-box;
-
   background-color: #FAF5F2;
-
   border: 1px solid #D8D1CA;
   border-radius: 8px;
 }
 
-
 .vehicle-form-grid {
   display: grid;
-
-  grid-template-columns:
-    repeat(3, minmax(220px, 1fr));
-
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
   column-gap: 24px;
   row-gap: 22px;
 }
-
 
 .vehicle-form-field {
   min-width: 0;
 }
 
-
 .vehicle-form-field label {
   display: block;
-
   margin-bottom: 7px;
-
   font-size: 12px;
   font-weight: 500;
-
   color: #1A1A1A;
 }
-
 
 .vehicle-form-field input,
 .vehicle-form-field select {
   width: 100%;
   height: 42px;
-
   padding: 0 11px;
-
   box-sizing: border-box;
-
   border: 1px solid #CFC8C2;
   border-radius: 6px;
-
   background-color: #FFFFFF;
-
   color: #1A1A1A;
-
   font-family: "Poppins", sans-serif;
   font-size: 13px;
-
   outline: none;
-
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-
 
 .vehicle-form-field input::placeholder {
   color: #999999;
 }
 
-
-.vehicle-form-field input:hover,
-.vehicle-form-field select:hover {
+.vehicle-form-field input:hover:not(:disabled),
+.vehicle-form-field select:hover:not(:disabled) {
   border-color: #AFA8A1;
 }
-
 
 .vehicle-form-field input:focus,
 .vehicle-form-field select:focus {
   border-color: #1A1A1A;
-
-  box-shadow:
-    0 0 0 3px
-    rgba(26, 26, 26, 0.05);
+  box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.05);
 }
 
+.vehicle-form-field input:disabled,
+.vehicle-form-field select:disabled {
+  background-color: #F1ECE7;
+  color: #8A837D;
+  cursor: not-allowed;
+}
 
 .vehicle-form-actions {
   display: flex;
   justify-content: flex-end;
-
   gap: 10px;
-
   margin-top: 30px;
 }
-
 
 .vehicle-form-cancel,
 .vehicle-form-submit {
   min-width: 120px;
-
   padding: 10px 18px;
-
   border-radius: 6px;
-
   font-family: "Poppins", sans-serif;
   font-size: 13px;
   font-weight: 500;
-
   cursor: pointer;
-
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
-
 
 .vehicle-form-cancel {
   border: 1px solid #CFC8C2;
-
   background-color: transparent;
-
   color: #1A1A1A;
 }
 
-
-.vehicle-form-cancel:hover {
+.vehicle-form-cancel:hover:not(:disabled) {
   background-color: #EEE8E2;
 }
 
-
 .vehicle-form-submit {
   border: none;
-
   background-color: #1A1A1A;
-
   color: #FFFFFF;
 }
 
-
-.vehicle-form-submit:hover {
+.vehicle-form-submit:hover:not(:disabled) {
   background-color: #333333;
 }
 
+.vehicle-form-cancel:disabled,
+.vehicle-form-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 
 .add-vehicle-error {
   margin: 18px 0 0;
-
   padding: 10px 12px;
-
   border: 1px solid #E6CACA;
   border-radius: 6px;
-
   background-color: #FCE8E8;
-
   font-size: 13px;
-
   color: #A33A3A;
 }
 
-
 @media (min-width: 1600px) {
   .vehicle-form-grid {
-    grid-template-columns:
-      repeat(4, minmax(200px, 1fr));
-
+    grid-template-columns: repeat(4, minmax(200px, 1fr));
     column-gap: 24px;
     row-gap: 24px;
   }
 }
 
-
 @media (max-width: 1199px) {
   .vehicle-form-grid {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
-
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 20px;
     row-gap: 20px;
   }
 }
-
 
 @media (max-width: 800px) {
   .add-vehicle-header {
     margin-bottom: 20px;
   }
 
-
   .add-vehicle-header h1 {
     font-size: 27px;
   }
-
 
   .add-vehicle-form {
     padding: 24px 22px 28px;
   }
 
-
   .vehicle-form-grid {
     grid-template-columns: 1fr;
-
     gap: 18px;
   }
-
 
   .vehicle-form-actions {
     margin-top: 24px;
   }
 }
 
-
 @media (max-width: 600px) {
   .add-vehicle-form {
     padding: 20px 18px 24px;
-
     border-radius: 7px;
   }
 
-
   .vehicle-form-actions {
     flex-direction: column-reverse;
-
     gap: 10px;
   }
-
 
   .vehicle-form-cancel,
   .vehicle-form-submit {

@@ -1,12 +1,8 @@
 import { useState } from "react";
-
 import Navbar from "./navbar/Navbar";
 import Footer from "./footer/Footer";
-
 import apiClient from "../api/client";
-
 import company from "../assets/company.jpg";
-
 import "./JoinPage.css";
 
 function JoinPage() {

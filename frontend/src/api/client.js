@@ -1,28 +1,107 @@
 import axios from "axios";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/";
+
+const normalizedApiUrl = API_URL.endsWith("/") ? API_URL : `${API_URL}/`;
+
 const apiClient = axios.create({
-  baseURL: "http://127.0.0.1:8000/api/",
+  baseURL: normalizedApiUrl,
+  timeout: 15000,
+});
+
+const refreshClient = axios.create({
+  baseURL: normalizedApiUrl,
+  timeout: 15000,
 });
 
 const publicEndpoints = ["token/", "token/refresh/", "contact/"];
 
-const isPublicEndpoint = (url = "") => {
-  return publicEndpoints.some((endpoint) => url.endsWith(endpoint));
+const normalizeUrl = (url = "") => {
+  return String(url).replace(/^\/+/, "");
 };
 
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access_token");
+const isPublicEndpoint = (url = "") => {
+  const normalizedUrl = normalizeUrl(url);
 
-  if (token && !isPublicEndpoint(config.url)) {
-    config.headers.Authorization = `Bearer ${token}`;
+  return publicEndpoints.some(
+    (endpoint) =>
+      normalizedUrl === endpoint || normalizedUrl.endsWith(`/${endpoint}`),
+  );
+};
+
+const clearTokens = () => {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+};
+
+const redirectToLogin = () => {
+  if (window.location.pathname !== "/login") {
+    window.location.replace("/login");
+  }
+};
+
+let refreshPromise = null;
+
+const refreshAccessToken = async () => {
+  if (refreshPromise) {
+    return refreshPromise;
   }
 
-  return config;
-});
+  const refreshToken = localStorage.getItem("refresh_token");
+
+  if (!refreshToken) {
+    clearTokens();
+    redirectToLogin();
+    throw new Error("Brak tokenu odświeżającego.");
+  }
+
+  refreshPromise = refreshClient
+    .post("token/refresh/", {
+      refresh: refreshToken,
+    })
+    .then((response) => {
+      const newAccessToken = response.data?.access;
+
+      if (!newAccessToken) {
+        throw new Error("Serwer nie zwrócił nowego tokenu dostępu.");
+      }
+
+      localStorage.setItem("access_token", newAccessToken);
+
+      if (response.data?.refresh) {
+        localStorage.setItem("refresh_token", response.data.refresh);
+      }
+
+      return newAccessToken;
+    })
+    .catch((error) => {
+      clearTokens();
+      redirectToLogin();
+      throw error;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+};
+
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("access_token");
+
+    if (token && !isPublicEndpoint(config.url)) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
 
 apiClient.interceptors.response.use(
   (response) => response,
-
   async (error) => {
     const originalRequest = error.config;
 
@@ -30,66 +109,33 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const isUnauthorized = error.response?.status === 401;
-
-    const isPublicRequest = isPublicEndpoint(originalRequest.url);
-
-    if (isUnauthorized && isPublicRequest) {
+    if (error.response?.status !== 401) {
       return Promise.reject(error);
     }
 
-    if (isUnauthorized && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      const refreshToken = localStorage.getItem("refresh_token");
-
-      if (!refreshToken) {
-        localStorage.removeItem("access_token");
-
-        localStorage.removeItem("refresh_token");
-
-        if (window.location.pathname !== "/login") {
-          window.location.href = "/login";
-        }
-
-        return Promise.reject(error);
-      }
-
-      try {
-        const response = await axios.post(
-          "http://127.0.0.1:8000/api/token/refresh/",
-          {
-            refresh: refreshToken,
-          },
-        );
-
-        const newAccessToken = response.data.access;
-
-        localStorage.setItem("access_token", newAccessToken);
-
-        if (response.data.refresh) {
-          localStorage.setItem("refresh_token", response.data.refresh);
-        }
-
-        originalRequest.headers = originalRequest.headers || {};
-
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        localStorage.removeItem("access_token");
-
-        localStorage.removeItem("refresh_token");
-
-        if (window.location.pathname !== "/login") {
-          window.location.href = "/login";
-        }
-
-        return Promise.reject(refreshError);
-      }
+    if (isPublicEndpoint(originalRequest.url)) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    if (originalRequest._retry) {
+      clearTokens();
+      redirectToLogin();
+
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    try {
+      const newAccessToken = await refreshAccessToken();
+
+      originalRequest.headers = originalRequest.headers || {};
+      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+      return apiClient(originalRequest);
+    } catch (refreshError) {
+      return Promise.reject(refreshError);
+    }
   },
 );
 

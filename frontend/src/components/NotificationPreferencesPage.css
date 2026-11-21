@@ -5,12 +5,13 @@
 .notification-page-header h1 {
   margin: 12px 0 8px;
   font-size: 30px;
-  color: #1a1a1a;
+  font-weight: 600;
+  color: #1A1A1A;
 }
 
 .notification-page-header p {
   margin: 0;
-  color: #6d6d6d;
+  color: #6D6D6D;
   font-size: 14px;
 }
 
@@ -19,21 +20,23 @@
   border: none;
   background: transparent;
   color: #666666;
-  font-family: inherit;
+  font-family: "Poppins", sans-serif;
   font-size: 14px;
   cursor: pointer;
 }
 
 .notification-back:hover {
-  color: #1a1a1a;
+  color: #1A1A1A;
 }
 
 .notification-card {
+  width: 100%;
   max-width: 760px;
   padding: 24px;
-  border: 1px solid #e7e2dc;
+  box-sizing: border-box;
+  border: 1px solid #E7E2DC;
   border-radius: 10px;
-  background: #ffffff;
+  background-color: #FFFFFF;
 }
 
 .notification-email-section {
@@ -49,13 +52,14 @@
 }
 
 .notification-email-section strong {
+  overflow-wrap: anywhere;
   font-size: 15px;
-  color: #1a1a1a;
+  color: #1A1A1A;
 }
 
 .notification-warning {
   margin: 6px 0 0;
-  color: #a15c00;
+  color: #A15C00;
   font-size: 13px;
 }
 
@@ -67,17 +71,21 @@
   padding: 18px 0;
 }
 
+.notification-option > div {
+  min-width: 0;
+}
+
 .notification-option strong {
   display: block;
   margin-bottom: 5px;
   font-size: 15px;
-  color: #1a1a1a;
+  color: #1A1A1A;
 }
 
 .notification-option p {
-  margin: 0;
   max-width: 520px;
-  color: #6d6d6d;
+  margin: 0;
+  color: #6D6D6D;
   font-size: 13px;
   line-height: 1.5;
 }
@@ -89,13 +97,13 @@
 .notification-divider {
   height: 1px;
   margin: 6px 0 22px;
-  background: #ece8e3;
+  background-color: #ECE8E3;
 }
 
 .notification-card h2 {
   margin: 0;
   font-size: 18px;
-  color: #1a1a1a;
+  color: #1A1A1A;
 }
 
 .notification-switch {
@@ -106,8 +114,9 @@
 }
 
 .notification-switch input {
-  width: 0;
-  height: 0;
+  position: absolute;
+  width: 1px;
+  height: 1px;
   opacity: 0;
 }
 
@@ -115,9 +124,9 @@
   position: absolute;
   inset: 0;
   border-radius: 999px;
-  background: #d5d2ce;
+  background-color: #D5D2CE;
   cursor: pointer;
-  transition: 0.2s;
+  transition: background-color 0.2s ease;
 }
 
 .notification-slider::before {
@@ -127,17 +136,22 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #ffffff;
+  background-color: #FFFFFF;
   content: "";
-  transition: 0.2s;
+  transition: transform 0.2s ease;
 }
 
 .notification-switch input:checked + .notification-slider {
-  background: #1a1a1a;
+  background-color: #1A1A1A;
 }
 
 .notification-switch input:checked + .notification-slider::before {
   transform: translateX(22px);
+}
+
+.notification-switch input:focus-visible + .notification-slider {
+  outline: 2px solid #1A1A1A;
+  outline-offset: 2px;
 }
 
 .notification-switch input:disabled + .notification-slider {
@@ -150,16 +164,17 @@
   justify-content: flex-end;
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid #ece8e3;
+  border-top: 1px solid #ECE8E3;
 }
 
 .notification-save {
+  min-width: 150px;
   padding: 11px 18px;
   border: none;
   border-radius: 8px;
-  background: #1a1a1a;
-  color: #ffffff;
-  font-family: inherit;
+  background-color: #1A1A1A;
+  color: #FFFFFF;
+  font-family: "Poppins", sans-serif;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -175,7 +190,9 @@
 }
 
 .notification-message {
+  width: 100%;
   max-width: 760px;
+  box-sizing: border-box;
   margin-bottom: 16px;
   padding: 12px 14px;
   border-radius: 8px;
@@ -183,17 +200,24 @@
 }
 
 .notification-message-error {
-  background: #fff1f0;
-  color: #b42318;
+  border: 1px solid #E6CACA;
+  background-color: #FFF1F0;
+  color: #B42318;
 }
 
 .notification-message-success {
-  background: #eef8f1;
-  color: #287a43;
+  border: 1px solid #CFE0D4;
+  background-color: #EEF8F1;
+  color: #287A43;
 }
 
 @media (max-width: 700px) {
+  .notification-page-header h1 {
+    font-size: 27px;
+  }
+
   .notification-card {
+    max-width: none;
     padding: 18px;
   }
 
@@ -207,5 +231,15 @@
 
   .notification-save {
     width: 100%;
+  }
+
+  .notification-message {
+    max-width: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .notification-option {
+    gap: 16px;
   }
 }

@@ -6,7 +6,7 @@
 }
 
 .join-content {
-    width: 90%;
+    width: calc(100% - 80px);
     max-width: 1200px;
     margin: 0 auto;
     padding: 80px 0;
@@ -20,17 +20,14 @@
 .join-label {
     display: block;
     margin-bottom: 15px;
-
     font-size: 13px;
     font-weight: 600;
     letter-spacing: 2px;
-
     color: #777777;
 }
 
 .join-header h1 {
     margin: 0 0 25px;
-
     font-size: 42px;
     font-weight: 600;
     line-height: 1.2;
@@ -39,59 +36,55 @@
 .join-header p {
     max-width: 650px;
     margin: 0;
-
     font-size: 16px;
     font-weight: 300;
     line-height: 1.8;
-
     color: #555555;
 }
 
 .join-contact {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 60px;
     align-items: stretch;
-
-    margin-bottom: 100px;
+    margin-bottom: 90px;
 }
 
 .join-image-container {
+    min-width: 0;
     min-height: 650px;
     overflow: hidden;
     border-radius: 10px;
+    background-color: #EEE8E2;
 }
 
 .join-image {
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
 .join-form-container {
+    min-width: 0;
     padding: 45px;
-
+    box-sizing: border-box;
     background-color: #FAF5F2;
     border: 1px solid #D8D1CA;
     border-radius: 10px;
-
-    box-sizing: border-box;
 }
 
 .join-form-container h2 {
     margin: 0 0 10px;
-
     font-size: 27px;
     font-weight: 500;
 }
 
 .join-form-description {
     margin: 0 0 30px;
-
     font-size: 14px;
     font-weight: 300;
     line-height: 1.7;
-
     color: #666666;
 }
 
@@ -102,29 +95,22 @@
 .join-field label {
     display: block;
     margin-bottom: 7px;
-
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
-
     color: #1A1A1A;
 }
 
 .join-field input,
 .join-field textarea {
     width: 100%;
-
     padding: 12px 14px;
-
+    box-sizing: border-box;
     border: 1px solid #CFC8C2;
     border-radius: 6px;
-
     background-color: #FFFFFF;
-
-    box-sizing: border-box;
-
     font-family: 'Poppins', sans-serif;
     font-size: 14px;
-
+    color: #1A1A1A;
     outline: none;
 }
 
@@ -142,77 +128,99 @@
     border-color: #1A1A1A;
 }
 
+.join-field input:disabled,
+.join-field textarea:disabled {
+    background-color: #F3EFEA;
+    color: #999999;
+    cursor: not-allowed;
+}
+
 .join-submit {
     width: 100%;
     height: 46px;
-
     margin-top: 5px;
-
     border: none;
     border-radius: 6px;
-
     background-color: #1A1A1A;
     color: #FFFFFF;
-
     font-family: 'Poppins', sans-serif;
     font-size: 14px;
     font-weight: 600;
-
     cursor: pointer;
+    transition: background-color 0.15s ease;
 }
 
-.join-submit:hover {
+.join-submit:hover:not(:disabled) {
     background-color: #333333;
+}
+
+.join-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.join-success,
+.join-error {
+    margin: 0 0 16px;
+    padding: 11px 13px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.join-success {
+    border: 1px solid #CFE0D4;
+    background-color: #EDF6EF;
+    color: #315C3D;
+}
+
+.join-error {
+    border: 1px solid #E2BABA;
+    background-color: #F8EAEA;
+    color: #A33A3A;
 }
 
 .join-form-info {
     margin: 20px 0 0;
-
     font-size: 12px;
     font-weight: 300;
     line-height: 1.6;
-
     color: #777777;
 }
+
 .join-steps {
     margin-top: 20px;
 }
 
 .join-steps-header {
     max-width: 650px;
-    margin-bottom: 50px;
+    margin-bottom: 45px;
 }
 
 .join-steps-header h2 {
     margin: 0 0 12px;
-
     font-size: 30px;
     font-weight: 600;
-
     color: #1A1A1A;
 }
 
 .join-steps-header p {
     margin: 0;
-
     font-size: 15px;
     font-weight: 300;
-
     color: #666666;
 }
 
 .join-steps-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-
-    border-top: 1px solid #CFC8C2;
-
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     padding-top: 35px;
+    border-top: 1px solid #CFC8C2;
 }
 
 .join-step {
+    min-width: 0;
     padding: 0 35px;
-
     border-right: 1px solid #CFC8C2;
 }
 
@@ -228,28 +236,230 @@
 .join-step span {
     display: block;
     margin-bottom: 25px;
-
     font-size: 13px;
     font-weight: 600;
-
     color: #777777;
 }
 
 .join-step h3 {
     margin: 0 0 15px;
-
     font-size: 20px;
     font-weight: 500;
-
+    line-height: 1.4;
     color: #1A1A1A;
 }
 
 .join-step p {
     margin: 0;
-
     font-size: 14px;
     font-weight: 300;
     line-height: 1.7;
-
     color: #555555;
+}
+
+@media (max-width: 1100px) {
+    .join-content {
+        width: calc(100% - 64px);
+        padding: 65px 0;
+    }
+
+    .join-header {
+        margin-bottom: 55px;
+    }
+
+    .join-header h1 {
+        font-size: 36px;
+    }
+
+    .join-contact {
+        gap: 40px;
+        margin-bottom: 75px;
+    }
+
+    .join-image-container {
+        min-height: 580px;
+    }
+
+    .join-form-container {
+        padding: 35px;
+    }
+
+    .join-step {
+        padding: 0 25px;
+    }
+}
+
+@media (max-width: 900px) {
+    .join-content {
+        width: calc(100% - 48px);
+        padding: 55px 0;
+    }
+
+    .join-header {
+        margin-bottom: 45px;
+    }
+
+    .join-header h1 {
+        font-size: 32px;
+    }
+
+    .join-header p {
+        font-size: 15px;
+    }
+
+    .join-contact {
+        grid-template-columns: 1fr;
+        gap: 30px;
+        margin-bottom: 65px;
+    }
+
+    .join-image-container {
+        min-height: 0;
+        aspect-ratio: 16 / 9;
+    }
+
+    .join-form-container {
+        padding: 32px;
+    }
+
+    .join-steps-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+        padding-top: 0;
+        border-top: none;
+    }
+
+    .join-step,
+    .join-step:first-child,
+    .join-step:last-child {
+        padding: 26px 0;
+        border-right: none;
+        border-top: 1px solid #CFC8C2;
+    }
+
+    .join-step:last-child {
+        border-bottom: 1px solid #CFC8C2;
+    }
+
+    .join-step span {
+        margin-bottom: 15px;
+    }
+}
+
+@media (max-width: 600px) {
+    .join-content {
+        width: calc(100% - 40px);
+        padding: 42px 0 50px;
+    }
+
+    .join-header {
+        margin-bottom: 35px;
+    }
+
+    .join-label {
+        margin-bottom: 12px;
+        font-size: 11px;
+        letter-spacing: 1.6px;
+    }
+
+    .join-header h1 {
+        margin-bottom: 18px;
+        font-size: 27px;
+        line-height: 1.3;
+    }
+
+    .join-header p {
+        font-size: 14px;
+        line-height: 1.7;
+    }
+
+    .join-contact {
+        gap: 24px;
+        margin-bottom: 50px;
+    }
+
+    .join-image-container {
+        border-radius: 8px;
+    }
+
+    .join-form-container {
+        padding: 24px;
+        border-radius: 8px;
+    }
+
+    .join-form-container h2 {
+        font-size: 23px;
+    }
+
+    .join-form-description {
+        margin-bottom: 24px;
+        font-size: 13px;
+    }
+
+    .join-field {
+        margin-bottom: 17px;
+    }
+
+    .join-field label {
+        font-size: 12px;
+    }
+
+    .join-field input {
+        height: 44px;
+    }
+
+    .join-field textarea {
+        min-height: 110px;
+    }
+
+    .join-submit {
+        height: 44px;
+    }
+
+    .join-steps-header {
+        margin-bottom: 28px;
+    }
+
+    .join-steps-header h2 {
+        font-size: 25px;
+    }
+
+    .join-steps-header p {
+        font-size: 14px;
+    }
+
+    .join-step h3 {
+        font-size: 19px;
+    }
+
+    .join-step p {
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .join-content {
+        width: calc(100% - 32px);
+        padding: 34px 0 42px;
+    }
+
+    .join-header h1 {
+        font-size: 24px;
+    }
+
+    .join-form-container {
+        padding: 20px;
+    }
+
+    .join-form-container h2 {
+        font-size: 21px;
+    }
+
+    .join-image-container {
+        aspect-ratio: 4 / 3;
+    }
+
+    .join-step {
+        padding: 22px 0;
+    }
 }

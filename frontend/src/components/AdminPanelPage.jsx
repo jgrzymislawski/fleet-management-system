@@ -5,7 +5,31 @@ import "./AdminPanelPage.css";
 
 function AdminPanelPage({ onLogout }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loadingUser } = useAuth();
+
+  if (loadingUser) {
+    return (
+      <div className="dashboard-layout">
+        <Sidebar onLogout={onLogout} />
+        <main className="dashboard-content">
+          <p>Ładowanie panelu administracyjnego...</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (!user || user.role !== "admin") {
+    return (
+      <div className="dashboard-layout">
+        <Sidebar onLogout={onLogout} />
+        <main className="dashboard-content">
+          <div className="admin-panel-access-denied">
+            Nie masz uprawnień do panelu administracyjnego.
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-layout">
@@ -15,43 +39,42 @@ function AdminPanelPage({ onLogout }) {
         <div className="admin-panel-header">
           <div>
             <h1>Administracja</h1>
-
             <p>
               Zarządzanie organizacją{" "}
-              <strong>{user?.organization?.name || "Brak organizacji"}</strong>
+              <strong>{user.organization?.name || "Brak organizacji"}</strong>
             </p>
           </div>
         </div>
 
         <div className="admin-panel-grid">
           <button
+            type="button"
             className="admin-panel-card"
             onClick={() => navigate("/admin-panel/companies")}
           >
             <span className="admin-panel-card-title">Spółki</span>
-
             <span className="admin-panel-card-description">
               Dodawaj, edytuj i zarządzaj spółkami w swojej organizacji.
             </span>
           </button>
 
           <button
+            type="button"
             className="admin-panel-card"
             onClick={() => navigate("/admin-panel/users")}
           >
             <span className="admin-panel-card-title">Użytkownicy</span>
-
             <span className="admin-panel-card-description">
               Zarządzaj kontami użytkowników i ich uprawnieniami.
             </span>
           </button>
 
           <button
+            type="button"
             className="admin-panel-card"
             onClick={() => navigate("/admin-panel/notifications")}
           >
             <span className="admin-panel-card-title">Powiadomienia</span>
-
             <span className="admin-panel-card-description">
               Ustaw rodzaje przypomnień oraz terminy wysyłania wiadomości
               e-mail.
@@ -59,11 +82,11 @@ function AdminPanelPage({ onLogout }) {
           </button>
 
           <button
+            type="button"
             className="admin-panel-card"
             onClick={() => navigate("/admin-panel/activity")}
           >
             <span className="admin-panel-card-title">Log aktywności</span>
-
             <span className="admin-panel-card-description">
               Przeglądaj aktywność użytkowników i historię zmian z ostatnich 30
               dni.

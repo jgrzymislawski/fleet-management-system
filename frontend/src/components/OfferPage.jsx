@@ -25,7 +25,9 @@ function OfferPage() {
         <section className="offer-grid">
           <div className="offer-card">
             <span>01</span>
+
             <h2>Zarządzanie pojazdami</h2>
+
             <p>
               Dodawaj, edytuj i zarządzaj pojazdami swojej firmy w prosty
               sposób.
@@ -34,25 +36,33 @@ function OfferPage() {
 
           <div className="offer-card">
             <span>02</span>
+
             <h2>Przeglądy i ubezpieczenia</h2>
+
             <p>Monitoruj ważność przeglądów technicznych i polis OC.</p>
           </div>
 
           <div className="offer-card">
             <span>03</span>
+
             <h2>Filtrowanie pojazdów</h2>
+
             <p>Szybko odnajduj pojazdy dzięki wygodnym filtrom.</p>
           </div>
 
           <div className="offer-card">
             <span>04</span>
+
             <h2>Statystyki</h2>
+
             <p>Analizuj najważniejsze dane i miej pełny obraz swojej floty.</p>
           </div>
 
           <div className="offer-card">
             <span>05</span>
+
             <h2>Kierowcy i przypisania</h2>
+
             <p>
               Zarządzaj danymi kierowców i wygodnie przypisuj im pojazdy
               firmowe.
@@ -61,7 +71,9 @@ function OfferPage() {
 
           <div className="offer-card">
             <span>06</span>
+
             <h2>Bezpieczny dostęp</h2>
+
             <p>
               Chroń dane swojej floty dzięki dostępowi wymagającemu logowania
               oraz możliwości bezpiecznego wylogowania z systemu.
@@ -70,13 +82,15 @@ function OfferPage() {
         </section>
 
         <section className="offer-cta">
-          <div>
+          <div className="offer-cta-text">
             <h2>Uporządkuj swoją flotę z Flotivo.</h2>
+
             <p>Najważniejsze informacje o pojazdach w jednym miejscu.</p>
           </div>
 
           <div className="offer-actions">
             <button
+              type="button"
               className="offer-button-primary"
               onClick={() => navigate("/dolacz")}
             >
@@ -84,6 +98,7 @@ function OfferPage() {
             </button>
 
             <button
+              type="button"
               className="offer-button-secondary"
               onClick={() => navigate("/login")}
             >

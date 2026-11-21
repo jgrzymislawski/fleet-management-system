@@ -1,43 +1,81 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
-function useIdleLogout(isLoggedIn, onIdle, timeout) {
+function useIdleLogout(isLoggedIn, onIdle, timeout = 15 * 60 * 1000) {
+  const onIdleRef = useRef(onIdle);
+
   useEffect(() => {
-    if (!isLoggedIn) {
-      return;
+    onIdleRef.current = onIdle;
+  }, [onIdle]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !timeout || timeout <= 0) {
+      return undefined;
     }
 
-    let timer;
+    let timerId = null;
+    let lastActivity = Date.now();
+
+    const logoutIfInactive = () => {
+      const inactiveTime = Date.now() - lastActivity;
+
+      if (inactiveTime >= timeout) {
+        onIdleRef.current();
+        return;
+      }
+
+      timerId = window.setTimeout(logoutIfInactive, timeout - inactiveTime);
+    };
 
     const resetTimer = () => {
-      clearTimeout(timer);
+      lastActivity = Date.now();
 
-      timer = setTimeout(() => {
-        onIdle();
-      }, timeout);
+      if (timerId) {
+        window.clearTimeout(timerId);
+      }
+
+      timerId = window.setTimeout(logoutIfInactive, timeout);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const inactiveTime = Date.now() - lastActivity;
+
+        if (inactiveTime >= timeout) {
+          onIdleRef.current();
+        }
+      }
     };
 
     const events = [
-      "mousemove",
       "mousedown",
       "keydown",
       "scroll",
       "touchstart",
+      "pointerdown",
     ];
 
-    events.forEach((event) => {
-      window.addEventListener(event, resetTimer);
+    events.forEach((eventName) => {
+      window.addEventListener(eventName, resetTimer, {
+        passive: true,
+      });
     });
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     resetTimer();
 
     return () => {
-      clearTimeout(timer);
+      if (timerId) {
+        window.clearTimeout(timerId);
+      }
 
-      events.forEach((event) => {
-        window.removeEventListener(event, resetTimer);
+      events.forEach((eventName) => {
+        window.removeEventListener(eventName, resetTimer);
       });
+
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [isLoggedIn, onIdle, timeout]);
+  }, [isLoggedIn, timeout]);
 }
 
 export default useIdleLogout;

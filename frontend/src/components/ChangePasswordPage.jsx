@@ -20,17 +20,55 @@ function ChangePasswordPage({ onLogout }) {
   const handleChange = (event) => {
     const { name, value } = event.target;
 
-    setFormData({
-      ...formData,
+    setFormData((currentData) => ({
+      ...currentData,
       [name]: value,
-    });
+    }));
 
     setError("");
     setSuccess("");
   };
 
+  const getBackendError = (err) => {
+    const data = err.response?.data;
+
+    if (!data) {
+      return "Nie udało się zmienić hasła.";
+    }
+
+    if (typeof data === "string") {
+      return data;
+    }
+
+    if (data.current_password?.[0]) {
+      return data.current_password[0];
+    }
+
+    if (data.new_password?.[0]) {
+      return data.new_password[0];
+    }
+
+    if (data.confirm_password?.[0]) {
+      return data.confirm_password[0];
+    }
+
+    if (data.detail) {
+      return data.detail;
+    }
+
+    const firstError = Object.values(data).find(
+      (value) => Array.isArray(value) && value.length > 0,
+    );
+
+    return firstError?.[0] || "Nie udało się zmienić hasła.";
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (saving) {
+      return;
+    }
 
     setError("");
     setSuccess("");
@@ -49,12 +87,17 @@ function ChangePasswordPage({ onLogout }) {
       return;
     }
 
-    setSaving(true);
+    if (formData.current_password === formData.new_password) {
+      setError("Nowe hasło musi różnić się od aktualnego hasła.");
+      return;
+    }
 
     try {
+      setSaving(true);
+
       const response = await apiClient.post("change-password/", formData);
 
-      setSuccess(response.data.detail || "Hasło zostało zmienione.");
+      setSuccess(response.data?.detail || "Hasło zostało zmienione.");
 
       setFormData({
         current_password: "",
@@ -63,22 +106,7 @@ function ChangePasswordPage({ onLogout }) {
       });
     } catch (err) {
       console.error("Błąd zmiany hasła:", err);
-
-      console.error("Odpowiedź backendu:", err.response?.data);
-
-      const backendData = err.response?.data;
-
-      if (backendData?.current_password?.[0]) {
-        setError(backendData.current_password[0]);
-      } else if (backendData?.new_password?.[0]) {
-        setError(backendData.new_password[0]);
-      } else if (backendData?.confirm_password?.[0]) {
-        setError(backendData.confirm_password[0]);
-      } else if (backendData?.detail) {
-        setError(backendData.detail);
-      } else {
-        setError("Nie udało się zmienić hasła.");
-      }
+      setError(getBackendError(err));
     } finally {
       setSaving(false);
     }
@@ -91,6 +119,7 @@ function ChangePasswordPage({ onLogout }) {
       <main className="dashboard-content">
         <div className="change-password-header">
           <button
+            type="button"
             className="change-password-back"
             onClick={() => navigate("/account")}
           >
@@ -98,7 +127,6 @@ function ChangePasswordPage({ onLogout }) {
           </button>
 
           <h1>Zmiana hasła</h1>
-
           <p>Ustaw nowe hasło do swojego konta Flotivo.</p>
         </div>
 
@@ -106,7 +134,6 @@ function ChangePasswordPage({ onLogout }) {
           <form className="change-password-form" onSubmit={handleSubmit}>
             <div className="change-password-field">
               <label htmlFor="current_password">Aktualne hasło</label>
-
               <input
                 id="current_password"
                 name="current_password"
@@ -114,13 +141,13 @@ function ChangePasswordPage({ onLogout }) {
                 value={formData.current_password}
                 onChange={handleChange}
                 autoComplete="current-password"
+                disabled={saving}
                 required
               />
             </div>
 
             <div className="change-password-field">
               <label htmlFor="new_password">Nowe hasło</label>
-
               <input
                 id="new_password"
                 name="new_password"
@@ -128,13 +155,13 @@ function ChangePasswordPage({ onLogout }) {
                 value={formData.new_password}
                 onChange={handleChange}
                 autoComplete="new-password"
+                disabled={saving}
                 required
               />
             </div>
 
             <div className="change-password-field">
               <label htmlFor="confirm_password">Powtórz nowe hasło</label>
-
               <input
                 id="confirm_password"
                 name="confirm_password"
@@ -142,19 +169,29 @@ function ChangePasswordPage({ onLogout }) {
                 value={formData.confirm_password}
                 onChange={handleChange}
                 autoComplete="new-password"
+                disabled={saving}
                 required
               />
             </div>
 
-            {error && <p className="change-password-error">{error}</p>}
+            {error && (
+              <p className="change-password-error" role="alert">
+                {error}
+              </p>
+            )}
 
-            {success && <p className="change-password-success">{success}</p>}
+            {success && (
+              <p className="change-password-success" role="status">
+                {success}
+              </p>
+            )}
 
             <div className="change-password-actions">
               <button
                 type="button"
                 className="change-password-cancel"
                 onClick={() => navigate("/account")}
+                disabled={saving}
               >
                 Anuluj
               </button>

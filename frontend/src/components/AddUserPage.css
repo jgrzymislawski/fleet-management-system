@@ -5,12 +5,12 @@
 .add-user-header h1 {
   margin: 14px 0 6px;
   font-size: 28px;
-  color: #1a1a1a;
+  color: #1A1A1A;
 }
 
 .add-user-header p {
   margin: 0;
-  color: #6b6b6b;
+  color: #6B6B6B;
 }
 
 .add-user-back {
@@ -24,14 +24,14 @@
 }
 
 .add-user-back:hover {
-  color: #1a1a1a;
+  color: #1A1A1A;
 }
 
 .add-user-card {
   padding: 24px;
-  border: 1px solid #e7e2dc;
+  border: 1px solid #E7E2DC;
   border-radius: 10px;
-  background: #ffffff;
+  background: #FFFFFF;
 }
 
 .add-user-form {
@@ -49,37 +49,55 @@
 .add-user-field {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: 7px;
 }
 
 .add-user-field label {
   font-size: 14px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #1A1A1A;
 }
 
 .add-user-field input,
 .add-user-field select {
   width: 100%;
+  min-height: 42px;
   box-sizing: border-box;
-  padding: 11px 12px;
-  border: 1px solid #d8d3cd;
+  padding: 10px 12px;
+  border: 1px solid #D8D3CD;
   border-radius: 8px;
-  background: #ffffff;
-  color: #1a1a1a;
+  background: #FFFFFF;
+  color: #1A1A1A;
   font-family: inherit;
   font-size: 14px;
   outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.add-user-field input:hover:not(:disabled),
+.add-user-field select:hover:not(:disabled) {
+  border-color: #AFA8A1;
 }
 
 .add-user-field input:focus,
 .add-user-field select:focus {
-  border-color: #1a1a1a;
+  border-color: #1A1A1A;
+  box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.05);
+}
+
+.add-user-field input:disabled,
+.add-user-field select:disabled {
+  background: #F3EFEA;
+  color: #888888;
+  cursor: not-allowed;
 }
 
 .add-user-companies {
   padding-top: 20px;
-  border-top: 1px solid #ece8e3;
+  border-top: 1px solid #ECE8E3;
 }
 
 .add-user-section-header {
@@ -89,13 +107,13 @@
 .add-user-section-header h2 {
   margin: 0 0 5px;
   font-size: 18px;
-  color: #1a1a1a;
+  color: #1A1A1A;
 }
 
 .add-user-section-header p {
   margin: 0;
   font-size: 14px;
-  color: #6b6b6b;
+  color: #6B6B6B;
 }
 
 .add-user-company-list {
@@ -111,41 +129,57 @@
   gap: 20px;
   padding: 14px 16px;
   border-radius: 8px;
-  background: #f8f6f3;
+  background: #F8F6F3;
 }
 
 .add-user-company-checkbox {
   display: flex;
   align-items: center;
+  min-width: 0;
   gap: 10px;
   font-size: 14px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #1A1A1A;
   cursor: pointer;
 }
 
+.add-user-company-checkbox span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .add-user-company-checkbox input {
+  flex-shrink: 0;
   width: 16px;
   height: 16px;
+  margin: 0;
+  accent-color: #1A1A1A;
 }
 
 .add-user-company select {
   min-width: 170px;
   padding: 9px 10px;
-  border: 1px solid #d8d3cd;
+  border: 1px solid #D8D3CD;
   border-radius: 8px;
-  background: #ffffff;
-  color: #1a1a1a;
+  background: #FFFFFF;
+  color: #1A1A1A;
   font-family: inherit;
   font-size: 13px;
+}
+
+.add-user-company select:disabled,
+.add-user-company-checkbox input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .add-user-admin-info {
   padding: 14px 16px;
   border-radius: 8px;
-  background: #faf5f2;
+  background: #FAF5F2;
   color: #555555;
   font-size: 14px;
+  line-height: 1.5;
 }
 
 .add-user-empty {
@@ -156,9 +190,10 @@
 .add-user-error {
   margin: 0;
   padding: 12px 14px;
+  border: 1px solid #E6CACA;
   border-radius: 8px;
-  background: #fff1f0;
-  color: #b42318;
+  background: #FFF1F0;
+  color: #B42318;
   font-size: 14px;
 }
 
@@ -170,6 +205,7 @@
 
 .add-user-cancel,
 .add-user-submit {
+  min-width: 120px;
   padding: 11px 18px;
   border-radius: 8px;
   font-family: inherit;
@@ -179,29 +215,38 @@
 }
 
 .add-user-cancel {
-  border: 1px solid #d8d3cd;
-  background: #ffffff;
-  color: #1a1a1a;
+  border: 1px solid #D8D3CD;
+  background: #FFFFFF;
+  color: #1A1A1A;
+}
+
+.add-user-cancel:hover:not(:disabled) {
+  background: #F7F5F2;
 }
 
 .add-user-submit {
   border: none;
-  background: #1a1a1a;
-  color: #ffffff;
+  background: #1A1A1A;
+  color: #FFFFFF;
 }
 
-.add-user-submit:hover {
+.add-user-submit:hover:not(:disabled) {
   opacity: 0.85;
 }
 
+.add-user-cancel:disabled,
 .add-user-submit:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.55;
 }
 
 @media (max-width: 700px) {
   .add-user-grid {
     grid-template-columns: 1fr;
+  }
+
+  .add-user-card {
+    padding: 20px;
   }
 
   .add-user-company {
@@ -220,5 +265,15 @@
   .add-user-cancel,
   .add-user-submit {
     width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .add-user-header h1 {
+    font-size: 26px;
+  }
+
+  .add-user-card {
+    padding: 18px;
   }
 }

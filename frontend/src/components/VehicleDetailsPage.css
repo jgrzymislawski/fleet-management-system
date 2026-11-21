@@ -29,6 +29,7 @@
 .vehicle-details-subtitle {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   color: #666666;
   font-size: 14px;
@@ -37,6 +38,7 @@
 .vehicle-status {
   display: inline-flex;
   align-items: center;
+  width: fit-content;
   padding: 5px 9px;
   border-radius: 999px;
   font-size: 12px;
@@ -53,9 +55,17 @@
   color: #9a6500;
 }
 
-.vehicle-status-inactive {
+.vehicle-status-inactive,
+.vehicle-status-unknown {
   background: #f2f2f2;
   color: #707070;
+}
+
+.vehicle-details-header-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 10px;
 }
 
 .vehicle-details-edit {
@@ -72,6 +82,29 @@
 
 .vehicle-details-edit:hover {
   opacity: 0.85;
+}
+
+.vehicle-details-export {
+  padding: 12px 20px;
+  border: 1px solid #1a1a1a;
+  border-radius: 6px;
+  background-color: transparent;
+  color: #1a1a1a;
+  font-family: "Poppins", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.vehicle-details-export:hover:not(:disabled) {
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+
+.vehicle-details-export:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .vehicle-details-error {
@@ -112,6 +145,7 @@
 .vehicle-detail {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: 6px;
 }
 
@@ -121,6 +155,8 @@
 }
 
 .vehicle-detail-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 15px;
   font-weight: 600;
   color: #1a1a1a;
@@ -146,6 +182,7 @@
   font-family: inherit;
   font-size: 15px;
   font-weight: 600;
+  text-align: left;
   text-decoration: underline;
   cursor: pointer;
 }
@@ -192,17 +229,19 @@
 .vehicle-assignment-main {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: 6px;
 }
 
 .vehicle-assignment-driver {
   display: flex;
   align-items: center;
-  gap: 10px;
   flex-wrap: wrap;
+  gap: 10px;
 }
 
 .vehicle-assignment-name {
+  overflow-wrap: anywhere;
   font-size: 15px;
   font-weight: 600;
   color: #1a1a1a;
@@ -220,6 +259,7 @@
 }
 
 .vehicle-assignment-notes {
+  overflow-wrap: anywhere;
   font-size: 13px;
   line-height: 1.5;
   color: #6b6b6b;
@@ -228,8 +268,8 @@
 .vehicle-assignment-dates {
   display: flex;
   align-items: center;
-  gap: 16px;
   flex-shrink: 0;
+  gap: 16px;
 }
 
 .vehicle-assignment-dates > div {
@@ -356,16 +396,19 @@
 .vehicle-service-main {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: 6px;
 }
 
 .vehicle-service-title {
+  overflow-wrap: anywhere;
   font-size: 15px;
   font-weight: 600;
   color: #1a1a1a;
 }
 
 .vehicle-service-description {
+  overflow-wrap: anywhere;
   font-size: 13px;
   line-height: 1.5;
   color: #6b6b6b;
@@ -439,45 +482,15 @@
   font-size: 13px;
   font-weight: 600;
   text-decoration: underline;
+  overflow-wrap: anywhere;
 }
 
 .vehicle-document-file:hover {
   opacity: 0.7;
 }
-.vehicle-details-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.vehicle-details-export {
-    padding: 12px 20px;
-    border: 1px solid #1A1A1A;
-    border-radius: 6px;
-    background-color: transparent;
-    color: #1A1A1A;
-    font-family: 'Poppins', sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: 0.2s ease;
-}
-
-.vehicle-details-export:hover:not(:disabled) {
-    background-color: #1A1A1A;
-    color: #FFFFFF;
-}
-
-.vehicle-details-export:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
 
 @media (max-width: 850px) {
-  .vehicle-details-grid {
-    grid-template-columns: 1fr;
-  }
-
+  .vehicle-details-grid,
   .vehicle-expiry-grid {
     grid-template-columns: 1fr;
   }
@@ -505,6 +518,12 @@
     flex-direction: column;
   }
 
+  .vehicle-details-header-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .vehicle-details-export,
   .vehicle-details-edit {
     width: 100%;
   }
@@ -529,5 +548,26 @@
 
   .vehicle-assignment-dates {
     justify-content: space-between;
+  }
+}
+
+@media (max-width: 480px) {
+  .vehicle-details-header h1 {
+    font-size: 27px;
+  }
+
+  .vehicle-details-card,
+  .vehicle-expiry-card,
+  .vehicle-service-card,
+  .vehicle-assignment-card {
+    padding: 20px 18px;
+  }
+
+  .vehicle-assignment-dates {
+    gap: 10px;
+  }
+
+  .vehicle-assignment-dates strong {
+    font-size: 13px;
   }
 }

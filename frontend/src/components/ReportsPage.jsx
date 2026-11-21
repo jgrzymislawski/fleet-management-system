@@ -1,68 +1,84 @@
 import { useEffect, useMemo, useState } from "react";
-
 import { useNavigate } from "react-router-dom";
-
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
-
+import { useAuth } from "../context/AuthContext";
 import "./ReportsPage.css";
 
 function ReportsPage({ onLogout }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [generating, setGenerating] = useState("");
-
   const [error, setError] = useState(null);
-
   const [optionsLoading, setOptionsLoading] = useState(true);
-
   const [companies, setCompanies] = useState([]);
-
   const [branches, setBranches] = useState([]);
-
   const [vehicles, setVehicles] = useState([]);
-
   const [reportType, setReportType] = useState("service-costs");
-
   const [dateFrom, setDateFrom] = useState("");
-
   const [dateTo, setDateTo] = useState("");
-
   const [companyId, setCompanyId] = useState("");
-
   const [branch, setBranch] = useState("");
-
   const [vehicleId, setVehicleId] = useState("");
-
   const [reportFormat, setReportFormat] = useState("pdf");
-
   const [alertCategory, setAlertCategory] = useState("all");
-
   const [alertStatus, setAlertStatus] = useState("all");
 
+  const canViewDriverReports = user?.role === "admin";
+
   useEffect(() => {
+    let active = true;
+
     const loadOptions = async () => {
       try {
         setOptionsLoading(true);
+        setError(null);
 
         const response = await apiClient.get("reports/options/");
 
-        setCompanies(response.data.companies || []);
+        if (!active) return;
 
-        setBranches(response.data.branches || []);
+        setCompanies(
+          Array.isArray(response.data?.companies)
+            ? response.data.companies
+            : [],
+        );
 
-        setVehicles(response.data.vehicles || []);
+        setBranches(
+          Array.isArray(response.data?.branches) ? response.data.branches : [],
+        );
+
+        setVehicles(
+          Array.isArray(response.data?.vehicles) ? response.data.vehicles : [],
+        );
       } catch (err) {
-        console.error("Błąd pobierania opcji raportów:", err);
+        if (!active) return;
 
+        console.error("Błąd pobierania opcji raportów:", err);
+        setCompanies([]);
+        setBranches([]);
+        setVehicles([]);
         setError("Nie udało się pobrać danych generatora raportów.");
       } finally {
-        setOptionsLoading(false);
+        if (active) {
+          setOptionsLoading(false);
+        }
       }
     };
 
     loadOptions();
+
+    return () => {
+      active = false;
+    };
   }, []);
+
+  useEffect(() => {
+    if (!canViewDriverReports && alertCategory === "drivers") {
+      setAlertCategory("all");
+    }
+  }, [canViewDriverReports, alertCategory]);
 
   const filteredVehicles = useMemo(() => {
     return vehicles.filter((vehicle) => {
@@ -79,9 +95,7 @@ function ReportsPage({ onLogout }) {
   }, [vehicles, companyId, branch]);
 
   useEffect(() => {
-    if (!vehicleId) {
-      return;
-    }
+    if (!vehicleId) return;
 
     const available = filteredVehicles.some(
       (vehicle) => Number(vehicle.id) === Number(vehicleId),
@@ -95,7 +109,6 @@ function ReportsPage({ onLogout }) {
   useEffect(() => {
     if (reportType === "service-costs") {
       setAlertCategory("all");
-
       setAlertStatus("all");
     }
 
@@ -106,9 +119,7 @@ function ReportsPage({ onLogout }) {
   }, [reportType]);
 
   useEffect(() => {
-    if (reportType !== "alerts") {
-      return;
-    }
+    if (reportType !== "alerts") return;
 
     if (alertCategory === "drivers") {
       setCompanyId("");
@@ -117,38 +128,54 @@ function ReportsPage({ onLogout }) {
     }
   }, [reportType, alertCategory]);
 
+  const getFilename = (response, fallbackFilename) => {
+    const contentDisposition = response.headers?.["content-disposition"];
+
+    if (!contentDisposition) {
+      return fallbackFilename;
+    }
+
+    const filenameMatch = contentDisposition.match(
+      /filename\*?=(?:UTF-8''|")?([^";]+)/i,
+    );
+
+    if (!filenameMatch?.[1]) {
+      return fallbackFilename;
+    }
+
+    try {
+      return decodeURIComponent(filenameMatch[1].replace(/"/g, ""));
+    } catch {
+      return filenameMatch[1].replace(/"/g, "");
+    }
+  };
+
   const downloadBlob = (response, mimeType, fallbackFilename) => {
     const blob = new Blob([response.data], {
       type: mimeType,
     });
 
     const downloadUrl = window.URL.createObjectURL(blob);
-
     const link = document.createElement("a");
 
-    const contentDisposition = response.headers["content-disposition"];
-
-    let filename = fallbackFilename;
-
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-
-      if (filenameMatch && filenameMatch[1]) {
-        filename = filenameMatch[1];
-      }
-    }
-
     link.href = downloadUrl;
-
-    link.download = filename;
+    link.download = getFilename(response, fallbackFilename);
 
     document.body.appendChild(link);
-
     link.click();
-
     link.remove();
 
     window.URL.revokeObjectURL(downloadUrl);
+  };
+
+  const getBackendError = (err, fallback) => {
+    const data = err.response?.data;
+
+    if (!data) return fallback;
+    if (typeof data === "string") return data;
+    if (data.detail) return data.detail;
+
+    return fallback;
   };
 
   const handleGenerateReport = async () => {
@@ -159,13 +186,20 @@ function ReportsPage({ onLogout }) {
       dateFrom > dateTo
     ) {
       setError("Data początkowa nie może być późniejsza od końcowej.");
+      return;
+    }
 
+    if (
+      reportType === "alerts" &&
+      alertCategory === "drivers" &&
+      !canViewDriverReports
+    ) {
+      setError("Nie masz uprawnień do raportów kierowców.");
       return;
     }
 
     try {
       setGenerating("advanced-report");
-
       setError(null);
 
       if (reportType === "service-costs") {
@@ -173,15 +207,10 @@ function ReportsPage({ onLogout }) {
           "reports/service-costs/",
           {
             format: reportFormat,
-
             date_from: dateFrom || null,
-
             date_to: dateTo || null,
-
             company_id: companyId || null,
-
             branch: branch || "",
-
             vehicle_id: vehicleId || null,
           },
           {
@@ -198,9 +227,7 @@ function ReportsPage({ onLogout }) {
         } else {
           downloadBlob(
             response,
-            "application/" +
-              "vnd.openxmlformats-officedocument." +
-              "spreadsheetml.sheet",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "flotivo-koszty-serwisowe.xlsx",
           );
         }
@@ -208,47 +235,33 @@ function ReportsPage({ onLogout }) {
         return;
       }
 
-      if (reportType === "alerts") {
-        const response = await apiClient.post(
-          "reports/alerts/",
-          {
-            format: reportFormat,
+      const response = await apiClient.post(
+        "reports/alerts/",
+        {
+          format: reportFormat,
+          category: alertCategory,
+          status: alertStatus,
+          company_id: companyId || null,
+          branch: branch || "",
+          vehicle_id: vehicleId || null,
+        },
+        {
+          responseType: "blob",
+        },
+      );
 
-            category: alertCategory,
-
-            status: alertStatus,
-
-            company_id: companyId || null,
-
-            branch: branch || "",
-
-            vehicle_id: vehicleId || null,
-          },
-          {
-            responseType: "blob",
-          },
+      if (reportFormat === "pdf") {
+        downloadBlob(response, "application/pdf", "flotivo-raport-alertow.pdf");
+      } else {
+        downloadBlob(
+          response,
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "flotivo-raport-alertow.xlsx",
         );
-
-        if (reportFormat === "pdf") {
-          downloadBlob(
-            response,
-            "application/pdf",
-            "flotivo-raport-alertow.pdf",
-          );
-        } else {
-          downloadBlob(
-            response,
-            "application/" +
-              "vnd.openxmlformats-officedocument." +
-              "spreadsheetml.sheet",
-            "flotivo-raport-alertow.xlsx",
-          );
-        }
       }
     } catch (err) {
       console.error("Błąd generowania raportu:", err);
-
-      setError("Nie udało się wygenerować raportu.");
+      setError(getBackendError(err, "Nie udało się wygenerować raportu."));
     } finally {
       setGenerating("");
     }
@@ -262,12 +275,12 @@ function ReportsPage({ onLogout }) {
     setVehicleId("");
     setAlertCategory("all");
     setAlertStatus("all");
+    setError(null);
   };
 
   const generateVehicleXlsx = async () => {
     try {
       setGenerating("vehicles-xlsx");
-
       setError(null);
 
       const response = await apiClient.post(
@@ -282,14 +295,11 @@ function ReportsPage({ onLogout }) {
 
       downloadBlob(
         response,
-        "application/" +
-          "vnd.openxmlformats-officedocument." +
-          "spreadsheetml.sheet",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "flotivo-pojazdy.xlsx",
       );
     } catch (err) {
-      console.error(err);
-
+      console.error("Błąd eksportu pojazdów:", err);
       setError("Nie udało się wygenerować raportu pojazdów.");
     } finally {
       setGenerating("");
@@ -297,9 +307,10 @@ function ReportsPage({ onLogout }) {
   };
 
   const generateDriversXlsx = async () => {
+    if (!canViewDriverReports) return;
+
     try {
       setGenerating("drivers-xlsx");
-
       setError(null);
 
       const response = await apiClient.post(
@@ -314,14 +325,11 @@ function ReportsPage({ onLogout }) {
 
       downloadBlob(
         response,
-        "application/" +
-          "vnd.openxmlformats-officedocument." +
-          "spreadsheetml.sheet",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "flotivo-kierowcy.xlsx",
       );
     } catch (err) {
-      console.error(err);
-
+      console.error("Błąd eksportu kierowców:", err);
       setError("Nie udało się wygenerować raportu kierowców.");
     } finally {
       setGenerating("");
@@ -331,7 +339,6 @@ function ReportsPage({ onLogout }) {
   const generateServiceXlsx = async () => {
     try {
       setGenerating("service-xlsx");
-
       setError(null);
 
       const response = await apiClient.post(
@@ -346,14 +353,11 @@ function ReportsPage({ onLogout }) {
 
       downloadBlob(
         response,
-        "application/" +
-          "vnd.openxmlformats-officedocument." +
-          "spreadsheetml.sheet",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "flotivo-historia-serwisowa.xlsx",
       );
     } catch (err) {
-      console.error(err);
-
+      console.error("Błąd eksportu historii serwisowej:", err);
       setError("Nie udało się wygenerować historii serwisowej.");
     } finally {
       setGenerating("");
@@ -363,7 +367,6 @@ function ReportsPage({ onLogout }) {
   const generateStatisticsPdf = async () => {
     try {
       setGenerating("statistics-pdf");
-
       setError(null);
 
       const response = await apiClient.post(
@@ -382,8 +385,7 @@ function ReportsPage({ onLogout }) {
         "flotivo-raport-statystyczny.pdf",
       );
     } catch (err) {
-      console.error(err);
-
+      console.error("Błąd generowania raportu statystycznego:", err);
       setError("Nie udało się wygenerować raportu statystycznego.");
     } finally {
       setGenerating("");
@@ -393,7 +395,6 @@ function ReportsPage({ onLogout }) {
   const generateAlertsPdf = async () => {
     try {
       setGenerating("alerts-pdf");
-
       setError(null);
 
       const response = await apiClient.post(
@@ -408,8 +409,7 @@ function ReportsPage({ onLogout }) {
 
       downloadBlob(response, "application/pdf", "flotivo-alerty.pdf");
     } catch (err) {
-      console.error(err);
-
+      console.error("Błąd generowania raportu alertów:", err);
       setError("Nie udało się wygenerować raportu alertów.");
     } finally {
       setGenerating("");
@@ -419,7 +419,6 @@ function ReportsPage({ onLogout }) {
   const generateAlertsXlsx = async () => {
     try {
       setGenerating("alerts-xlsx");
-
       setError(null);
 
       const response = await apiClient.post(
@@ -434,19 +433,19 @@ function ReportsPage({ onLogout }) {
 
       downloadBlob(
         response,
-        "application/" +
-          "vnd.openxmlformats-officedocument." +
-          "spreadsheetml.sheet",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "flotivo-alerty.xlsx",
       );
     } catch (err) {
-      console.error(err);
-
+      console.error("Błąd eksportu alertów:", err);
       setError("Nie udało się wygenerować raportu alertów.");
     } finally {
       setGenerating("");
     }
   };
+
+  const filtersDisabled =
+    reportType === "alerts" && alertCategory === "drivers";
 
   return (
     <div className="dashboard-layout">
@@ -456,49 +455,51 @@ function ReportsPage({ onLogout }) {
         <div className="reports-header">
           <div>
             <h1>Raporty</h1>
-
             <p>Generuj szczegółowe raporty i zestawienia dotyczące floty.</p>
           </div>
         </div>
 
-        {error && <p className="reports-error">{error}</p>}
+        {error && (
+          <div className="reports-error" role="alert">
+            {error}
+          </div>
+        )}
 
         <section className="report-generator">
           <div className="report-generator-header">
             <div>
               <h2>Generator raportu</h2>
-
               <p>Wybierz typ raportu oraz kryteria.</p>
             </div>
           </div>
 
           {optionsLoading ? (
-            <p>Ładowanie danych...</p>
+            <div className="reports-loading">
+              Ładowanie danych generatora...
+            </div>
           ) : (
             <>
               <div className="report-generator-grid">
                 <div className="report-field">
-                  <label>Typ raportu</label>
-
+                  <label htmlFor="report-type">Typ raportu</label>
                   <select
+                    id="report-type"
                     value={reportType}
                     onChange={(event) => setReportType(event.target.value)}
                   >
                     <option value="service-costs">Koszty serwisowe</option>
-
                     <option value="alerts">Terminy i alerty</option>
                   </select>
                 </div>
 
                 <div className="report-field">
-                  <label>Format</label>
-
+                  <label htmlFor="report-format">Format</label>
                   <select
+                    id="report-format"
                     value={reportFormat}
                     onChange={(event) => setReportFormat(event.target.value)}
                   >
                     <option value="pdf">PDF</option>
-
                     <option value="xlsx">Excel</option>
                   </select>
                 </div>
@@ -506,9 +507,9 @@ function ReportsPage({ onLogout }) {
                 {reportType === "service-costs" && (
                   <>
                     <div className="report-field">
-                      <label>Data od</label>
-
+                      <label htmlFor="report-date-from">Data od</label>
                       <input
+                        id="report-date-from"
                         type="date"
                         value={dateFrom}
                         onChange={(event) => setDateFrom(event.target.value)}
@@ -516,9 +517,9 @@ function ReportsPage({ onLogout }) {
                     </div>
 
                     <div className="report-field">
-                      <label>Data do</label>
-
+                      <label htmlFor="report-date-to">Data do</label>
                       <input
+                        id="report-date-to"
                         type="date"
                         value={dateTo}
                         onChange={(event) => setDateTo(event.target.value)}
@@ -530,35 +531,32 @@ function ReportsPage({ onLogout }) {
                 {reportType === "alerts" && (
                   <>
                     <div className="report-field">
-                      <label>Kategoria</label>
-
+                      <label htmlFor="alert-category">Kategoria</label>
                       <select
+                        id="alert-category"
                         value={alertCategory}
                         onChange={(event) =>
                           setAlertCategory(event.target.value)
                         }
                       >
                         <option value="all">Wszystkie</option>
-
                         <option value="vehicles">Pojazdy</option>
-
-                        <option value="drivers">Kierowcy</option>
+                        {canViewDriverReports && (
+                          <option value="drivers">Kierowcy</option>
+                        )}
                       </select>
                     </div>
 
                     <div className="report-field">
-                      <label>Pilność</label>
-
+                      <label htmlFor="alert-status">Pilność</label>
                       <select
+                        id="alert-status"
                         value={alertStatus}
                         onChange={(event) => setAlertStatus(event.target.value)}
                       >
                         <option value="all">Wszystkie</option>
-
                         <option value="expired">Po terminie</option>
-
                         <option value="7_days">Wygasa w ciągu 7 dni</option>
-
                         <option value="30_days">Wygasa w ciągu 30 dni</option>
                       </select>
                     </div>
@@ -566,14 +564,15 @@ function ReportsPage({ onLogout }) {
                 )}
 
                 <div className="report-field">
-                  <label>Spółka</label>
-
+                  <label htmlFor="report-company">Spółka</label>
                   <select
+                    id="report-company"
                     value={companyId}
-                    disabled={
-                      reportType === "alerts" && alertCategory === "drivers"
-                    }
-                    onChange={(event) => setCompanyId(event.target.value)}
+                    disabled={filtersDisabled}
+                    onChange={(event) => {
+                      setCompanyId(event.target.value);
+                      setVehicleId("");
+                    }}
                   >
                     <option value="">Wszystkie spółki</option>
 
@@ -586,14 +585,15 @@ function ReportsPage({ onLogout }) {
                 </div>
 
                 <div className="report-field">
-                  <label>Oddział</label>
-
+                  <label htmlFor="report-branch">Oddział</label>
                   <select
+                    id="report-branch"
                     value={branch}
-                    disabled={
-                      reportType === "alerts" && alertCategory === "drivers"
-                    }
-                    onChange={(event) => setBranch(event.target.value)}
+                    disabled={filtersDisabled}
+                    onChange={(event) => {
+                      setBranch(event.target.value);
+                      setVehicleId("");
+                    }}
                   >
                     <option value="">Wszystkie oddziały</option>
 
@@ -606,22 +606,19 @@ function ReportsPage({ onLogout }) {
                 </div>
 
                 <div className="report-field report-field-wide">
-                  <label>Pojazd</label>
-
+                  <label htmlFor="report-vehicle">Pojazd</label>
                   <select
+                    id="report-vehicle"
                     value={vehicleId}
-                    disabled={
-                      reportType === "alerts" && alertCategory === "drivers"
-                    }
+                    disabled={filtersDisabled}
                     onChange={(event) => setVehicleId(event.target.value)}
                   >
                     <option value="">Wszystkie pojazdy</option>
 
                     {filteredVehicles.map((vehicle) => (
                       <option key={vehicle.id} value={vehicle.id}>
-                        {vehicle.name}
-                        {" - "}
-                        {vehicle.registration_number}
+                        {vehicle.name || "Pojazd"} -{" "}
+                        {vehicle.registration_number || "Brak rejestracji"}
                       </option>
                     ))}
                   </select>
@@ -633,6 +630,7 @@ function ReportsPage({ onLogout }) {
                   type="button"
                   className="report-reset-button"
                   onClick={resetFilters}
+                  disabled={generating !== ""}
                 >
                   Wyczyść filtry
                 </button>
@@ -658,7 +656,6 @@ function ReportsPage({ onLogout }) {
           <div className="reports-section-header">
             <div>
               <h2>Szybkie raporty</h2>
-
               <p>Gotowe zestawienia całej dostępnej floty.</p>
             </div>
           </div>
@@ -667,126 +664,144 @@ function ReportsPage({ onLogout }) {
             <div className="report-card">
               <div>
                 <span className="report-card-type">PDF</span>
-
                 <h3>Raport statystyczny</h3>
-
                 <p>Podsumowanie kosztów serwisowych całej dostępnej floty.</p>
               </div>
 
               <button
+                type="button"
                 onClick={generateStatisticsPdf}
                 disabled={generating !== ""}
               >
-                Generuj PDF
+                {generating === "statistics-pdf"
+                  ? "Generowanie..."
+                  : "Generuj PDF"}
               </button>
             </div>
 
             <div className="report-card">
               <div>
                 <span className="report-card-type">XLSX</span>
-
                 <h3>Lista pojazdów</h3>
-
                 <p>Pełna lista dostępnych pojazdów.</p>
               </div>
 
               <button
+                type="button"
                 onClick={generateVehicleXlsx}
                 disabled={generating !== ""}
               >
-                Generuj Excel
+                {generating === "vehicles-xlsx"
+                  ? "Generowanie..."
+                  : "Generuj Excel"}
               </button>
             </div>
 
-            <div className="report-card">
-              <div>
-                <span className="report-card-type">XLSX</span>
+            {canViewDriverReports && (
+              <div className="report-card">
+                <div>
+                  <span className="report-card-type">XLSX</span>
+                  <h3>Lista kierowców</h3>
+                  <p>Kierowcy, uprawnienia i terminy ważności.</p>
+                </div>
 
-                <h3>Lista kierowców</h3>
-
-                <p>Kierowcy, uprawnienia i terminy ważności.</p>
+                <button
+                  type="button"
+                  onClick={generateDriversXlsx}
+                  disabled={generating !== ""}
+                >
+                  {generating === "drivers-xlsx"
+                    ? "Generowanie..."
+                    : "Generuj Excel"}
+                </button>
               </div>
-
-              <button
-                onClick={generateDriversXlsx}
-                disabled={generating !== ""}
-              >
-                Generuj Excel
-              </button>
-            </div>
+            )}
 
             <div className="report-card">
               <div>
                 <span className="report-card-type">XLSX</span>
-
                 <h3>Historia serwisowa</h3>
-
                 <p>Wszystkie wpisy dotyczące serwisów i napraw.</p>
               </div>
 
               <button
+                type="button"
                 onClick={generateServiceXlsx}
                 disabled={generating !== ""}
               >
-                Generuj Excel
+                {generating === "service-xlsx"
+                  ? "Generowanie..."
+                  : "Generuj Excel"}
               </button>
             </div>
 
             <div className="report-card">
               <div>
                 <span className="report-card-type">PDF</span>
-
                 <h3>Wymagają uwagi</h3>
-
                 <p>Szybki raport wszystkich aktualnych alertów.</p>
               </div>
 
-              <button onClick={generateAlertsPdf} disabled={generating !== ""}>
-                Generuj PDF
+              <button
+                type="button"
+                onClick={generateAlertsPdf}
+                disabled={generating !== ""}
+              >
+                {generating === "alerts-pdf" ? "Generowanie..." : "Generuj PDF"}
               </button>
             </div>
 
             <div className="report-card">
               <div>
                 <span className="report-card-type">XLSX</span>
-
                 <h3>Alerty</h3>
-
                 <p>Wszystkie aktualne alerty w Excelu.</p>
               </div>
 
-              <button onClick={generateAlertsXlsx} disabled={generating !== ""}>
-                Generuj Excel
+              <button
+                type="button"
+                onClick={generateAlertsXlsx}
+                disabled={generating !== ""}
+              >
+                {generating === "alerts-xlsx"
+                  ? "Generowanie..."
+                  : "Generuj Excel"}
               </button>
             </div>
 
             <div className="report-card report-card-navigation">
               <div>
                 <span className="report-card-type">PDF</span>
-
                 <h3>Karta pojazdu</h3>
-
                 <p>Szczegółowy raport konkretnego pojazdu.</p>
               </div>
 
-              <button onClick={() => navigate("/vehicles")}>
+              <button
+                type="button"
+                onClick={() => navigate("/vehicles")}
+                disabled={generating !== ""}
+              >
                 Wybierz pojazd
               </button>
             </div>
 
-            <div className="report-card report-card-navigation">
-              <div>
-                <span className="report-card-type">PDF</span>
+            {canViewDriverReports && (
+              <div className="report-card report-card-navigation">
+                <div>
+                  <span className="report-card-type">PDF</span>
+                  <h3>Karta kierowcy</h3>
+                  <p>Szczegółowy raport konkretnego kierowcy.</p>
+                </div>
 
-                <h3>Karta kierowcy</h3>
-
-                <p>Szczegółowy raport konkretnego kierowcy.</p>
+                <button
+                  type="button"
+                  onClick={() => navigate("/drivers")}
+                  disabled={generating !== ""}
+                >
+                  Wybierz kierowcę
+                </button>
               </div>
-
-              <button onClick={() => navigate("/drivers")}>
-                Wybierz kierowcę
-              </button>
-            </div>
+            )}
           </div>
         </section>
       </main>

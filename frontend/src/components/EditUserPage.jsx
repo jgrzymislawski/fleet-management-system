@@ -8,10 +8,9 @@ import "./AddUserPage.css";
 function EditUserPage({ onLogout }) {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { user: loggedUser, loadUser } = useAuth();
+  const { user: loggedUser, loadUser, loadingUser } = useAuth();
 
   const [availableCompanies, setAvailableCompanies] = useState([]);
-
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -19,15 +18,26 @@ function EditUserPage({ onLogout }) {
     role: "member",
     companies: [],
   });
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const canManageUsers = loggedUser?.role === "admin";
 
   const isOwnAccount =
     formData.username !== "" && formData.username === loggedUser?.username;
 
   useEffect(() => {
+    if (loadingUser || !canManageUsers) {
+      if (!loadingUser) {
+        setLoading(false);
+      }
+
+      return;
+    }
+
+    let active = true;
+
     const loadData = async () => {
       try {
         setLoading(true);
@@ -38,99 +48,111 @@ function EditUserPage({ onLogout }) {
           apiClient.get("companies/"),
         ]);
 
-        const editedUser = userResponse.data;
+        if (!active) return;
 
-        setAvailableCompanies(companiesResponse.data);
+        const editedUser = userResponse.data;
+        const companiesData = Array.isArray(companiesResponse.data)
+          ? companiesResponse.data
+          : companiesResponse.data?.results || [];
+
+        setAvailableCompanies(companiesData);
 
         setFormData({
           username: editedUser.username || "",
           email: editedUser.email || "",
-          is_active: editedUser.is_active,
-          role: editedUser.role,
+          is_active: Boolean(editedUser.is_active),
+          role: editedUser.role || "member",
           companies:
             editedUser.role === "member"
-              ? editedUser.companies.map((company) => ({
+              ? (editedUser.companies || []).map((company) => ({
                   company_id: company.id,
                   role: company.role,
                 }))
               : [],
         });
       } catch (err) {
+        if (!active) return;
+
         console.error("Błąd pobierania użytkownika:", err);
 
-        console.error("Odpowiedź backendu:", err.response?.data);
-
-        setError("Nie udało się pobrać danych użytkownika.");
+        if (err.response?.status === 404) {
+          setError("Nie znaleziono użytkownika.");
+        } else if (err.response?.status === 403) {
+          setError("Nie masz uprawnień do edycji tego użytkownika.");
+        } else {
+          setError("Nie udało się pobrać danych użytkownika.");
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
     loadData();
-  }, [id]);
+
+    return () => {
+      active = false;
+    };
+  }, [id, loadingUser, canManageUsers]);
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
 
     setError("");
 
-    if (name === "role") {
-      setFormData({
-        ...formData,
-        role: value,
-        companies:
-          value === "admin"
-            ? []
-            : formData.role === "admin"
-              ? []
-              : formData.companies,
-      });
+    setFormData((currentData) => {
+      if (name === "role") {
+        return {
+          ...currentData,
+          role: value,
+          companies: value === "admin" ? [] : currentData.companies,
+        };
+      }
 
-      return;
-    }
-
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
+      return {
+        ...currentData,
+        [name]: type === "checkbox" ? checked : value,
+      };
     });
   };
 
   const handleCompanyToggle = (companyId) => {
     setError("");
 
-    const existingAccess = formData.companies.find(
-      (company) => Number(company.company_id) === Number(companyId),
-    );
+    setFormData((currentData) => {
+      const existingAccess = currentData.companies.find(
+        (company) => Number(company.company_id) === Number(companyId),
+      );
 
-    if (existingAccess) {
-      setFormData({
-        ...formData,
-        companies: formData.companies.filter(
-          (company) => Number(company.company_id) !== Number(companyId),
-        ),
-      });
+      if (existingAccess) {
+        return {
+          ...currentData,
+          companies: currentData.companies.filter(
+            (company) => Number(company.company_id) !== Number(companyId),
+          ),
+        };
+      }
 
-      return;
-    }
-
-    setFormData({
-      ...formData,
-      companies: [
-        ...formData.companies,
-        {
-          company_id: companyId,
-          role: "viewer",
-        },
-      ],
+      return {
+        ...currentData,
+        companies: [
+          ...currentData.companies,
+          {
+            company_id: companyId,
+            role: "viewer",
+          },
+        ],
+      };
     });
   };
 
   const handleCompanyRoleChange = (companyId, role) => {
     setError("");
 
-    setFormData({
-      ...formData,
-      companies: formData.companies.map((company) =>
+    setFormData((currentData) => ({
+      ...currentData,
+      companies: currentData.companies.map((company) =>
         Number(company.company_id) === Number(companyId)
           ? {
               ...company,
@@ -138,37 +160,20 @@ function EditUserPage({ onLogout }) {
             }
           : company,
       ),
-    });
+    }));
   };
 
-  const getBackendError = (data) => {
-    if (!data) {
-      return "Nie udało się zapisać zmian.";
-    }
+  const getBackendError = (err) => {
+    const data = err.response?.data;
 
-    if (typeof data.detail === "string") {
-      return data.detail;
-    }
-
-    if (data.email?.[0]) {
-      return data.email[0];
-    }
-
-    if (data.role?.[0]) {
-      return data.role[0];
-    }
-
-    if (data.is_active?.[0]) {
-      return data.is_active[0];
-    }
-
-    if (data.companies?.[0]) {
-      return data.companies[0];
-    }
-
-    if (data.non_field_errors?.[0]) {
-      return data.non_field_errors[0];
-    }
+    if (!data) return "Nie udało się zapisać zmian.";
+    if (typeof data === "string") return data;
+    if (typeof data.detail === "string") return data.detail;
+    if (data.email?.[0]) return data.email[0];
+    if (data.role?.[0]) return data.role[0];
+    if (data.is_active?.[0]) return data.is_active[0];
+    if (data.companies?.[0]) return data.companies[0];
+    if (data.non_field_errors?.[0]) return data.non_field_errors[0];
 
     return "Nie udało się zapisać zmian.";
   };
@@ -176,18 +181,19 @@ function EditUserPage({ onLogout }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    if (saving) return;
+
     setError("");
-    setSaving(true);
 
     try {
-      const dataToSend = {
+      setSaving(true);
+
+      await apiClient.put(`admin/users/${id}/`, {
         email: formData.email.trim(),
         is_active: formData.is_active,
         role: formData.role,
         companies: formData.role === "admin" ? [] : formData.companies,
-      };
-
-      await apiClient.put(`admin/users/${id}/`, dataToSend);
+      });
 
       if (isOwnAccount) {
         await loadUser();
@@ -196,22 +202,31 @@ function EditUserPage({ onLogout }) {
       navigate("/admin-panel/users");
     } catch (err) {
       console.error("Błąd edycji użytkownika:", err);
-
-      console.error("Odpowiedź backendu:", err.response?.data);
-
-      setError(getBackendError(err.response?.data));
+      setError(getBackendError(err));
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
+  if (loadingUser || loading) {
     return (
       <div className="dashboard-layout">
         <Sidebar onLogout={onLogout} />
-
         <main className="dashboard-content">
           <p>Ładowanie danych użytkownika...</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (!canManageUsers) {
+    return (
+      <div className="dashboard-layout">
+        <Sidebar onLogout={onLogout} />
+        <main className="dashboard-content">
+          <p className="add-user-error">
+            Nie masz uprawnień do edycji użytkowników.
+          </p>
         </main>
       </div>
     );
@@ -224,6 +239,7 @@ function EditUserPage({ onLogout }) {
       <main className="dashboard-content">
         <div className="add-user-header">
           <button
+            type="button"
             className="add-user-back"
             onClick={() => navigate("/admin-panel/users")}
           >
@@ -231,7 +247,6 @@ function EditUserPage({ onLogout }) {
           </button>
 
           <h1>Edytuj użytkownika</h1>
-
           <p>Zmień dane użytkownika oraz jego uprawnienia.</p>
         </div>
 
@@ -259,6 +274,7 @@ function EditUserPage({ onLogout }) {
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
+                  disabled={saving}
                 />
               </div>
 
@@ -270,10 +286,9 @@ function EditUserPage({ onLogout }) {
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
-                  disabled={isOwnAccount}
+                  disabled={isOwnAccount || saving}
                 >
                   <option value="member">Użytkownik</option>
-
                   <option value="admin">Administrator</option>
                 </select>
               </div>
@@ -287,7 +302,7 @@ function EditUserPage({ onLogout }) {
                     type="checkbox"
                     checked={formData.is_active}
                     onChange={handleChange}
-                    disabled={isOwnAccount}
+                    disabled={isOwnAccount || saving}
                   />
 
                   <span>Konto aktywne</span>
@@ -306,7 +321,6 @@ function EditUserPage({ onLogout }) {
               <div className="add-user-companies">
                 <div className="add-user-section-header">
                   <h2>Dostęp do spółek</h2>
-
                   <p>Wybierz spółki oraz poziom dostępu tego użytkownika.</p>
                 </div>
 
@@ -325,9 +339,10 @@ function EditUserPage({ onLogout }) {
                               type="checkbox"
                               checked={Boolean(access)}
                               onChange={() => handleCompanyToggle(company.id)}
+                              disabled={saving}
                             />
 
-                            <span>{company.name}</span>
+                            <span>{company.name || "Bez nazwy"}</span>
                           </label>
 
                           {access && (
@@ -339,9 +354,9 @@ function EditUserPage({ onLogout }) {
                                   event.target.value,
                                 )
                               }
+                              disabled={saving}
                             >
                               <option value="viewer">Tylko odczyt</option>
-
                               <option value="editor">Odczyt i edycja</option>
                             </select>
                           )}
@@ -362,13 +377,18 @@ function EditUserPage({ onLogout }) {
               </div>
             )}
 
-            {error && <p className="add-user-error">{error}</p>}
+            {error && (
+              <p className="add-user-error" role="alert">
+                {error}
+              </p>
+            )}
 
             <div className="add-user-actions">
               <button
                 type="button"
                 className="add-user-cancel"
                 onClick={() => navigate("/admin-panel/users")}
+                disabled={saving}
               >
                 Anuluj
               </button>

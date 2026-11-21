@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
-import api from "../api/client";
+import apiClient from "../api/client";
 import "./NotificationPreferencesPage.css";
 
 function NotificationPreferencesPage({ onLogout }) {
@@ -21,23 +21,45 @@ function NotificationPreferencesPage({ onLogout }) {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
+    let active = true;
+
     const loadPreferences = async () => {
       try {
+        setLoading(true);
         setError("");
 
-        const response = await api.get("notifications/preferences/");
+        const response = await apiClient.get("notifications/preferences/");
 
-        setFormData(response.data);
+        if (!active) {
+          return;
+        }
+
+        setFormData({
+          email: response.data?.email || "",
+          email_enabled: Boolean(response.data?.email_enabled),
+          insurance_enabled: Boolean(response.data?.insurance_enabled),
+          inspection_enabled: Boolean(response.data?.inspection_enabled),
+          documents_enabled: Boolean(response.data?.documents_enabled),
+        });
       } catch (err) {
-        console.error("Błąd pobierania ustawień powiadomień:", err);
+        if (!active) {
+          return;
+        }
 
+        console.error("Błąd pobierania ustawień powiadomień:", err);
         setError("Nie udało się pobrać ustawień powiadomień.");
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
     loadPreferences();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleChange = (event) => {
@@ -48,31 +70,63 @@ function NotificationPreferencesPage({ onLogout }) {
       [name]: checked,
     }));
 
+    setError("");
     setSuccess("");
+  };
+
+  const getBackendError = (err) => {
+    const data = err.response?.data;
+
+    if (!data) {
+      return "Nie udało się zapisać ustawień powiadomień.";
+    }
+
+    if (typeof data === "string") {
+      return data;
+    }
+
+    if (data.detail) {
+      return data.detail;
+    }
+
+    const firstError = Object.values(data).find(
+      (value) => Array.isArray(value) && value.length > 0,
+    );
+
+    return firstError?.[0] || "Nie udało się zapisać ustawień powiadomień.";
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (saving || !formData.email) {
+      return;
+    }
 
     try {
       setSaving(true);
       setError("");
       setSuccess("");
 
-      const response = await api.put("notifications/preferences/", {
+      const response = await apiClient.put("notifications/preferences/", {
         email_enabled: formData.email_enabled,
         insurance_enabled: formData.insurance_enabled,
         inspection_enabled: formData.inspection_enabled,
         documents_enabled: formData.documents_enabled,
       });
 
-      setFormData(response.data);
+      setFormData({
+        email: response.data?.email || formData.email,
+        email_enabled: Boolean(response.data?.email_enabled),
+        insurance_enabled: Boolean(response.data?.insurance_enabled),
+        inspection_enabled: Boolean(response.data?.inspection_enabled),
+        documents_enabled: Boolean(response.data?.documents_enabled),
+      });
 
       setSuccess("Ustawienia powiadomień zostały zapisane.");
     } catch (err) {
       console.error("Błąd zapisywania ustawień powiadomień:", err);
-
-      setError("Nie udało się zapisać ustawień powiadomień.");
+      setError(getBackendError(err));
     } finally {
       setSaving(false);
     }
@@ -82,7 +136,6 @@ function NotificationPreferencesPage({ onLogout }) {
     return (
       <div className="dashboard-layout">
         <Sidebar onLogout={onLogout} />
-
         <main className="dashboard-content">
           <p>Ładowanie ustawień...</p>
         </main>
@@ -106,19 +159,24 @@ function NotificationPreferencesPage({ onLogout }) {
             </button>
 
             <h1>Powiadomienia</h1>
-
             <p>Wybierz, jakie wiadomości e-mail chcesz otrzymywać.</p>
           </div>
         </div>
 
         {error && (
-          <div className="notification-message notification-message-error">
+          <div
+            className="notification-message notification-message-error"
+            role="alert"
+          >
             {error}
           </div>
         )}
 
         {success && (
-          <div className="notification-message notification-message-success">
+          <div
+            className="notification-message notification-message-success"
+            role="status"
+          >
             {success}
           </div>
         )}
@@ -142,7 +200,6 @@ function NotificationPreferencesPage({ onLogout }) {
           <div className="notification-option notification-main-option">
             <div>
               <strong>Powiadomienia e-mail</strong>
-
               <p>
                 Włącz lub wyłącz wszystkie wiadomości wysyłane przez Flotivo.
               </p>
@@ -154,9 +211,8 @@ function NotificationPreferencesPage({ onLogout }) {
                 name="email_enabled"
                 checked={formData.email_enabled}
                 onChange={handleChange}
-                disabled={!formData.email}
+                disabled={!formData.email || saving}
               />
-
               <span className="notification-slider" />
             </label>
           </div>
@@ -168,7 +224,6 @@ function NotificationPreferencesPage({ onLogout }) {
           <div className="notification-option">
             <div>
               <strong>Polisy OC</strong>
-
               <p>
                 Otrzymuj przypomnienia o zbliżającym się terminie polisy OC.
               </p>
@@ -180,9 +235,8 @@ function NotificationPreferencesPage({ onLogout }) {
                 name="insurance_enabled"
                 checked={formData.insurance_enabled}
                 onChange={handleChange}
-                disabled={!formData.email || !formData.email_enabled}
+                disabled={!formData.email || !formData.email_enabled || saving}
               />
-
               <span className="notification-slider" />
             </label>
           </div>
@@ -190,7 +244,6 @@ function NotificationPreferencesPage({ onLogout }) {
           <div className="notification-option">
             <div>
               <strong>Przeglądy techniczne</strong>
-
               <p>Otrzymuj przypomnienia o zbliżającym się przeglądzie.</p>
             </div>
 
@@ -200,9 +253,8 @@ function NotificationPreferencesPage({ onLogout }) {
                 name="inspection_enabled"
                 checked={formData.inspection_enabled}
                 onChange={handleChange}
-                disabled={!formData.email || !formData.email_enabled}
+                disabled={!formData.email || !formData.email_enabled || saving}
               />
-
               <span className="notification-slider" />
             </label>
           </div>
@@ -210,7 +262,6 @@ function NotificationPreferencesPage({ onLogout }) {
           <div className="notification-option">
             <div>
               <strong>Dokumenty pojazdów</strong>
-
               <p>Otrzymuj przypomnienia o wygasających dokumentach.</p>
             </div>
 
@@ -220,9 +271,8 @@ function NotificationPreferencesPage({ onLogout }) {
                 name="documents_enabled"
                 checked={formData.documents_enabled}
                 onChange={handleChange}
-                disabled={!formData.email || !formData.email_enabled}
+                disabled={!formData.email || !formData.email_enabled || saving}
               />
-
               <span className="notification-slider" />
             </label>
           </div>

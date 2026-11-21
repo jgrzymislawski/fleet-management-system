@@ -9,28 +9,24 @@ function DriverList() {
   const [drivers, setDrivers] = useState([]);
   const [totalDrivers, setTotalDrivers] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 20;
-
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [searchText, setSearchText] = useState("");
   const [sortField, setSortField] = useState(null);
   const [sortDirection, setSortDirection] = useState("asc");
   const [exporting, setExporting] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
-
   const [selectedDriverIds, setSelectedDriverIds] = useState([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
-
   const [driverToDelete, setDriverToDelete] = useState(null);
   const [deletingDriver, setDeletingDriver] = useState(false);
 
+  const pageSize = 20;
   const navigate = useNavigate();
-
   const { user } = useAuth();
-
   const canManageDrivers = user?.role === "admin";
 
   const buildDriverParams = (page = currentPage) => {
@@ -39,10 +35,10 @@ function DriverList() {
       page_size: pageSize,
     };
 
-    const normalizedSearchText = searchText.trim();
+    const search = searchText.trim();
 
-    if (normalizedSearchText) {
-      params.search = normalizedSearchText;
+    if (search) {
+      params.search = search;
     }
 
     if (sortField) {
@@ -54,25 +50,32 @@ function DriverList() {
 
   const loadDrivers = async (page = currentPage) => {
     try {
+      setLoading(true);
+
       const response = await apiClient.get("drivers/", {
         params: buildDriverParams(page),
       });
 
-      const data = Array.isArray(response.data)
-        ? response.data
-        : response.data.results || [];
+      const responseData = response.data;
 
-      const count = Array.isArray(response.data)
-        ? response.data.length
-        : response.data.count || 0;
+      const data = Array.isArray(responseData)
+        ? responseData
+        : responseData?.results || [];
+
+      const count = Array.isArray(responseData)
+        ? responseData.length
+        : responseData?.count || 0;
 
       setDrivers(data);
       setTotalDrivers(count);
       setError(null);
     } catch (err) {
-      console.error(err);
-
-      setError("Nie udało się pobrać listy kierowców");
+      console.error("Nie udało się pobrać listy kierowców:", err);
+      setDrivers([]);
+      setTotalDrivers(0);
+      setError("Nie udało się pobrać listy kierowców.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -86,12 +89,38 @@ function DriverList() {
     };
   }, [currentPage, searchText, sortField, sortDirection]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".driver-actions")) {
+        setOpenMenuId(null);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setOpenMenuId(null);
+
+        if (!deletingDriver) {
+          setDriverToDelete(null);
+        }
+
+        if (!bulkDeleting) {
+          setBulkDeleteOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [deletingDriver, bulkDeleting]);
+
   const handleMenuClick = (driverId) => {
-    if (openMenuId === driverId) {
-      setOpenMenuId(null);
-    } else {
-      setOpenMenuId(driverId);
-    }
+    setOpenMenuId((currentId) => (currentId === driverId ? null : driverId));
   };
 
   const handleDelete = (driver) => {
@@ -123,10 +152,7 @@ function DriverList() {
       }
     } catch (err) {
       console.error("Błąd usuwania kierowcy:", err);
-
-      console.error("Odpowiedź backendu:", err.response?.data);
-
-      setError("Nie udało się usunąć kierowcy.");
+      setError(err.response?.data?.detail || "Nie udało się usunąć kierowcy.");
     } finally {
       setDeletingDriver(false);
     }
@@ -150,7 +176,7 @@ function DriverList() {
       return "";
     }
 
-    return sortDirection === "asc" ? " ↑" : " ↓";
+    return sortDirection === "asc" ? "↑" : "↓";
   };
 
   const formatDate = (date) => {
@@ -158,7 +184,13 @@ function DriverList() {
       return "-";
     }
 
-    return new Date(date).toLocaleDateString("pl-PL");
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "-";
+    }
+
+    return parsedDate.toLocaleDateString("pl-PL");
   };
 
   const getExpiryStatus = (date) => {
@@ -172,12 +204,19 @@ function DriverList() {
     const today = new Date();
     const expiryDate = new Date(date);
 
+    if (Number.isNaN(expiryDate.getTime())) {
+      return {
+        text: "Brak terminu",
+        className: "driver-expiry-none",
+      };
+    }
+
     today.setHours(0, 0, 0, 0);
     expiryDate.setHours(0, 0, 0, 0);
 
-    const difference = expiryDate - today;
-
-    const daysLeft = Math.ceil(difference / (1000 * 60 * 60 * 24));
+    const daysLeft = Math.ceil(
+      (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
 
     if (daysLeft < 0) {
       return {
@@ -206,14 +245,17 @@ function DriverList() {
     };
   };
 
-  const sortedDrivers = drivers;
-
   const totalPages = Math.max(1, Math.ceil(totalDrivers / pageSize));
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalDrivers > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages, totalDrivers]);
 
   const handlePreviousPage = () => {
     if (currentPage > 1) {
       setSelectedDriverIds([]);
-
       setCurrentPage((page) => page - 1);
     }
   };
@@ -221,13 +263,12 @@ function DriverList() {
   const handleNextPage = () => {
     if (currentPage < totalPages) {
       setSelectedDriverIds([]);
-
       setCurrentPage((page) => page + 1);
     }
   };
 
   const visibleDriverIds = canManageDrivers
-    ? sortedDrivers.map((driver) => driver.id)
+    ? drivers.map((driver) => driver.id)
     : [];
 
   const allVisibleDriversSelected =
@@ -235,15 +276,17 @@ function DriverList() {
     visibleDriverIds.every((driverId) => selectedDriverIds.includes(driverId));
 
   const toggleDriverSelection = (driverId) => {
+    if (!canManageDrivers) {
+      return;
+    }
+
     setBulkResult(null);
 
-    setSelectedDriverIds((currentIds) => {
-      if (currentIds.includes(driverId)) {
-        return currentIds.filter((id) => id !== driverId);
-      }
-
-      return [...currentIds, driverId];
-    });
+    setSelectedDriverIds((currentIds) =>
+      currentIds.includes(driverId)
+        ? currentIds.filter((id) => id !== driverId)
+        : [...currentIds, driverId],
+    );
   };
 
   const toggleAllVisibleDrivers = () => {
@@ -300,13 +343,11 @@ function DriverList() {
       });
 
       setBulkResult(response.data);
-
       setSelectedDriverIds([]);
-
       setBulkDeleteOpen(false);
 
       if (
-        response.data.deleted >= drivers.length &&
+        response.data?.deleted >= drivers.length &&
         drivers.length > 0 &&
         currentPage > 1
       ) {
@@ -316,8 +357,6 @@ function DriverList() {
       }
     } catch (err) {
       console.error("Błąd masowego usuwania kierowców:", err);
-
-      console.error("Odpowiedź backendu:", err.response?.data);
 
       setError(
         err.response?.data?.detail ||
@@ -329,19 +368,23 @@ function DriverList() {
   };
 
   const getExportFilename = (response) => {
-    const contentDisposition = response.headers["content-disposition"];
+    const contentDisposition = response.headers?.["content-disposition"];
 
     if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+      const filenameMatch = contentDisposition.match(
+        /filename\*?=(?:UTF-8''|")?([^";]+)/i,
+      );
 
-      if (filenameMatch && filenameMatch[1]) {
-        return filenameMatch[1];
+      if (filenameMatch?.[1]) {
+        try {
+          return decodeURIComponent(filenameMatch[1].replace(/"/g, ""));
+        } catch {
+          return filenameMatch[1].replace(/"/g, "");
+        }
       }
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-
-    return `flotivo-kierowcy-${today}.xlsx`;
+    return `flotivo-kierowcy-${new Date().toISOString().slice(0, 10)}.xlsx`;
   };
 
   const downloadDriverExport = async (driverIds, params = {}) => {
@@ -361,17 +404,13 @@ function DriverList() {
     });
 
     const downloadUrl = window.URL.createObjectURL(blob);
-
     const link = document.createElement("a");
 
     link.href = downloadUrl;
-
     link.download = getExportFilename(response);
 
     document.body.appendChild(link);
-
     link.click();
-
     link.remove();
 
     window.URL.revokeObjectURL(downloadUrl);
@@ -380,7 +419,6 @@ function DriverList() {
   const handleExport = async () => {
     if (totalDrivers === 0) {
       setError("Brak kierowców do wyeksportowania.");
-
       return;
     }
 
@@ -396,9 +434,6 @@ function DriverList() {
       await downloadDriverExport([], exportParams);
     } catch (err) {
       console.error("Błąd eksportu kierowców:", err);
-
-      console.error("Odpowiedź backendu:", err.response?.data);
-
       setError("Nie udało się wyeksportować kierowców.");
     } finally {
       setExporting(false);
@@ -417,26 +452,33 @@ function DriverList() {
       await downloadDriverExport(selectedDriverIds);
     } catch (err) {
       console.error("Błąd eksportu zaznaczonych kierowców:", err);
-
-      console.error("Odpowiedź backendu:", err.response?.data);
-
       setError("Nie udało się wyeksportować zaznaczonych kierowców.");
     } finally {
       setExporting(false);
     }
   };
 
+  const columns = [
+    ["first_name", "Imię"],
+    ["last_name", "Nazwisko"],
+    ["license_number", "Numer prawa jazdy"],
+    ["license_expiry_date", "Prawo jazdy"],
+    ["medical_exam_expiry_date", "Badania"],
+    ["phone_number", "Telefon"],
+    ["hired_at", "Data zatrudnienia"],
+  ];
+
   return (
     <div className="drivers">
       <div className="drivers-header">
         <div>
           <h1>Kierowcy</h1>
-
           <p>Zarządzaj kierowcami znajdującymi się w Twojej flocie.</p>
         </div>
 
         <div className="drivers-header-actions">
           <button
+            type="button"
             className="export-drivers-button"
             onClick={handleExport}
             disabled={exporting || totalDrivers === 0}
@@ -446,6 +488,7 @@ function DriverList() {
 
           {canManageDrivers && (
             <button
+              type="button"
               className="export-drivers-button"
               onClick={() => setImportModalOpen(true)}
             >
@@ -455,6 +498,7 @@ function DriverList() {
 
           {canManageDrivers && (
             <button
+              type="button"
               className="add-driver-button"
               onClick={() => navigate("/drivers/add")}
             >
@@ -464,20 +508,40 @@ function DriverList() {
         </div>
       </div>
 
-      {error && <p className="drivers-error">{error}</p>}
+      {error && (
+        <div className="drivers-error" role="alert">
+          {error}
+        </div>
+      )}
 
       <div className="drivers-toolbar">
-        <input
-          className="drivers-search"
-          type="text"
-          placeholder="Szukaj kierowcy..."
-          value={searchText}
-          onChange={(event) => {
-            setCurrentPage(1);
+        <div className="drivers-search-wrapper">
+          <input
+            className="drivers-search"
+            type="search"
+            placeholder="Szukaj kierowcy..."
+            value={searchText}
+            onChange={(event) => {
+              setCurrentPage(1);
+              setSearchText(event.target.value);
+            }}
+          />
 
-            setSearchText(event.target.value);
-          }}
-        />
+          {searchText && (
+            <button
+              type="button"
+              className="drivers-search-clear"
+              onClick={() => {
+                setCurrentPage(1);
+                setSearchText("");
+              }}
+              aria-label="Wyczyść wyszukiwanie"
+              title="Wyczyść wyszukiwanie"
+            >
+              ×
+            </button>
+          )}
+        </div>
       </div>
 
       {selectedDriverIds.length > 0 && (
@@ -487,12 +551,17 @@ function DriverList() {
           </div>
 
           <div className="drivers-bulk-actions">
-            <button onClick={handleExportSelected} disabled={exporting}>
+            <button
+              type="button"
+              onClick={handleExportSelected}
+              disabled={exporting}
+            >
               {exporting ? "Eksportowanie..." : "Eksportuj zaznaczone"}
             </button>
 
             {canManageDrivers && (
               <button
+                type="button"
                 className="drivers-bulk-delete"
                 onClick={openBulkDeleteModal}
               >
@@ -501,6 +570,7 @@ function DriverList() {
             )}
 
             <button
+              type="button"
               className="drivers-bulk-clear"
               onClick={clearDriverSelection}
             >
@@ -513,15 +583,15 @@ function DriverList() {
       {bulkResult && (
         <div className="drivers-bulk-result">
           <strong>Operacja zakończona.</strong>
-
           {bulkResult.deleted > 0 && <> Usunięto: {bulkResult.deleted}.</>}
-
           {bulkResult.skipped > 0 && <> Pominięto: {bulkResult.skipped}.</>}
         </div>
       )}
 
       <div className="drivers-results-info">
-        Na tej stronie: {drivers.length} • Znaleziono: {totalDrivers}
+        {loading
+          ? "Ładowanie kierowców..."
+          : `Na tej stronie: ${drivers.length} • Znaleziono: ${totalDrivers}`}
       </div>
 
       <div className="drivers-table">
@@ -537,177 +607,158 @@ function DriverList() {
             <input
               type="checkbox"
               checked={allVisibleDriversSelected}
-              disabled={!canManageDrivers || visibleDriverIds.length === 0}
+              disabled={
+                !canManageDrivers || visibleDriverIds.length === 0 || loading
+              }
               onChange={toggleAllVisibleDrivers}
             />
           </label>
 
-          <button
-            className="drivers-sort-button"
-            onClick={() => handleSort("first_name")}
-          >
-            Imię
-            {getSortArrow("first_name")}
-          </button>
-
-          <button
-            className="drivers-sort-button"
-            onClick={() => handleSort("last_name")}
-          >
-            Nazwisko
-            {getSortArrow("last_name")}
-          </button>
-
-          <button
-            className="drivers-sort-button"
-            onClick={() => handleSort("license_number")}
-          >
-            Numer prawa jazdy
-            {getSortArrow("license_number")}
-          </button>
-
-          <button
-            className="drivers-sort-button"
-            onClick={() => handleSort("license_expiry_date")}
-          >
-            Prawo jazdy
-            {getSortArrow("license_expiry_date")}
-          </button>
-
-          <button
-            className="drivers-sort-button"
-            onClick={() => handleSort("medical_exam_expiry_date")}
-          >
-            Badania
-            {getSortArrow("medical_exam_expiry_date")}
-          </button>
-
-          <button
-            className="drivers-sort-button"
-            onClick={() => handleSort("phone_number")}
-          >
-            Telefon
-            {getSortArrow("phone_number")}
-          </button>
-
-          <button
-            className="drivers-sort-button"
-            onClick={() => handleSort("hired_at")}
-          >
-            Data zatrudnienia
-            {getSortArrow("hired_at")}
-          </button>
+          {columns.map(([field, label]) => (
+            <button
+              type="button"
+              className={`drivers-sort-button ${
+                sortField === field ? "drivers-sort-active" : ""
+              }`}
+              key={field}
+              onClick={() => handleSort(field)}
+            >
+              {label}
+              <span>{getSortArrow(field)}</span>
+            </button>
+          ))}
 
           <span>Akcje</span>
         </div>
 
-        {sortedDrivers.map((driver) => {
-          const licenseStatus = getExpiryStatus(driver.license_expiry_date);
+        {!loading &&
+          drivers.map((driver) => {
+            const licenseStatus = getExpiryStatus(driver.license_expiry_date);
+            const medicalStatus = getExpiryStatus(
+              driver.medical_exam_expiry_date,
+            );
 
-          const medicalStatus = getExpiryStatus(
-            driver.medical_exam_expiry_date,
-          );
-
-          return (
-            <div
-              className={`drivers-table-row drivers-table-row-bulk ${
-                selectedDriverIds.includes(driver.id)
-                  ? "drivers-table-row-selected"
-                  : ""
-              }`}
-              key={driver.id}
-            >
-              <label
-                className="drivers-select-cell"
-                title={
-                  canManageDrivers
-                    ? "Zaznacz kierowcę"
-                    : "Tylko administrator może zarządzać kierowcami"
-                }
+            return (
+              <div
+                className={`drivers-table-row drivers-table-row-bulk ${
+                  selectedDriverIds.includes(driver.id)
+                    ? "drivers-table-row-selected"
+                    : ""
+                }`}
+                key={driver.id}
               >
-                <input
-                  type="checkbox"
-                  checked={selectedDriverIds.includes(driver.id)}
-                  disabled={!canManageDrivers}
-                  onChange={() => toggleDriverSelection(driver.id)}
-                />
-              </label>
-
-              <span>{driver.first_name}</span>
-
-              <span className="driver-name">{driver.last_name}</span>
-
-              <span>{driver.license_number}</span>
-
-              <div className="driver-expiry-cell">
-                <span
-                  className={`driver-expiry-badge ${licenseStatus.className}`}
+                <label
+                  className="drivers-select-cell"
+                  title={
+                    canManageDrivers
+                      ? "Zaznacz kierowcę"
+                      : "Tylko administrator może zarządzać kierowcami"
+                  }
                 >
-                  {licenseStatus.text}
+                  <input
+                    type="checkbox"
+                    checked={selectedDriverIds.includes(driver.id)}
+                    disabled={!canManageDrivers}
+                    onChange={() => toggleDriverSelection(driver.id)}
+                  />
+                </label>
+
+                <span>{driver.first_name || "Nie podano"}</span>
+
+                <span className="driver-name">
+                  {driver.last_name || "Nie podano"}
                 </span>
 
-                <span className="driver-expiry-date">
-                  {formatDate(driver.license_expiry_date)}
-                </span>
+                <span>{driver.license_number || "Nie podano"}</span>
+
+                <div className="driver-expiry-cell">
+                  <span
+                    className={`driver-expiry-badge ${licenseStatus.className}`}
+                  >
+                    {licenseStatus.text}
+                  </span>
+
+                  <span className="driver-expiry-date">
+                    {formatDate(driver.license_expiry_date)}
+                  </span>
+                </div>
+
+                <div className="driver-expiry-cell">
+                  <span
+                    className={`driver-expiry-badge ${medicalStatus.className}`}
+                  >
+                    {medicalStatus.text}
+                  </span>
+
+                  <span className="driver-expiry-date">
+                    {formatDate(driver.medical_exam_expiry_date)}
+                  </span>
+                </div>
+
+                <span>{driver.phone_number || "Nie podano"}</span>
+
+                <span>{formatDate(driver.hired_at)}</span>
+
+                <div className="driver-actions">
+                  <button
+                    type="button"
+                    className="driver-actions-button"
+                    onClick={() => handleMenuClick(driver.id)}
+                    aria-label="Akcje kierowcy"
+                  >
+                    •••
+                  </button>
+
+                  {openMenuId === driver.id && (
+                    <div className="driver-actions-menu">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/drivers/${driver.id}`)}
+                      >
+                        Szczegóły
+                      </button>
+
+                      {canManageDrivers && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate(`/drivers/${driver.id}/edit`)
+                            }
+                          >
+                            Edytuj
+                          </button>
+
+                          <div className="driver-actions-divider" />
+
+                          <button
+                            type="button"
+                            className="driver-actions-delete"
+                            onClick={() => handleDelete(driver)}
+                          >
+                            Usuń
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
+            );
+          })}
 
-              <div className="driver-expiry-cell">
-                <span
-                  className={`driver-expiry-badge ${medicalStatus.className}`}
-                >
-                  {medicalStatus.text}
-                </span>
+        {loading && (
+          <div className="drivers-empty">Ładowanie listy kierowców...</div>
+        )}
 
-                <span className="driver-expiry-date">
-                  {formatDate(driver.medical_exam_expiry_date)}
-                </span>
-              </div>
-
-              <span>{driver.phone_number || "Nie podano"}</span>
-
-              <span>{formatDate(driver.hired_at)}</span>
-
-              <div className="driver-actions">
-                <button
-                  className="driver-actions-button"
-                  onClick={() => handleMenuClick(driver.id)}
-                >
-                  •••
-                </button>
-
-                {openMenuId === driver.id && (
-                  <div className="driver-actions-menu">
-                    <button onClick={() => navigate(`/drivers/${driver.id}`)}>
-                      Szczegóły
-                    </button>
-
-                    {canManageDrivers && (
-                      <>
-                        <button
-                          onClick={() => navigate(`/drivers/${driver.id}/edit`)}
-                        >
-                          Edytuj
-                        </button>
-
-                        <div className="driver-actions-divider"></div>
-
-                        <button
-                          className="driver-actions-delete"
-                          onClick={() => handleDelete(driver)}
-                        >
-                          Usuń
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-
-        {sortedDrivers.length === 0 && !error && (
-          <div className="drivers-empty">Nie znaleziono kierowców.</div>
+        {!loading && drivers.length === 0 && (
+          <div className="drivers-empty">
+            {error
+              ? "Nie udało się wyświetlić kierowców."
+              : searchText.trim()
+                ? "Nie znaleziono kierowców pasujących do wyszukiwania."
+                : "Brak kierowców w systemie."}
+          </div>
         )}
       </div>
 
@@ -717,7 +768,7 @@ function DriverList() {
             type="button"
             className="drivers-pagination-button"
             onClick={handlePreviousPage}
-            disabled={currentPage <= 1}
+            disabled={currentPage <= 1 || loading}
           >
             ← Poprzednia
           </button>
@@ -730,7 +781,7 @@ function DriverList() {
             type="button"
             className="drivers-pagination-button"
             onClick={handleNextPage}
-            disabled={currentPage >= totalPages}
+            disabled={currentPage >= totalPages || loading}
           >
             Następna →
           </button>
@@ -745,7 +796,9 @@ function DriverList() {
             aria-modal="true"
             aria-labelledby="driver-delete-title"
           >
-            <div className="driver-delete-icon">!</div>
+            <div className="driver-delete-icon" aria-hidden="true">
+              !
+            </div>
 
             <h2 id="driver-delete-title">Usunąć kierowcę?</h2>
 
@@ -787,10 +840,17 @@ function DriverList() {
 
       {bulkDeleteOpen && (
         <div className="drivers-bulk-overlay">
-          <div className="drivers-bulk-modal">
+          <div
+            className="drivers-bulk-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="drivers-bulk-delete-title"
+          >
             <div className="drivers-bulk-modal-header">
               <div>
-                <h2>Usuń zaznaczonych kierowców</h2>
+                <h2 id="drivers-bulk-delete-title">
+                  Usuń zaznaczonych kierowców
+                </h2>
 
                 <p>
                   Operacja obejmie {selectedDriverIds.length} zaznaczonych
@@ -799,9 +859,11 @@ function DriverList() {
               </div>
 
               <button
+                type="button"
                 className="drivers-bulk-modal-close"
                 onClick={closeBulkDeleteModal}
                 disabled={bulkDeleting}
+                aria-label="Zamknij"
               >
                 ×
               </button>
@@ -816,6 +878,7 @@ function DriverList() {
 
             <div className="drivers-bulk-modal-actions">
               <button
+                type="button"
                 className="drivers-bulk-cancel"
                 onClick={closeBulkDeleteModal}
                 disabled={bulkDeleting}
@@ -824,6 +887,7 @@ function DriverList() {
               </button>
 
               <button
+                type="button"
                 className="drivers-bulk-submit"
                 onClick={handleBulkDelete}
                 disabled={bulkDeleting}

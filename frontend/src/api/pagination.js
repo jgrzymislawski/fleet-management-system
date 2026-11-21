@@ -1,12 +1,9 @@
-export const fetchAllPages = async (
-  apiClient,
-  url,
-  params = {},
-) => {
+export const fetchAllPages = async (apiClient, url, params = {}) => {
   const allResults = [];
   let page = 1;
+  const maxPages = 1000;
 
-  while (true) {
+  while (page <= maxPages) {
     const response = await apiClient.get(url, {
       params: {
         ...params,
@@ -15,15 +12,17 @@ export const fetchAllPages = async (
       },
     });
 
-    if (Array.isArray(response.data)) {
-      return response.data;
+    const data = response.data;
+
+    if (Array.isArray(data)) {
+      return data;
     }
 
-    const results = response.data?.results || [];
+    const results = Array.isArray(data?.results) ? data.results : [];
 
     allResults.push(...results);
 
-    if (!response.data?.next) {
+    if (!data?.next) {
       break;
     }
 

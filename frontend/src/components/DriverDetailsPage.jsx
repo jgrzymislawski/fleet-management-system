@@ -16,78 +16,116 @@ function DriverDetailsPage({ onLogout }) {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
   const [exportingPdf, setExportingPdf] = useState(false);
 
   const canManageDrivers = user?.role === "admin";
 
   useEffect(() => {
+    let active = true;
+
     const loadDriverData = async () => {
       try {
+        setLoading(true);
+        setError(null);
+
         const driverResponse = await apiClient.get(`drivers/${id}/`);
+
+        if (!active) return;
 
         setDriver(driverResponse.data);
 
-        const vehiclesData = await fetchAllPages(apiClient, "vehicles/");
+        const [vehiclesResult, assignmentsResult] = await Promise.allSettled([
+          fetchAllPages(apiClient, "vehicles/"),
+          fetchAllPages(apiClient, "driver-assignments/", {
+            driver: id,
+          }),
+        ]);
 
-        const driverVehicles = vehiclesData.filter(
-          (vehicle) => Number(vehicle.driver) === Number(id),
-        );
+        if (!active) return;
 
-        setVehicles(driverVehicles);
+        if (vehiclesResult.status === "fulfilled") {
+          const vehiclesData = Array.isArray(vehiclesResult.value)
+            ? vehiclesResult.value
+            : [];
 
-        try {
-          const driverAssignments = await fetchAllPages(
-            apiClient,
-            "driver-assignments/",
-            {
-              driver: id,
-            },
+          setVehicles(
+            vehiclesData.filter(
+              (vehicle) => Number(vehicle.driver) === Number(id),
+            ),
           );
+        } else {
+          console.error(
+            "Błąd pobierania pojazdów kierowcy:",
+            vehiclesResult.reason,
+          );
+          setVehicles([]);
+        }
 
-          setAssignments(driverAssignments);
-        } catch (assignmentsError) {
+        if (assignmentsResult.status === "fulfilled") {
+          setAssignments(
+            Array.isArray(assignmentsResult.value)
+              ? assignmentsResult.value
+              : [],
+          );
+        } else {
           console.error(
             "Błąd pobierania historii przypisań:",
-            assignmentsError,
+            assignmentsResult.reason,
           );
+          setAssignments([]);
         }
       } catch (err) {
+        if (!active) return;
+
         console.error("Błąd pobierania danych kierowcy:", err);
+        setDriver(null);
 
-        console.error("Odpowiedź backendu:", err.response?.data);
-
-        setError("Nie udało się pobrać danych kierowcy.");
+        if (err.response?.status === 404) {
+          setError("Nie znaleziono kierowcy.");
+        } else if (err.response?.status === 403) {
+          setError("Nie masz uprawnień do wyświetlenia tego kierowcy.");
+        } else {
+          setError("Nie udało się pobrać danych kierowcy.");
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
     loadDriverData();
+
+    return () => {
+      active = false;
+    };
   }, [id]);
 
   const formatDate = (date) => {
-    if (!date) {
+    if (!date) return "Nie podano";
+
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
       return "Nie podano";
     }
 
-    return new Date(date).toLocaleDateString("pl-PL");
+    return parsedDate.toLocaleDateString("pl-PL");
   };
 
   const getStatusName = (status) => {
-    if (status === "active") {
-      return "Aktywny";
+    if (status === "active") return "Aktywny";
+    if (status === "maintenance") return "W serwisie";
+    if (status === "inactive") return "Nieaktywny";
+    return status || "Nie podano";
+  };
+
+  const getStatusClass = (status) => {
+    if (["active", "maintenance", "inactive"].includes(status)) {
+      return `vehicle-status vehicle-status-${status}`;
     }
 
-    if (status === "maintenance") {
-      return "W serwisie";
-    }
-
-    if (status === "inactive") {
-      return "Nieaktywny";
-    }
-
-    return status;
+    return "vehicle-status vehicle-status-unknown";
   };
 
   const getExpiryStatus = (date) => {
@@ -99,16 +137,21 @@ function DriverDetailsPage({ onLogout }) {
     }
 
     const today = new Date();
-
     const expiryDate = new Date(date);
 
-    today.setHours(0, 0, 0, 0);
+    if (Number.isNaN(expiryDate.getTime())) {
+      return {
+        text: "Brak terminu",
+        className: "driver-expiry-none",
+      };
+    }
 
+    today.setHours(0, 0, 0, 0);
     expiryDate.setHours(0, 0, 0, 0);
 
-    const difference = expiryDate - today;
-
-    const daysLeft = Math.ceil(difference / (1000 * 60 * 60 * 24));
+    const daysLeft = Math.ceil(
+      (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
 
     if (daysLeft < 0) {
       return {
@@ -138,29 +181,33 @@ function DriverDetailsPage({ onLogout }) {
   };
 
   const getExportFilename = (response) => {
-    const contentDisposition = response.headers["content-disposition"];
+    const contentDisposition = response.headers?.["content-disposition"];
 
     if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+      const filenameMatch = contentDisposition.match(
+        /filename\*?=(?:UTF-8''|")?([^";]+)/i,
+      );
 
-      if (filenameMatch && filenameMatch[1]) {
-        return filenameMatch[1];
+      if (filenameMatch?.[1]) {
+        try {
+          return decodeURIComponent(filenameMatch[1].replace(/"/g, ""));
+        } catch {
+          return filenameMatch[1].replace(/"/g, "");
+        }
       }
     }
 
-    return (
-      `flotivo-kierowca-` + `${driver.first_name}-` + `${driver.last_name}.pdf`
-    );
+    const firstName = driver?.first_name || "kierowca";
+    const lastName = driver?.last_name || "";
+
+    return `flotivo-kierowca-${firstName}-${lastName}.pdf`;
   };
 
   const handleExportPdf = async () => {
-    if (!driver) {
-      return;
-    }
+    if (!driver || exportingPdf) return;
 
     try {
       setExportingPdf(true);
-
       setError(null);
 
       const response = await apiClient.get(`drivers/${id}/card-pdf/`, {
@@ -172,25 +219,18 @@ function DriverDetailsPage({ onLogout }) {
       });
 
       const downloadUrl = window.URL.createObjectURL(blob);
-
       const link = document.createElement("a");
 
       link.href = downloadUrl;
-
       link.download = getExportFilename(response);
 
       document.body.appendChild(link);
-
       link.click();
-
       link.remove();
 
       window.URL.revokeObjectURL(downloadUrl);
     } catch (err) {
       console.error("Błąd eksportu karty kierowcy:", err);
-
-      console.error("Odpowiedź backendu:", err.response?.data);
-
       setError("Nie udało się wygenerować karty kierowcy.");
     } finally {
       setExportingPdf(false);
@@ -201,7 +241,6 @@ function DriverDetailsPage({ onLogout }) {
     return (
       <div className="dashboard-layout">
         <Sidebar onLogout={onLogout} />
-
         <main className="dashboard-content">
           <p>Ładowanie danych kierowcy...</p>
         </main>
@@ -213,18 +252,23 @@ function DriverDetailsPage({ onLogout }) {
     return (
       <div className="dashboard-layout">
         <Sidebar onLogout={onLogout} />
-
         <main className="dashboard-content">
           <p className="driver-details-error">
             {error || "Nie znaleziono kierowcy."}
           </p>
+          <button
+            type="button"
+            className="driver-details-back"
+            onClick={() => navigate("/drivers")}
+          >
+            ← Wróć do kierowców
+          </button>
         </main>
       </div>
     );
   }
 
   const licenseStatus = getExpiryStatus(driver.license_expiry_date);
-
   const medicalStatus = getExpiryStatus(driver.medical_exam_expiry_date);
 
   const activeAssignments = assignments.filter(
@@ -236,7 +280,9 @@ function DriverDetailsPage({ onLogout }) {
   );
 
   const uniqueVehicleIds = new Set(
-    assignments.map((assignment) => assignment.vehicle),
+    assignments
+      .map((assignment) => assignment.vehicle)
+      .filter((vehicleId) => vehicleId !== null && vehicleId !== undefined),
   );
 
   return (
@@ -247,6 +293,7 @@ function DriverDetailsPage({ onLogout }) {
         <div className="driver-details-header">
           <div>
             <button
+              type="button"
               className="driver-details-back"
               onClick={() => navigate("/drivers")}
             >
@@ -254,7 +301,9 @@ function DriverDetailsPage({ onLogout }) {
             </button>
 
             <h1>
-              {driver.first_name} {driver.last_name}
+              {[driver.first_name, driver.last_name]
+                .filter(Boolean)
+                .join(" ") || "Kierowca"}
             </h1>
 
             <div className="driver-details-subtitle">
@@ -284,6 +333,7 @@ function DriverDetailsPage({ onLogout }) {
 
             {canManageDrivers && (
               <button
+                type="button"
                 className="driver-details-edit"
                 onClick={() => navigate(`/drivers/${driver.id}/edit`)}
               >
@@ -299,25 +349,27 @@ function DriverDetailsPage({ onLogout }) {
           <div className="driver-details-grid">
             <div className="driver-detail">
               <span className="driver-detail-label">Imię</span>
-
-              <span className="driver-detail-value">{driver.first_name}</span>
+              <span className="driver-detail-value">
+                {driver.first_name || "Nie podano"}
+              </span>
             </div>
 
             <div className="driver-detail">
               <span className="driver-detail-label">Nazwisko</span>
-
-              <span className="driver-detail-value">{driver.last_name}</span>
+              <span className="driver-detail-value">
+                {driver.last_name || "Nie podano"}
+              </span>
             </div>
 
             <div className="driver-detail">
               <span className="driver-detail-label">Numer telefonu</span>
-
-              <span className="driver-detail-value">{driver.phone_number}</span>
+              <span className="driver-detail-value">
+                {driver.phone_number || "Nie podano"}
+              </span>
             </div>
 
             <div className="driver-detail">
               <span className="driver-detail-label">Data zatrudnienia</span>
-
               <span className="driver-detail-value">
                 {formatDate(driver.hired_at)}
               </span>
@@ -329,7 +381,6 @@ function DriverDetailsPage({ onLogout }) {
           <div className="driver-license-header">
             <div>
               <h2>Prawo jazdy i uprawnienia</h2>
-
               <p>
                 Informacje o prawie jazdy oraz badaniach lekarskich kierowcy.
               </p>
@@ -339,9 +390,8 @@ function DriverDetailsPage({ onLogout }) {
           <div className="driver-details-grid">
             <div className="driver-detail">
               <span className="driver-detail-label">Numer prawa jazdy</span>
-
               <span className="driver-detail-value">
-                {driver.license_number}
+                {driver.license_number || "Nie podano"}
               </span>
             </div>
 
@@ -398,7 +448,6 @@ function DriverDetailsPage({ onLogout }) {
             <span className="driver-stat-label">
               Aktualnie przypisane pojazdy
             </span>
-
             <strong className="driver-stat-value">
               {activeAssignments.length}
             </strong>
@@ -406,7 +455,6 @@ function DriverDetailsPage({ onLogout }) {
 
           <div className="driver-stat-card">
             <span className="driver-stat-label">Pojazdy w historii</span>
-
             <strong className="driver-stat-value">
               {uniqueVehicleIds.size}
             </strong>
@@ -414,7 +462,6 @@ function DriverDetailsPage({ onLogout }) {
 
           <div className="driver-stat-card">
             <span className="driver-stat-label">Zakończone przypisania</span>
-
             <strong className="driver-stat-value">
               {historicalAssignments.length}
             </strong>
@@ -425,7 +472,6 @@ function DriverDetailsPage({ onLogout }) {
           <div className="driver-vehicles-header">
             <div>
               <h2>Aktualnie przypisane pojazdy</h2>
-
               <p>Pojazdy, do których kierowca jest aktualnie przypisany.</p>
             </div>
 
@@ -436,23 +482,24 @@ function DriverDetailsPage({ onLogout }) {
             <div className="driver-vehicles-list">
               {vehicles.map((vehicle) => (
                 <button
+                  type="button"
                   key={vehicle.id}
                   className="driver-vehicle-item"
                   onClick={() => navigate(`/vehicles/${vehicle.id}`)}
                 >
                   <div>
                     <span className="driver-vehicle-name">
-                      {vehicle.brand} {vehicle.model}
+                      {[vehicle.brand, vehicle.model]
+                        .filter(Boolean)
+                        .join(" ") || "Pojazd"}
                     </span>
 
                     <span className="driver-vehicle-registration">
-                      {vehicle.registration_number}
+                      {vehicle.registration_number || "Brak rejestracji"}
                     </span>
                   </div>
 
-                  <span
-                    className={`vehicle-status vehicle-status-${vehicle.status}`}
-                  >
+                  <span className={getStatusClass(vehicle.status)}>
                     {getStatusName(vehicle.status)}
                   </span>
                 </button>
@@ -469,7 +516,6 @@ function DriverDetailsPage({ onLogout }) {
           <div className="driver-history-header">
             <div>
               <h2>Historia pojazdów</h2>
-
               <p>Historia przypisań kierowcy do pojazdów.</p>
             </div>
 
@@ -480,14 +526,20 @@ function DriverDetailsPage({ onLogout }) {
             <div className="driver-history-list">
               {assignments.map((assignment) => (
                 <button
+                  type="button"
                   key={assignment.id}
                   className="driver-history-item"
-                  onClick={() => navigate(`/vehicles/${assignment.vehicle}`)}
+                  onClick={() => {
+                    if (assignment.vehicle) {
+                      navigate(`/vehicles/${assignment.vehicle}`);
+                    }
+                  }}
+                  disabled={!assignment.vehicle}
                 >
                   <div className="driver-history-main">
                     <div className="driver-history-title-row">
                       <span className="driver-history-name">
-                        {assignment.vehicle_name}
+                        {assignment.vehicle_name || "Nie podano pojazdu"}
                       </span>
 
                       {assignment.is_active && (
@@ -496,7 +548,8 @@ function DriverDetailsPage({ onLogout }) {
                     </div>
 
                     <span className="driver-history-registration">
-                      {assignment.vehicle_registration_number}
+                      {assignment.vehicle_registration_number ||
+                        "Brak rejestracji"}
                     </span>
 
                     {assignment.notes && (
@@ -509,7 +562,6 @@ function DriverDetailsPage({ onLogout }) {
                   <div className="driver-history-dates">
                     <div>
                       <span className="driver-history-date-label">Od</span>
-
                       <strong>{formatDate(assignment.start_date)}</strong>
                     </div>
 
@@ -517,7 +569,6 @@ function DriverDetailsPage({ onLogout }) {
 
                     <div>
                       <span className="driver-history-date-label">Do</span>
-
                       <strong>
                         {assignment.end_date
                           ? formatDate(assignment.end_date)

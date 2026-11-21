@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import "./AddUserPage.css";
 
 function AddUserPage({ onLogout }) {
   const navigate = useNavigate();
+  const { user, loadingUser } = useAuth();
 
   const [availableCompanies, setAvailableCompanies] = useState([]);
-
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -17,86 +18,113 @@ function AddUserPage({ onLogout }) {
     role: "member",
     companies: [],
   });
-
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const canManageUsers = user?.role === "admin";
+
   useEffect(() => {
+    if (loadingUser || !canManageUsers) {
+      if (!loadingUser) {
+        setLoadingCompanies(false);
+      }
+
+      return;
+    }
+
+    let active = true;
+
     const loadCompanies = async () => {
       try {
+        setLoadingCompanies(true);
+
         const response = await apiClient.get("companies/");
 
-        setAvailableCompanies(response.data);
-      } catch (err) {
-        console.error("Błąd pobierania spółek:", err);
+        if (!active) return;
 
+        const data = Array.isArray(response.data)
+          ? response.data
+          : response.data?.results || [];
+
+        setAvailableCompanies(data);
+      } catch (err) {
+        if (!active) return;
+
+        console.error("Błąd pobierania spółek:", err);
+        setAvailableCompanies([]);
         setError("Nie udało się pobrać listy spółek.");
       } finally {
-        setLoadingCompanies(false);
+        if (active) {
+          setLoadingCompanies(false);
+        }
       }
     };
 
     loadCompanies();
-  }, []);
+
+    return () => {
+      active = false;
+    };
+  }, [loadingUser, canManageUsers]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
 
     setError("");
 
-    if (name === "role") {
-      setFormData({
-        ...formData,
-        role: value,
-        companies: value === "admin" ? [] : formData.companies,
-      });
+    setFormData((currentData) => {
+      if (name === "role") {
+        return {
+          ...currentData,
+          role: value,
+          companies: value === "admin" ? [] : currentData.companies,
+        };
+      }
 
-      return;
-    }
-
-    setFormData({
-      ...formData,
-      [name]: value,
+      return {
+        ...currentData,
+        [name]: value,
+      };
     });
   };
 
   const handleCompanyToggle = (companyId) => {
     setError("");
 
-    const existingAccess = formData.companies.find(
-      (company) => Number(company.company_id) === Number(companyId),
-    );
+    setFormData((currentData) => {
+      const existingAccess = currentData.companies.find(
+        (company) => Number(company.company_id) === Number(companyId),
+      );
 
-    if (existingAccess) {
-      setFormData({
-        ...formData,
-        companies: formData.companies.filter(
-          (company) => Number(company.company_id) !== Number(companyId),
-        ),
-      });
+      if (existingAccess) {
+        return {
+          ...currentData,
+          companies: currentData.companies.filter(
+            (company) => Number(company.company_id) !== Number(companyId),
+          ),
+        };
+      }
 
-      return;
-    }
-
-    setFormData({
-      ...formData,
-      companies: [
-        ...formData.companies,
-        {
-          company_id: companyId,
-          role: "viewer",
-        },
-      ],
+      return {
+        ...currentData,
+        companies: [
+          ...currentData.companies,
+          {
+            company_id: companyId,
+            role: "viewer",
+          },
+        ],
+      };
     });
   };
 
   const handleCompanyRoleChange = (companyId, role) => {
     setError("");
 
-    setFormData({
-      ...formData,
-      companies: formData.companies.map((company) =>
+    setFormData((currentData) => ({
+      ...currentData,
+      companies: currentData.companies.map((company) =>
         Number(company.company_id) === Number(companyId)
           ? {
               ...company,
@@ -104,51 +132,30 @@ function AddUserPage({ onLogout }) {
             }
           : company,
       ),
-    });
+    }));
   };
 
-  const getBackendError = (data) => {
-    if (!data) {
-      return "Nie udało się dodać użytkownika.";
-    }
+  const getBackendError = (err) => {
+    const data = err.response?.data;
 
-    if (typeof data.detail === "string") {
-      return data.detail;
-    }
-
-    if (data.username?.[0]) {
-      return data.username[0];
-    }
-
-    if (data.email?.[0]) {
-      return data.email[0];
-    }
-
-    if (data.password?.[0]) {
-      return data.password[0];
-    }
-
-    if (data.confirm_password?.[0]) {
-      return data.confirm_password[0];
-    }
-
-    if (data.role?.[0]) {
-      return data.role[0];
-    }
-
-    if (data.companies?.[0]) {
-      return data.companies[0];
-    }
-
-    if (data.non_field_errors?.[0]) {
-      return data.non_field_errors[0];
-    }
+    if (!data) return "Nie udało się dodać użytkownika.";
+    if (typeof data === "string") return data;
+    if (typeof data.detail === "string") return data.detail;
+    if (data.username?.[0]) return data.username[0];
+    if (data.email?.[0]) return data.email[0];
+    if (data.password?.[0]) return data.password[0];
+    if (data.confirm_password?.[0]) return data.confirm_password[0];
+    if (data.role?.[0]) return data.role[0];
+    if (data.companies?.[0]) return data.companies[0];
+    if (data.non_field_errors?.[0]) return data.non_field_errors[0];
 
     return "Nie udało się dodać użytkownika.";
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (saving) return;
 
     setError("");
 
@@ -167,31 +174,50 @@ function AddUserPage({ onLogout }) {
       return;
     }
 
-    setSaving(true);
-
     try {
-      const dataToSend = {
+      setSaving(true);
+
+      await apiClient.post("admin/users/", {
         username: formData.username.trim(),
         email: formData.email.trim(),
         password: formData.password,
         confirm_password: formData.confirm_password,
         role: formData.role,
         companies: formData.role === "admin" ? [] : formData.companies,
-      };
-
-      await apiClient.post("admin/users/", dataToSend);
+      });
 
       navigate("/admin-panel/users");
     } catch (err) {
       console.error("Błąd dodawania użytkownika:", err);
-
-      console.error("Odpowiedź backendu:", err.response?.data);
-
-      setError(getBackendError(err.response?.data));
+      setError(getBackendError(err));
     } finally {
       setSaving(false);
     }
   };
+
+  if (loadingUser) {
+    return (
+      <div className="dashboard-layout">
+        <Sidebar onLogout={onLogout} />
+        <main className="dashboard-content">
+          <p>Ładowanie...</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (!canManageUsers) {
+    return (
+      <div className="dashboard-layout">
+        <Sidebar onLogout={onLogout} />
+        <main className="dashboard-content">
+          <p className="add-user-error">
+            Nie masz uprawnień do dodawania użytkowników.
+          </p>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-layout">
@@ -200,6 +226,7 @@ function AddUserPage({ onLogout }) {
       <main className="dashboard-content">
         <div className="add-user-header">
           <button
+            type="button"
             className="add-user-back"
             onClick={() => navigate("/admin-panel/users")}
           >
@@ -207,7 +234,6 @@ function AddUserPage({ onLogout }) {
           </button>
 
           <h1>Dodaj użytkownika</h1>
-
           <p>Utwórz konto i określ jego uprawnienia w organizacji.</p>
         </div>
 
@@ -216,7 +242,6 @@ function AddUserPage({ onLogout }) {
             <div className="add-user-grid">
               <div className="add-user-field">
                 <label htmlFor="username">Nazwa użytkownika *</label>
-
                 <input
                   id="username"
                   name="username"
@@ -224,13 +249,13 @@ function AddUserPage({ onLogout }) {
                   value={formData.username}
                   onChange={handleChange}
                   autoComplete="off"
+                  disabled={saving}
                   required
                 />
               </div>
 
               <div className="add-user-field">
                 <label htmlFor="email">E-mail</label>
-
                 <input
                   id="email"
                   name="email"
@@ -238,12 +263,12 @@ function AddUserPage({ onLogout }) {
                   value={formData.email}
                   onChange={handleChange}
                   autoComplete="off"
+                  disabled={saving}
                 />
               </div>
 
               <div className="add-user-field">
                 <label htmlFor="password">Hasło startowe *</label>
-
                 <input
                   id="password"
                   name="password"
@@ -251,13 +276,13 @@ function AddUserPage({ onLogout }) {
                   value={formData.password}
                   onChange={handleChange}
                   autoComplete="new-password"
+                  disabled={saving}
                   required
                 />
               </div>
 
               <div className="add-user-field">
                 <label htmlFor="confirm_password">Powtórz hasło *</label>
-
                 <input
                   id="confirm_password"
                   name="confirm_password"
@@ -265,21 +290,21 @@ function AddUserPage({ onLogout }) {
                   value={formData.confirm_password}
                   onChange={handleChange}
                   autoComplete="new-password"
+                  disabled={saving}
                   required
                 />
               </div>
 
               <div className="add-user-field">
                 <label htmlFor="role">Rola w organizacji *</label>
-
                 <select
                   id="role"
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
+                  disabled={saving}
                 >
                   <option value="member">Użytkownik</option>
-
                   <option value="admin">Administrator</option>
                 </select>
               </div>
@@ -289,7 +314,6 @@ function AddUserPage({ onLogout }) {
               <div className="add-user-companies">
                 <div className="add-user-section-header">
                   <h2>Dostęp do spółek</h2>
-
                   <p>Wybierz spółki, do których użytkownik ma mieć dostęp.</p>
                 </div>
 
@@ -310,9 +334,9 @@ function AddUserPage({ onLogout }) {
                               type="checkbox"
                               checked={Boolean(access)}
                               onChange={() => handleCompanyToggle(company.id)}
+                              disabled={saving}
                             />
-
-                            <span>{company.name}</span>
+                            <span>{company.name || "Bez nazwy"}</span>
                           </label>
 
                           {access && (
@@ -324,9 +348,9 @@ function AddUserPage({ onLogout }) {
                                   event.target.value,
                                 )
                               }
+                              disabled={saving}
                             >
                               <option value="viewer">Tylko odczyt</option>
-
                               <option value="editor">Odczyt i edycja</option>
                             </select>
                           )}
@@ -347,13 +371,18 @@ function AddUserPage({ onLogout }) {
               </div>
             )}
 
-            {error && <p className="add-user-error">{error}</p>}
+            {error && (
+              <p className="add-user-error" role="alert">
+                {error}
+              </p>
+            )}
 
             <div className="add-user-actions">
               <button
                 type="button"
                 className="add-user-cancel"
                 onClick={() => navigate("/admin-panel/users")}
+                disabled={saving}
               >
                 Anuluj
               </button>

@@ -1,520 +1,550 @@
 .driver-details-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 30px;
-    margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 30px;
+  margin-bottom: 30px;
 }
 
 .driver-details-header h1 {
-    margin: 12px 0 6px;
-    font-size: 32px;
-    color: #1A1A1A;
+  margin: 12px 0 6px;
+  font-size: 32px;
+  color: #1A1A1A;
 }
 
 .driver-details-back {
-    padding: 0;
-    border: none;
-    background: none;
-    font-family: 'Poppins', sans-serif;
-    font-size: 13px;
-    color: #777777;
-    cursor: pointer;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: "Poppins", sans-serif;
+  font-size: 13px;
+  color: #777777;
+  cursor: pointer;
 }
 
 .driver-details-back:hover {
-    color: #1A1A1A;
+  color: #1A1A1A;
 }
 
 .driver-details-subtitle {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 0;
-    font-size: 14px;
-    color: #666666;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 14px;
+  color: #666666;
 }
 
 .driver-profile-active,
 .driver-profile-inactive {
-    display: inline-flex;
-    align-items: center;
-    padding: 5px 9px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .driver-profile-active {
-    background-color: #EEF8F1;
-    color: #287A43;
+  background-color: #EEF8F1;
+  color: #287A43;
 }
 
 .driver-profile-inactive {
-    background-color: #F2F2F2;
-    color: #707070;
+  background-color: #F2F2F2;
+  color: #707070;
+}
+
+.driver-details-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.driver-details-edit,
+.driver-details-export {
+  padding: 11px 18px;
+  border-radius: 7px;
+  font-family: "Poppins", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.2s ease;
 }
 
 .driver-details-edit {
-    padding: 11px 18px;
-    border: none;
-    border-radius: 7px;
-    background-color: #1A1A1A;
-    color: #FFFFFF;
-    font-family: 'Poppins', sans-serif;
-    font-size: 13px;
-    cursor: pointer;
+  border: none;
+  background-color: #1A1A1A;
+  color: #FFFFFF;
 }
 
 .driver-details-edit:hover {
-    opacity: 0.85;
+  background-color: #333333;
+}
+
+.driver-details-export {
+  border: 1px solid #1A1A1A;
+  background-color: transparent;
+  color: #1A1A1A;
+}
+
+.driver-details-export:hover:not(:disabled) {
+  background-color: #1A1A1A;
+  color: #FFFFFF;
+}
+
+.driver-details-export:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .driver-details-error {
-    color: #A33A3A;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid #E2C2BE;
+  border-radius: 7px;
+  background-color: #F7E7E5;
+  color: #8A3F38;
+  font-size: 13px;
 }
 
 .driver-details-card,
 .driver-license-card,
 .driver-vehicles-card,
 .driver-history-card {
-    padding: 28px;
-    border: 1px solid #E2DDD8;
-    border-radius: 10px;
-    background-color: #FAF5F2;
+  padding: 28px;
+  border: 1px solid #E2DDD8;
+  border-radius: 10px;
+  background-color: #FAF5F2;
 }
 
 .driver-license-card,
 .driver-vehicles-card,
 .driver-history-card {
-    margin-top: 25px;
+  margin-top: 25px;
 }
 
 .driver-details-card h2,
 .driver-license-card h2,
 .driver-vehicles-card h2,
 .driver-history-card h2 {
-    margin: 0;
-    font-size: 20px;
-    color: #1A1A1A;
+  margin: 0;
+  font-size: 20px;
+  color: #1A1A1A;
 }
 
 .driver-details-card > h2 {
-    margin-bottom: 25px;
+  margin-bottom: 25px;
 }
 
 .driver-details-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    column-gap: 60px;
-    row-gap: 25px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 60px;
+  row-gap: 25px;
 }
 
 .driver-detail {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #E2DDD8;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 5px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #E2DDD8;
 }
 
 .driver-detail-label {
-    font-size: 12px;
-    color: #888888;
+  font-size: 12px;
+  color: #888888;
 }
 
 .driver-detail-value {
-    font-size: 15px;
-    font-weight: 500;
-    color: #1A1A1A;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  font-weight: 500;
+  color: #1A1A1A;
 }
 
 .driver-license-header {
-    margin-bottom: 25px;
+  margin-bottom: 25px;
 }
 
 .driver-license-header h2 {
-    margin-bottom: 5px;
+  margin-bottom: 5px;
 }
 
 .driver-license-header p {
-    margin: 0;
-    font-size: 13px;
-    color: #777777;
+  margin: 0;
+  font-size: 13px;
+  color: #777777;
 }
 
 .driver-license-categories {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
-    margin-top: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 2px;
 }
 
 .driver-license-category {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 5px 9px;
-    border-radius: 6px;
-    background-color: #1A1A1A;
-    color: #FFFFFF;
-    font-size: 11px;
-    font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background-color: #1A1A1A;
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .driver-expiry-status {
-    align-self: flex-start;
-    margin-top: 4px;
-    padding: 5px 9px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 600;
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .driver-expiry-valid {
-    background-color: #EEF8F1;
-    color: #287A43;
+  background-color: #EEF8F1;
+  color: #287A43;
 }
 
 .driver-expiry-warning {
-    background-color: #FFF5E6;
-    color: #9A6500;
+  background-color: #FFF5E6;
+  color: #9A6500;
 }
 
 .driver-expiry-expired {
-    background-color: #FFF1F0;
-    color: #B42318;
+  background-color: #FFF1F0;
+  color: #B42318;
 }
 
 .driver-expiry-none {
-    background-color: #F2F2F2;
-    color: #707070;
+  background-color: #F2F2F2;
+  color: #707070;
 }
 
 .driver-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    margin-top: 25px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 15px;
+  margin-top: 25px;
 }
 
 .driver-stat-card {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 20px;
-    border: 1px solid #E2DDD8;
-    border-radius: 10px;
-    background-color: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid #E2DDD8;
+  border-radius: 10px;
+  background-color: #FFFFFF;
 }
 
 .driver-stat-label {
-    font-size: 12px;
-    color: #777777;
+  font-size: 12px;
+  color: #777777;
 }
 
 .driver-stat-value {
-    font-size: 26px;
-    font-weight: 600;
-    color: #1A1A1A;
+  font-size: 26px;
+  font-weight: 600;
+  color: #1A1A1A;
 }
 
 .driver-vehicles-header,
 .driver-history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 20px;
-    margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 20px;
 }
 
 .driver-vehicles-header h2,
 .driver-history-header h2 {
-    margin-bottom: 5px;
+  margin-bottom: 5px;
 }
 
 .driver-vehicles-header p,
 .driver-history-header p {
-    margin: 0;
-    font-size: 13px;
-    color: #777777;
+  margin: 0;
+  font-size: 13px;
+  color: #777777;
 }
 
 .driver-vehicles-header > span,
 .driver-history-header > span {
-    flex-shrink: 0;
-    font-size: 12px;
-    color: #777777;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #777777;
 }
 
 .driver-vehicles-list,
 .driver-history-list {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
+}
+
+.driver-vehicle-item,
+.driver-history-item {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #E2DDD8;
+  background: transparent;
+  font-family: "Poppins", sans-serif;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    padding 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.driver-vehicle-item:first-child,
+.driver-history-item:first-child {
+  border-top: 1px solid #E2DDD8;
+}
+
+.driver-vehicle-item:hover,
+.driver-history-item:hover:not(:disabled) {
+  padding-left: 10px;
+  padding-right: 10px;
+  background-color: #F5F1EA;
 }
 
 .driver-vehicle-item {
-    width: 100%;
-    padding: 17px 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-    border: none;
-    border-bottom: 1px solid #E2DDD8;
-    background: transparent;
-    font-family: 'Poppins', sans-serif;
-    text-align: left;
-    cursor: pointer;
-    transition:
-        padding 0.15s ease,
-        background-color 0.15s ease;
-}
-
-.driver-vehicle-item:first-child {
-    border-top: 1px solid #E2DDD8;
-}
-
-.driver-vehicle-item:hover {
-    padding-left: 10px;
-    padding-right: 10px;
-    background-color: #F5F1EA;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 17px 0;
 }
 
 .driver-vehicle-item > div {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 4px;
 }
 
 .driver-vehicle-name {
-    font-size: 14px;
-    font-weight: 500;
-    color: #1A1A1A;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1A1A1A;
 }
 
 .driver-vehicle-registration {
-    font-size: 12px;
-    color: #777777;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  color: #777777;
 }
 
 .driver-vehicles-empty {
-    margin: 0;
-    padding: 15px 0;
-    font-size: 13px;
-    color: #777777;
+  margin: 0;
+  padding: 15px 0;
+  font-size: 13px;
+  color: #777777;
 }
 
 .driver-history-item {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 25px;
-    padding: 17px 0;
-    border: none;
-    border-bottom: 1px solid #E2DDD8;
-    background: transparent;
-    font-family: 'Poppins', sans-serif;
-    text-align: left;
-    cursor: pointer;
-    transition:
-        padding 0.15s ease,
-        background-color 0.15s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 25px;
+  padding: 17px 0;
 }
 
-.driver-history-item:first-child {
-    border-top: 1px solid #E2DDD8;
-}
-
-.driver-history-item:hover {
-    padding-left: 10px;
-    padding-right: 10px;
-    background-color: #F5F1EA;
+.driver-history-item:disabled {
+  cursor: default;
+  opacity: 0.75;
 }
 
 .driver-history-main {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 4px;
 }
 
 .driver-history-title-row {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
 }
 
 .driver-history-name {
-    font-size: 14px;
-    font-weight: 500;
-    color: #1A1A1A;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1A1A1A;
 }
 
 .driver-history-active {
-    padding: 4px 8px;
-    border-radius: 999px;
-    background-color: #EEF8F1;
-    color: #287A43;
-    font-size: 10px;
-    font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background-color: #EEF8F1;
+  color: #287A43;
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .driver-history-registration,
 .driver-history-notes {
-    font-size: 12px;
-    color: #777777;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  color: #777777;
 }
 
 .driver-history-dates {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 15px;
 }
 
 .driver-history-dates > div {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .driver-history-date-label {
-    font-size: 10px;
-    color: #888888;
+  font-size: 10px;
+  color: #888888;
 }
 
 .driver-history-dates strong {
-    font-size: 12px;
-    font-weight: 500;
-    color: #1A1A1A;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1A1A1A;
 }
 
 .driver-history-arrow {
-    color: #AAAAAA;
-    font-size: 14px;
+  color: #AAAAAA;
+  font-size: 14px;
 }
 
 .vehicle-status {
-    display: inline-flex;
-    align-items: center;
-    padding: 5px 9px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .vehicle-status-active {
-    background-color: #EEF8F1;
-    color: #287A43;
+  background-color: #EEF8F1;
+  color: #287A43;
 }
 
 .vehicle-status-maintenance {
-    background-color: #FFF5E6;
-    color: #9A6500;
+  background-color: #FFF5E6;
+  color: #9A6500;
 }
 
-.vehicle-status-inactive {
-    background-color: #F2F2F2;
-    color: #707070;
-}
-
-.driver-details-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.driver-details-export {
-    padding: 12px 20px;
-    border: 1px solid #1A1A1A;
-    border-radius: 6px;
-    background-color: transparent;
-    color: #1A1A1A;
-    font-family: 'Poppins', sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: 0.2s ease;
-}
-
-.driver-details-export:hover:not(:disabled) {
-    background-color: #1A1A1A;
-    color: #FFFFFF;
-}
-
-.driver-details-export:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-@media (max-width: 768px) {
-    .driver-details-header-actions {
-        flex-wrap: wrap;
-    }
+.vehicle-status-inactive,
+.vehicle-status-unknown {
+  background-color: #F2F2F2;
+  color: #707070;
 }
 
 @media (max-width: 900px) {
-    .driver-details-card,
-    .driver-license-card,
-    .driver-vehicles-card,
-    .driver-history-card {
-        padding: 20px;
-    }
+  .driver-details-card,
+  .driver-license-card,
+  .driver-vehicles-card,
+  .driver-history-card {
+    padding: 20px;
+  }
 
-    .driver-details-header {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 20px;
-    }
+  .driver-details-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 20px;
+  }
 
-    .driver-details-grid {
-        grid-template-columns: 1fr;
-        row-gap: 18px;
-    }
+  .driver-details-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
 
-    .driver-details-edit {
-        width: 100%;
-    }
+  .driver-details-grid {
+    grid-template-columns: 1fr;
+    row-gap: 18px;
+  }
 
-    .driver-stats-grid {
-        grid-template-columns: 1fr;
-    }
+  .driver-stats-grid {
+    grid-template-columns: 1fr;
+  }
 
-    .driver-vehicles-header,
-    .driver-history-header {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 6px;
-    }
+  .driver-vehicles-header,
+  .driver-history-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
 
-    .driver-history-item {
-        flex-direction: column;
-        align-items: flex-start;
-    }
+  .driver-history-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 
-    .driver-history-dates {
-        width: 100%;
-    }
+  .driver-history-dates {
+    width: 100%;
+  }
 }
 
-@media (max-width: 600px) {
-    .driver-details-header h1 {
-        font-size: 27px;
-    }
+@media (max-width: 700px) {
+  .driver-details-header-actions {
+    flex-direction: column;
+  }
 
-    .driver-details-subtitle {
-        align-items: flex-start;
-        flex-direction: column;
-    }
+  .driver-details-export,
+  .driver-details-edit {
+    width: 100%;
+  }
 
-    .driver-vehicle-item {
-        align-items: flex-start;
-        flex-direction: column;
-    }
+  .driver-details-subtitle {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 
-    .driver-history-dates {
-        justify-content: space-between;
-    }
+  .driver-vehicle-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .driver-history-dates {
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 480px) {
+  .driver-details-header h1 {
+    font-size: 27px;
+  }
+
+  .driver-details-card,
+  .driver-license-card,
+  .driver-vehicles-card,
+  .driver-history-card {
+    padding: 18px;
+  }
+
+  .driver-history-dates {
+    gap: 10px;
+  }
+
+  .driver-history-dates strong {
+    font-size: 11px;
+  }
 }

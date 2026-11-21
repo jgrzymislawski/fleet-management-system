@@ -1,105 +1,121 @@
 import { useEffect, useState } from "react";
-
 import { useNavigate } from "react-router-dom";
-
 import Sidebar from "./sidebar/Sidebar";
-
 import apiClient from "../api/client";
-
 import { useAuth } from "../context/AuthContext";
-
 import "./AlertsPage.css";
 
 function AlertsPage({ onLogout }) {
   const navigate = useNavigate();
-
   const { user } = useAuth();
 
   const [alerts, setAlerts] = useState([]);
-
   const [filter, setFilter] = useState("all");
-
   const [error, setError] = useState(null);
-
   const [loading, setLoading] = useState(true);
-
   const [exportingXlsx, setExportingXlsx] = useState(false);
-
   const [exportingPdf, setExportingPdf] = useState(false);
-
   const [totalCount, setTotalCount] = useState(0);
-
   const [vehicleCount, setVehicleCount] = useState(0);
-
   const [driverCount, setDriverCount] = useState(0);
-
   const [currentPage, setCurrentPage] = useState(1);
-
   const [totalPages, setTotalPages] = useState(1);
 
   const pageSize = 20;
-
   const canViewDriverAlerts = user?.role === "admin";
 
-  const loadAlerts = async (page = currentPage, selectedFilter = filter) => {
-    try {
-      setLoading(true);
-
-      setError(null);
-
-      const response = await apiClient.get("alerts/", {
-        params: {
-          category: selectedFilter,
-          page,
-          page_size: pageSize,
-        },
-      });
-
-      setAlerts(response.data.results || []);
-
-      setTotalCount(response.data.total_count || 0);
-
-      setVehicleCount(response.data.vehicle_count || 0);
-
-      setDriverCount(response.data.driver_count || 0);
-
-      setTotalPages(response.data.total_pages || 1);
-
-      if (response.data.page && response.data.page !== currentPage) {
-        setCurrentPage(response.data.page);
-      }
-    } catch (err) {
-      console.error("Błąd pobierania alertów:", err);
-
-      console.error("Odpowiedź backendu:", err.response?.data);
-
-      setError("Nie udało się pobrać alertów.");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (!canViewDriverAlerts && filter === "drivers") {
+      setFilter("all");
+      setCurrentPage(1);
     }
-  };
+  }, [canViewDriverAlerts, filter]);
 
   useEffect(() => {
-    loadAlerts(currentPage, filter);
+    let active = true;
+
+    const loadAlerts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await apiClient.get("alerts/", {
+          params: {
+            category: filter,
+            page: currentPage,
+            page_size: pageSize,
+          },
+        });
+
+        if (!active) return;
+
+        const data = response.data || {};
+
+        setAlerts(Array.isArray(data.results) ? data.results : []);
+        setTotalCount(Number(data.total_count) || 0);
+        setVehicleCount(Number(data.vehicle_count) || 0);
+        setDriverCount(Number(data.driver_count) || 0);
+        setTotalPages(Math.max(1, Number(data.total_pages) || 1));
+
+        if (
+          data.page &&
+          Number(data.page) !== currentPage &&
+          Number(data.page) > 0
+        ) {
+          setCurrentPage(Number(data.page));
+        }
+      } catch (err) {
+        if (!active) return;
+
+        console.error("Błąd pobierania alertów:", err);
+        setAlerts([]);
+        setTotalCount(0);
+        setVehicleCount(0);
+        setDriverCount(0);
+        setTotalPages(1);
+        setError("Nie udało się pobrać alertów.");
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadAlerts();
+
+    return () => {
+      active = false;
+    };
   }, [currentPage, filter]);
 
   const formatDate = (date) => {
-    if (!date) {
+    if (!date) return "-";
+
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
       return "-";
     }
 
-    return new Date(date).toLocaleDateString("pl-PL");
+    return parsedDate.toLocaleDateString("pl-PL");
   };
 
   const handleFilterChange = (newFilter) => {
-    setCurrentPage(1);
+    if (newFilter === "drivers" && !canViewDriverAlerts) {
+      return;
+    }
 
+    setCurrentPage(1);
     setFilter(newFilter);
   };
 
   const handleAlertClick = (alert) => {
+    if (!alert?.targetId) return;
+
     if (alert.category === "driver") {
-      navigate(`/drivers/${alert.targetId}`);
+      if (canViewDriverAlerts) {
+        navigate(`/drivers/${alert.targetId}`);
+      }
 
       return;
     }
@@ -108,17 +124,25 @@ function AlertsPage({ onLogout }) {
   };
 
   const getExportFilename = (response, fallback) => {
-    const contentDisposition = response.headers["content-disposition"];
+    const contentDisposition = response.headers?.["content-disposition"];
 
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-
-      if (filenameMatch && filenameMatch[1]) {
-        return filenameMatch[1];
-      }
+    if (!contentDisposition) {
+      return fallback;
     }
 
-    return fallback;
+    const filenameMatch = contentDisposition.match(
+      /filename\*?=(?:UTF-8''|")?([^";]+)/i,
+    );
+
+    if (!filenameMatch?.[1]) {
+      return fallback;
+    }
+
+    try {
+      return decodeURIComponent(filenameMatch[1].replace(/"/g, ""));
+    } catch {
+      return filenameMatch[1].replace(/"/g, "");
+    }
   };
 
   const downloadFile = (response, mimeType, fallbackFilename) => {
@@ -127,26 +151,26 @@ function AlertsPage({ onLogout }) {
     });
 
     const downloadUrl = window.URL.createObjectURL(blob);
-
     const link = document.createElement("a");
 
     link.href = downloadUrl;
-
     link.download = getExportFilename(response, fallbackFilename);
 
     document.body.appendChild(link);
-
     link.click();
-
     link.remove();
 
     window.URL.revokeObjectURL(downloadUrl);
   };
 
   const handleExportXlsx = async () => {
+    if (totalCount === 0) {
+      setError("Brak alertów do wyeksportowania.");
+      return;
+    }
+
     try {
       setExportingXlsx(true);
-
       setError(null);
 
       const response = await apiClient.post(
@@ -161,14 +185,11 @@ function AlertsPage({ onLogout }) {
 
       downloadFile(
         response,
-        "application/" +
-          "vnd.openxmlformats-officedocument." +
-          "spreadsheetml.sheet",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "flotivo-alerty.xlsx",
       );
     } catch (err) {
       console.error("Błąd eksportu alertów:", err);
-
       setError("Nie udało się wyeksportować alertów.");
     } finally {
       setExportingXlsx(false);
@@ -176,9 +197,13 @@ function AlertsPage({ onLogout }) {
   };
 
   const handleExportPdf = async () => {
+    if (totalCount === 0) {
+      setError("Brak alertów do wygenerowania raportu.");
+      return;
+    }
+
     try {
       setExportingPdf(true);
-
       setError(null);
 
       const response = await apiClient.post(
@@ -194,7 +219,6 @@ function AlertsPage({ onLogout }) {
       downloadFile(response, "application/pdf", "flotivo-alerty.pdf");
     } catch (err) {
       console.error("Błąd eksportu raportu alertów:", err);
-
       setError("Nie udało się wygenerować raportu alertów.");
     } finally {
       setExportingPdf(false);
@@ -202,15 +226,36 @@ function AlertsPage({ onLogout }) {
   };
 
   const handlePreviousPage = () => {
-    if (currentPage > 1) {
+    if (currentPage > 1 && !loading) {
       setCurrentPage((page) => page - 1);
     }
   };
 
   const handleNextPage = () => {
-    if (currentPage < totalPages) {
+    if (currentPage < totalPages && !loading) {
       setCurrentPage((page) => page + 1);
     }
+  };
+
+  const getAlertCategoryName = (category) =>
+    category === "driver" ? "Kierowca" : "Pojazd";
+
+  const getAlertCategoryClass = (category) =>
+    category === "driver"
+      ? "alert-category alert-category-driver"
+      : "alert-category alert-category-vehicle";
+
+  const getAlertStatusClass = (alert) => {
+    const className = alert?.status?.className;
+
+    if (
+      className === "alert-status-warning" ||
+      className === "alert-status-expired"
+    ) {
+      return className;
+    }
+
+    return "alert-status-warning";
   };
 
   return (
@@ -221,6 +266,7 @@ function AlertsPage({ onLogout }) {
         <div className="alerts-header">
           <div>
             <button
+              type="button"
               className="alerts-back"
               onClick={() => navigate("/dashboard")}
             >
@@ -240,7 +286,7 @@ function AlertsPage({ onLogout }) {
               type="button"
               className="alerts-export-button"
               onClick={handleExportXlsx}
-              disabled={exportingXlsx}
+              disabled={exportingXlsx || loading || totalCount === 0}
             >
               {exportingXlsx ? "Eksportowanie..." : "Eksportuj XLSX"}
             </button>
@@ -249,14 +295,18 @@ function AlertsPage({ onLogout }) {
               type="button"
               className="alerts-export-button alerts-export-pdf"
               onClick={handleExportPdf}
-              disabled={exportingPdf}
+              disabled={exportingPdf || loading || totalCount === 0}
             >
               {exportingPdf ? "Generowanie..." : "Eksportuj raport PDF"}
             </button>
           </div>
         </div>
 
-        {error && <p className="alerts-error">{error}</p>}
+        {error && (
+          <div className="alerts-error" role="alert">
+            {error}
+          </div>
+        )}
 
         <div className="alerts-toolbar">
           <div className="alerts-filters">
@@ -264,7 +314,7 @@ function AlertsPage({ onLogout }) {
               type="button"
               className={
                 filter === "all"
-                  ? "alerts-filter " + "alerts-filter-active"
+                  ? "alerts-filter alerts-filter-active"
                   : "alerts-filter"
               }
               onClick={() => handleFilterChange("all")}
@@ -277,7 +327,7 @@ function AlertsPage({ onLogout }) {
               type="button"
               className={
                 filter === "vehicles"
-                  ? "alerts-filter " + "alerts-filter-active"
+                  ? "alerts-filter alerts-filter-active"
                   : "alerts-filter"
               }
               onClick={() => handleFilterChange("vehicles")}
@@ -291,7 +341,7 @@ function AlertsPage({ onLogout }) {
                 type="button"
                 className={
                   filter === "drivers"
-                    ? "alerts-filter " + "alerts-filter-active"
+                    ? "alerts-filter alerts-filter-active"
                     : "alerts-filter"
                 }
                 onClick={() => handleFilterChange("drivers")}
@@ -302,7 +352,9 @@ function AlertsPage({ onLogout }) {
             )}
           </div>
 
-          <div className="alerts-count">Na tej stronie: {alerts.length}</div>
+          <div className="alerts-count">
+            {loading ? "Ładowanie..." : `Na tej stronie: ${alerts.length}`}
+          </div>
         </div>
 
         {loading ? (
@@ -312,36 +364,38 @@ function AlertsPage({ onLogout }) {
             <div className="alerts-list">
               {alerts.map((alert) => (
                 <button
+                  type="button"
                   key={alert.id}
                   className="alert-item"
                   onClick={() => handleAlertClick(alert)}
+                  disabled={!alert.targetId}
                 >
                   <div className="alert-item-main">
                     <div className="alert-name-row">
-                      <span className="alert-vehicle-name">{alert.name}</span>
+                      <span className="alert-vehicle-name">
+                        {alert.name || "Brak danych"}
+                      </span>
 
-                      <span
-                        className={
-                          alert.category === "driver"
-                            ? "alert-category " + "alert-category-driver"
-                            : "alert-category " + "alert-category-vehicle"
-                        }
-                      >
-                        {alert.category === "driver" ? "Kierowca" : "Pojazd"}
+                      <span className={getAlertCategoryClass(alert.category)}>
+                        {getAlertCategoryName(alert.category)}
                       </span>
                     </div>
 
                     <span className="alert-registration">
-                      {alert.secondary}
+                      {alert.secondary || "Brak dodatkowych danych"}
                     </span>
                   </div>
 
-                  <div className="alert-type">{alert.type}</div>
+                  <div className="alert-type">
+                    {alert.type || "Brak typu alertu"}
+                  </div>
 
                   <div className="alert-date">{formatDate(alert.date)}</div>
 
-                  <span className={`alert-status ${alert.status.className}`}>
-                    {alert.status.text}
+                  <span
+                    className={`alert-status ${getAlertStatusClass(alert)}`}
+                  >
+                    {alert.status?.text || "Wymaga uwagi"}
                   </span>
                 </button>
               ))}

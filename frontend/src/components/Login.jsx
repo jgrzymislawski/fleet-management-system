@@ -1,50 +1,93 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
 import apiClient from "../api/client";
 import { useAuth } from "../context/AuthContext";
-
 import cars from "../assets/cars.jpg";
-
 import "./Login.css";
 
 function Login({ onLoginSuccess }) {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
-
   const { loadUser } = useAuth();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleUsernameChange = (event) => {
+    setUsername(event.target.value);
+
+    if (error) {
+      setError("");
+    }
+  };
+
+  const handlePasswordChange = (event) => {
+    setPassword(event.target.value);
+
+    if (error) {
+      setError("");
+    }
+  };
+
+  const getLoginError = (err) => {
+    if (!err.response) {
+      return "Nie udało się połączyć z serwerem. Spróbuj ponownie.";
+    }
+
+    if (err.response.status === 401 || err.response.status === 400) {
+      return "Nieprawidłowy login lub hasło.";
+    }
+
+    if (err.response.status >= 500) {
+      return "Wystąpił błąd serwera. Spróbuj ponownie później.";
+    }
+
+    return "Nie udało się zalogować. Spróbuj ponownie.";
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
     if (loading) {
       return;
     }
 
-    setError(null);
-    setLoading(true);
+    const normalizedUsername = username.trim();
+
+    if (!normalizedUsername || !password) {
+      setError("Wprowadź login i hasło.");
+      return;
+    }
 
     try {
+      setLoading(true);
+      setError("");
+
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+
       const response = await apiClient.post("token/", {
-        username,
+        username: normalizedUsername,
         password,
       });
 
-      localStorage.setItem("access_token", response.data.access);
+      if (!response.data?.access || !response.data?.refresh) {
+        throw new Error("Brak tokenów uwierzytelniających.");
+      }
 
+      localStorage.setItem("access_token", response.data.access);
       localStorage.setItem("refresh_token", response.data.refresh);
 
       await loadUser();
-
       onLoginSuccess();
     } catch (err) {
-      console.error("Błąd logowania:", err.response?.status);
+      console.error("Błąd logowania:", err);
 
-      setError("Nieprawidłowy login lub hasło.");
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+
+      setError(getLoginError(err));
     } finally {
       setLoading(false);
     }
@@ -57,12 +100,11 @@ function Login({ onLoginSuccess }) {
         backgroundImage: `url(${cars})`,
       }}
     >
-      <div className="login-overlay"></div>
+      <div className="login-overlay" />
 
       <main className="login-card">
         <div className="login-brand">
           <span className="login-brand-name">Flotivo</span>
-
           <span className="login-brand-description">
             System zarządzania flotą
           </span>
@@ -70,7 +112,6 @@ function Login({ onLoginSuccess }) {
 
         <div className="login-heading">
           <h1>Zaloguj się</h1>
-
           <p>Wprowadź dane dostępowe do swojego konta.</p>
         </div>
 
@@ -83,13 +124,13 @@ function Login({ onLoginSuccess }) {
               name="username"
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={handleUsernameChange}
               placeholder="Wprowadź login"
               autoComplete="username"
               autoCapitalize="none"
               spellCheck={false}
-              required
               disabled={loading}
+              required
             />
           </div>
 
@@ -101,11 +142,11 @@ function Login({ onLoginSuccess }) {
               name="password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={handlePasswordChange}
               placeholder="Wprowadź hasło"
               autoComplete="current-password"
-              required
               disabled={loading}
+              required
             />
           </div>
 

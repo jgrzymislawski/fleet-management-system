@@ -11,27 +11,47 @@ function StatisticsPage({ onLogout }) {
   const [vehicleSearch, setVehicleSearch] = useState("");
   const [showVehicleFilter, setShowVehicleFilter] = useState(false);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [exportingPdf, setExportingPdf] = useState(false);
 
   const vehicleFilterRef = useRef(null);
 
   useEffect(() => {
+    let active = true;
+
     const loadData = async () => {
       try {
+        setLoading(true);
+        setError(null);
+
         const [vehiclesData, serviceData] = await Promise.all([
           fetchAllPages(apiClient, "vehicles/"),
           fetchAllPages(apiClient, "service-records/"),
         ]);
 
-        setVehicles(vehiclesData);
-        setServiceRecords(serviceData);
+        if (!active) return;
+
+        setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
+        setServiceRecords(Array.isArray(serviceData) ? serviceData : []);
       } catch (err) {
+        if (!active) return;
+
         console.error("Błąd pobierania danych statystyk:", err);
+        setVehicles([]);
+        setServiceRecords([]);
         setError("Nie udało się pobrać danych do statystyk.");
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
     loadData();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -44,30 +64,42 @@ function StatisticsPage({ onLogout }) {
       }
     };
 
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setShowVehicleFilter(false);
+      }
+    };
+
     document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, []);
 
   const normalizedVehicleSearch = vehicleSearch.toLowerCase().trim();
 
-  const visibleVehicles = vehicles.filter((vehicle) => {
-    if (!normalizedVehicleSearch) {
-      return true;
-    }
+  const visibleVehicles = useMemo(() => {
+    return vehicles.filter((vehicle) => {
+      if (!normalizedVehicleSearch) {
+        return true;
+      }
 
-    const brand = vehicle.brand?.toLowerCase() || "";
-    const model = vehicle.model?.toLowerCase() || "";
-    const registration = vehicle.registration_number?.toLowerCase() || "";
+      const searchValue = [
+        vehicle.brand,
+        vehicle.model,
+        vehicle.registration_number,
+        vehicle.vin,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
 
-    return (
-      brand.includes(normalizedVehicleSearch) ||
-      model.includes(normalizedVehicleSearch) ||
-      registration.includes(normalizedVehicleSearch)
-    );
-  });
+      return searchValue.includes(normalizedVehicleSearch);
+    });
+  }, [vehicles, normalizedVehicleSearch]);
 
   const toggleVehicle = (vehicleId) => {
     setSelectedVehicleIds((currentIds) => {
@@ -95,11 +127,24 @@ function StatisticsPage({ onLogout }) {
     );
   }, [serviceRecords, selectedVehicleIds]);
 
+  const sortedRecords = useMemo(() => {
+    return [...filteredRecords].sort((a, b) => {
+      const dateA = new Date(a.service_date || 0);
+      const dateB = new Date(b.service_date || 0);
+
+      const timeA = Number.isNaN(dateA.getTime()) ? 0 : dateA.getTime();
+      const timeB = Number.isNaN(dateB.getTime()) ? 0 : dateB.getTime();
+
+      return timeB - timeA;
+    });
+  }, [filteredRecords]);
+
   const totalCost = useMemo(() => {
-    return filteredRecords.reduce(
-      (sum, record) => sum + Number(record.cost || 0),
-      0,
-    );
+    return filteredRecords.reduce((sum, record) => {
+      const cost = Number(record.cost);
+
+      return sum + (Number.isFinite(cost) ? cost : 0);
+    }, 0);
   }, [filteredRecords]);
 
   const averageCost = useMemo(() => {
@@ -115,13 +160,32 @@ function StatisticsPage({ onLogout }) {
       return null;
     }
 
-    return [...filteredRecords].sort(
-      (a, b) => Number(b.cost || 0) - Number(a.cost || 0),
-    )[0];
+    return filteredRecords.reduce((mostExpensive, record) => {
+      const currentCost = Number(record.cost);
+      const mostExpensiveCost = Number(mostExpensive?.cost);
+
+      const safeCurrentCost = Number.isFinite(currentCost) ? currentCost : 0;
+      const safeMostExpensiveCost = Number.isFinite(mostExpensiveCost)
+        ? mostExpensiveCost
+        : 0;
+
+      return safeCurrentCost > safeMostExpensiveCost ? record : mostExpensive;
+    }, filteredRecords[0]);
   }, [filteredRecords]);
 
   const getVehicle = (vehicleId) => {
     return vehicles.find((vehicle) => Number(vehicle.id) === Number(vehicleId));
+  };
+
+  const getVehicleName = (vehicle) => {
+    if (!vehicle) {
+      return "Nieznany pojazd";
+    }
+
+    return (
+      [vehicle.brand, vehicle.model].filter(Boolean).join(" ") ||
+      "Nieznany pojazd"
+    );
   };
 
   const getVehicleFilterText = () => {
@@ -132,18 +196,16 @@ function StatisticsPage({ onLogout }) {
     if (selectedVehicleIds.length === 1) {
       const vehicle = getVehicle(selectedVehicleIds[0]);
 
-      if (!vehicle) {
-        return "1 pojazd";
-      }
-
-      return `${vehicle.brand} ${vehicle.model}`;
+      return vehicle ? getVehicleName(vehicle) : "1 pojazd";
     }
 
     return `${selectedVehicleIds.length} wybrane`;
   };
 
   const formatCost = (value) => {
-    return `${Number(value).toLocaleString("pl-PL", {
+    const number = Number(value);
+
+    return `${(Number.isFinite(number) ? number : 0).toLocaleString("pl-PL", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })} zł`;
@@ -154,26 +216,47 @@ function StatisticsPage({ onLogout }) {
       return "Nie podano";
     }
 
-    return new Date(date).toLocaleDateString("pl-PL");
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "Nie podano";
+    }
+
+    return parsedDate.toLocaleDateString("pl-PL");
   };
 
   const getExportFilename = (response) => {
-    const contentDisposition = response.headers["content-disposition"];
+    const contentDisposition = response.headers?.["content-disposition"];
 
     if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+      const filenameMatch = contentDisposition.match(
+        /filename\*?=(?:UTF-8''|")?([^";]+)/i,
+      );
 
-      if (filenameMatch && filenameMatch[1]) {
-        return filenameMatch[1];
+      if (filenameMatch?.[1]) {
+        try {
+          return decodeURIComponent(filenameMatch[1].replace(/"/g, ""));
+        } catch {
+          return filenameMatch[1].replace(/"/g, "");
+        }
       }
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-
-    return `flotivo-raport-statystyczny-${today}.pdf`;
+    return `flotivo-raport-statystyczny-${new Date()
+      .toISOString()
+      .slice(0, 10)}.pdf`;
   };
 
   const handleExportPdf = async () => {
+    if (exportingPdf || loading) {
+      return;
+    }
+
+    if (filteredRecords.length === 0) {
+      setError("Brak danych do wygenerowania raportu statystycznego.");
+      return;
+    }
+
     try {
       setExportingPdf(true);
       setError(null);
@@ -193,24 +276,18 @@ function StatisticsPage({ onLogout }) {
       });
 
       const downloadUrl = window.URL.createObjectURL(blob);
-
       const link = document.createElement("a");
 
       link.href = downloadUrl;
       link.download = getExportFilename(response);
 
       document.body.appendChild(link);
-
       link.click();
-
       link.remove();
 
       window.URL.revokeObjectURL(downloadUrl);
     } catch (err) {
       console.error("Błąd eksportu statystyk:", err);
-
-      console.error("Odpowiedź backendu:", err.response?.data);
-
       setError("Nie udało się wygenerować raportu statystycznego.");
     } finally {
       setExportingPdf(false);
@@ -225,7 +302,6 @@ function StatisticsPage({ onLogout }) {
         <div className="statistics-header">
           <div>
             <h1>Statystyki</h1>
-
             <p>Analiza kosztów napraw i serwisów pojazdów.</p>
           </div>
 
@@ -233,13 +309,17 @@ function StatisticsPage({ onLogout }) {
             type="button"
             className="statistics-export-button"
             onClick={handleExportPdf}
-            disabled={exportingPdf}
+            disabled={exportingPdf || loading || filteredRecords.length === 0}
           >
             {exportingPdf ? "Generowanie..." : "Eksportuj raport PDF"}
           </button>
         </div>
 
-        {error && <p className="statistics-error">{error}</p>}
+        {error && (
+          <div className="statistics-error" role="alert">
+            {error}
+          </div>
+        )}
 
         <div className="statistics-filter-card">
           <span className="statistics-filter-label">Pojazdy</span>
@@ -253,9 +333,9 @@ function StatisticsPage({ onLogout }) {
               onClick={() =>
                 setShowVehicleFilter((currentValue) => !currentValue)
               }
+              disabled={loading}
             >
               <span>{getVehicleFilterText()}</span>
-
               <span>{showVehicleFilter ? "▲" : "▼"}</span>
             </button>
 
@@ -273,7 +353,7 @@ function StatisticsPage({ onLogout }) {
 
                 <div className="statistics-filter-search">
                   <input
-                    type="text"
+                    type="search"
                     value={vehicleSearch}
                     onChange={(event) => setVehicleSearch(event.target.value)}
                     placeholder="Szukaj po marce, modelu lub rejestracji..."
@@ -287,11 +367,10 @@ function StatisticsPage({ onLogout }) {
                     checked={selectedVehicleIds.length === 0}
                     onChange={clearSelectedVehicles}
                   />
-
                   <span>Wszystkie pojazdy</span>
                 </label>
 
-                <div className="statistics-filter-divider"></div>
+                <div className="statistics-filter-divider" />
 
                 <div className="statistics-filter-options">
                   {visibleVehicles.map((vehicle) => (
@@ -306,11 +385,10 @@ function StatisticsPage({ onLogout }) {
                       />
 
                       <div className="statistics-filter-vehicle-info">
-                        <span>
-                          {vehicle.brand} {vehicle.model}
-                        </span>
-
-                        <strong>{vehicle.registration_number}</strong>
+                        <span>{getVehicleName(vehicle)}</span>
+                        <strong>
+                          {vehicle.registration_number || "Brak rejestracji"}
+                        </strong>
                       </div>
                     </label>
                   ))}
@@ -329,29 +407,27 @@ function StatisticsPage({ onLogout }) {
         <div className="statistics-cards">
           <div className="statistics-card">
             <span>Łączny koszt napraw</span>
-
-            <strong>{formatCost(totalCost)}</strong>
+            <strong>{loading ? "–" : formatCost(totalCost)}</strong>
           </div>
 
           <div className="statistics-card">
             <span>Liczba napraw</span>
-
-            <strong>{filteredRecords.length}</strong>
+            <strong>{loading ? "–" : filteredRecords.length}</strong>
           </div>
 
           <div className="statistics-card">
             <span>Średni koszt naprawy</span>
-
-            <strong>{formatCost(averageCost)}</strong>
+            <strong>{loading ? "–" : formatCost(averageCost)}</strong>
           </div>
 
           <div className="statistics-card">
             <span>Najdroższa naprawa</span>
-
             <strong>
-              {mostExpensiveRecord
-                ? formatCost(mostExpensiveRecord.cost)
-                : formatCost(0)}
+              {loading
+                ? "–"
+                : mostExpensiveRecord
+                  ? formatCost(mostExpensiveRecord.cost)
+                  : formatCost(0)}
             </strong>
           </div>
         </div>
@@ -360,9 +436,14 @@ function StatisticsPage({ onLogout }) {
           <div className="statistics-table-header-top">
             <div>
               <h2>Historia kosztów</h2>
-
               <p>Naprawy uwzględnione w aktualnych statystykach.</p>
             </div>
+
+            <span>
+              {loading
+                ? "Ładowanie..."
+                : `Liczba wpisów: ${filteredRecords.length}`}
+            </span>
           </div>
 
           <div className="statistics-table">
@@ -373,33 +454,38 @@ function StatisticsPage({ onLogout }) {
               <span>Koszt</span>
             </div>
 
-            {filteredRecords.map((record) => {
-              const vehicle = getVehicle(record.vehicle);
+            {!loading &&
+              sortedRecords.map((record) => {
+                const vehicle = getVehicle(record.vehicle);
 
-              return (
-                <div className="statistics-table-row" key={record.id}>
-                  <div>
-                    <strong>
-                      {vehicle
-                        ? `${vehicle.brand} ${vehicle.model}`
-                        : "Nieznany pojazd"}
-                    </strong>
+                return (
+                  <div className="statistics-table-row" key={record.id}>
+                    <div>
+                      <strong>{getVehicleName(vehicle)}</strong>
 
-                    <span>{vehicle?.registration_number || ""}</span>
+                      <span>
+                        {vehicle?.registration_number || "Brak rejestracji"}
+                      </span>
+                    </div>
+
+                    <span>{record.title || "Bez nazwy"}</span>
+                    <span>{formatDate(record.service_date)}</span>
+                    <strong>{formatCost(record.cost)}</strong>
                   </div>
+                );
+              })}
 
-                  <span>{record.title}</span>
-
-                  <span>{formatDate(record.service_date)}</span>
-
-                  <strong>{formatCost(record.cost)}</strong>
-                </div>
-              );
-            })}
-
-            {filteredRecords.length === 0 && (
+            {loading && (
               <div className="statistics-empty">
-                Brak danych do wyświetlenia.
+                Ładowanie danych statystycznych...
+              </div>
+            )}
+
+            {!loading && filteredRecords.length === 0 && (
+              <div className="statistics-empty">
+                {selectedVehicleIds.length > 0
+                  ? "Brak danych dla wybranych pojazdów."
+                  : "Brak danych do wyświetlenia."}
               </div>
             )}
           </div>
