@@ -67,7 +67,6 @@ INSTALLED_APPS = [
     "auditlog",
     "vehicles",
     "drivers",
-    "assignments",
     "organizations",
     "notifications",
     "contact",

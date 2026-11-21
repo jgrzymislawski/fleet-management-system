@@ -1,15 +1,60 @@
-from django.contrib import admin, messages
-from django.utils.html import format_html, format_html_join
+from django.contrib import (
+    admin,
+    messages,
+)
+from django.utils.html import (
+    format_html,
+    format_html_join,
+)
 
-from auditlog import get_logentry_model
-from auditlog.admin import LogEntryAdmin
-from auditlog.context import set_actor
+from auditlog import (
+    get_logentry_model,
+)
+from auditlog.admin import (
+    LogEntryAdmin,
+)
+from auditlog.context import (
+    set_actor,
+)
 
 from .models import (
-    Vehicle,
     ServiceRecord,
+    Vehicle,
     VehicleDocument,
 )
+
+
+SENSITIVE_FIELD_FRAGMENTS = (
+    "password",
+    "token",
+    "secret",
+    "api_key",
+    "apikey",
+    "access_token",
+    "refresh_token",
+)
+
+
+def is_sensitive_field(
+    field_name,
+):
+    normalized = (
+        str(
+            field_name or ""
+        )
+        .strip()
+        .lower()
+        .replace(
+            "-",
+            "_",
+        )
+    )
+
+    return any(
+        fragment in normalized
+        for fragment
+        in SENSITIVE_FIELD_FRAGMENTS
+    )
 
 
 class VehicleDeletedStatusFilter(
@@ -82,6 +127,12 @@ class VehicleAdmin(
         "model",
     )
 
+    list_select_related = (
+        "organization",
+        "company",
+        "driver",
+    )
+
     ordering = (
         "-id",
     )
@@ -117,7 +168,6 @@ class VehicleAdmin(
                     continue
 
                 vehicle.soft_delete()
-
                 deleted += 1
 
         if deleted:
@@ -164,7 +214,6 @@ class VehicleAdmin(
 
                 try:
                     vehicle.restore()
-
                     restored += 1
 
                 except Exception as exc:
@@ -189,8 +238,8 @@ class VehicleAdmin(
             self.message_user(
                 request,
                 (
-                    "Pominięto aktywne "
-                    f"pojazdy: {skipped}."
+                    "Pominięto aktywnych "
+                    f"pojazdów: {skipped}."
                 ),
                 level=messages.WARNING,
             )
@@ -207,6 +256,9 @@ class VehicleAdmin(
         request,
         obj,
     ):
+        if obj.is_deleted:
+            return
+
         with set_actor(
             request.user
         ):
@@ -221,17 +273,97 @@ class VehicleAdmin(
             request.user
         ):
             for vehicle in queryset:
-                if not vehicle.is_deleted:
-                    vehicle.soft_delete()
+                if vehicle.is_deleted:
+                    continue
+
+                vehicle.soft_delete()
 
 
-admin.site.register(
-    ServiceRecord
-)
+@admin.register(ServiceRecord)
+class ServiceRecordAdmin(
+    admin.ModelAdmin
+):
+    list_display = (
+        "id",
+        "vehicle",
+        "service_date",
+        "title",
+        "mileage",
+        "cost",
+        "created_at",
+    )
 
-admin.site.register(
-    VehicleDocument
-)
+    list_filter = (
+        "service_date",
+        "vehicle__organization",
+        "vehicle__company",
+    )
+
+    search_fields = (
+        "vehicle__registration_number",
+        "vehicle__brand",
+        "vehicle__model",
+        "title",
+        "description",
+    )
+
+    list_select_related = (
+        "vehicle",
+        "vehicle__organization",
+        "vehicle__company",
+    )
+
+    ordering = (
+        "-service_date",
+        "-created_at",
+    )
+
+    readonly_fields = (
+        "created_at",
+    )
+
+
+@admin.register(VehicleDocument)
+class VehicleDocumentAdmin(
+    admin.ModelAdmin
+):
+    list_display = (
+        "id",
+        "vehicle",
+        "document_type",
+        "document_number",
+        "issue_date",
+        "expiry_date",
+        "cost",
+        "created_at",
+    )
+
+    list_filter = (
+        "document_type",
+        "expiry_date",
+        "vehicle__organization",
+        "vehicle__company",
+    )
+
+    search_fields = (
+        "vehicle__registration_number",
+        "document_number",
+        "notes",
+    )
+
+    list_select_related = (
+        "vehicle",
+        "vehicle__organization",
+        "vehicle__company",
+    )
+
+    ordering = (
+        "-created_at",
+    )
+
+    readonly_fields = (
+        "created_at",
+    )
 
 
 LogEntry = get_logentry_model()
@@ -250,58 +382,57 @@ except admin.sites.NotRegistered:
 class FlotivoLogEntryAdmin(
     LogEntryAdmin
 ):
-    list_display = [
+    list_display = (
         "created",
         "object_name",
         "action_name",
         "changes_summary",
         "actor_name",
-    ]
+    )
 
-    list_filter = [
+    list_filter = (
         "action",
         "content_type",
         "timestamp",
-    ]
+    )
 
-    search_fields = [
+    search_fields = (
         "object_repr",
-        "changes",
         "actor__username",
         "actor__first_name",
         "actor__last_name",
         "actor__email",
-    ]
+    )
 
-    readonly_fields = [
+    readonly_fields = (
         "created",
         "actor_name",
         "object_name",
         "action_name",
         "changes_details",
-    ]
+    )
 
-    fieldsets = [
+    fieldsets = (
         (
             "Informacje",
             {
-                "fields": [
+                "fields": (
                     "created",
                     "actor_name",
                     "object_name",
                     "action_name",
-                ]
+                )
             },
         ),
         (
             "Wprowadzone zmiany",
             {
-                "fields": [
+                "fields": (
                     "changes_details",
-                ]
+                )
             },
         ),
-    ]
+    )
 
     @admin.display(
         description="Data",
@@ -314,7 +445,7 @@ class FlotivoLogEntryAdmin(
         return obj.timestamp
 
     @admin.display(
-        description="Obiekt"
+        description="Obiekt",
     )
     def object_name(
         self,
@@ -323,7 +454,7 @@ class FlotivoLogEntryAdmin(
         return obj.object_repr
 
     @admin.display(
-        description="Użytkownik"
+        description="Użytkownik",
     )
     def actor_name(
         self,
@@ -345,7 +476,7 @@ class FlotivoLogEntryAdmin(
         return obj.actor.username
 
     @admin.display(
-        description="Akcja"
+        description="Akcja",
     )
     def action_name(
         self,
@@ -375,12 +506,35 @@ class FlotivoLogEntryAdmin(
         ):
             return "Wyświetlono"
 
-        return (
-            obj.get_action_display()
+        return obj.get_action_display()
+
+    def format_value(
+        self,
+        field_name,
+        value,
+    ):
+        if is_sensitive_field(
+            field_name
+        ):
+            return "********"
+
+        if value is None:
+            return "Brak"
+
+        value = str(
+            value
         )
 
+        if value == "None":
+            return "Brak"
+
+        if value == "":
+            return "Puste"
+
+        return value
+
     @admin.display(
-        description="Zmiany"
+        description="Zmiany",
     )
     def changes_summary(
         self,
@@ -414,9 +568,9 @@ class FlotivoLogEntryAdmin(
             parts.append(
                 (
                     f"{field_name}: "
-                    f"{self.format_value(old_value)} "
-                    f"→ "
-                    f"{self.format_value(new_value)}"
+                    f"{self.format_value(field_name, old_value)} "
+                    "→ "
+                    f"{self.format_value(field_name, new_value)}"
                 )
             )
 
@@ -425,9 +579,7 @@ class FlotivoLogEntryAdmin(
         )
 
     @admin.display(
-        description=(
-            "Szczegółowe zmiany"
-        )
+        description="Szczegółowe zmiany",
     )
     def changes_details(
         self,
@@ -464,91 +616,55 @@ class FlotivoLogEntryAdmin(
                 (
                     field_name,
                     self.format_value(
-                        old_value
+                        field_name,
+                        old_value,
                     ),
                     self.format_value(
-                        new_value
+                        field_name,
+                        new_value,
                     ),
                 )
             )
 
-        table_rows = (
-            format_html_join(
-                "",
-                """
-                <tr>
-                    <td style="
-                        padding: 10px;
-                        font-weight: 600;
-                        border-bottom: 1px solid #444;
-                    ">
-                        {}
-                    </td>
-
-                    <td style="
-                        padding: 10px;
-                        border-bottom: 1px solid #444;
-                    ">
-                        {}
-                    </td>
-
-                    <td style="
-                        padding: 10px;
-                        text-align: center;
-                        border-bottom: 1px solid #444;
-                    ">
-                        →
-                    </td>
-
-                    <td style="
-                        padding: 10px;
-                        border-bottom: 1px solid #444;
-                    ">
-                        {}
-                    </td>
-                </tr>
-                """,
-                rows,
-            )
+        table_rows = format_html_join(
+            "",
+            """
+            <tr>
+                <td style="padding:10px;font-weight:600;border-bottom:1px solid #444;">
+                    {}
+                </td>
+                <td style="padding:10px;border-bottom:1px solid #444;">
+                    {}
+                </td>
+                <td style="padding:10px;text-align:center;border-bottom:1px solid #444;">
+                    →
+                </td>
+                <td style="padding:10px;border-bottom:1px solid #444;">
+                    {}
+                </td>
+            </tr>
+            """,
+            rows,
         )
 
         return format_html(
             """
-            <table style="
-                width: 100%;
-                border-collapse: collapse;
-                border: 1px solid #555;
-            ">
+            <table style="width:100%;border-collapse:collapse;border:1px solid #555;">
                 <thead>
                     <tr>
-                        <th style="
-                            padding: 10px;
-                            text-align: left;
-                        ">
+                        <th style="padding:10px;text-align:left;">
                             Pole
                         </th>
-
-                        <th style="
-                            padding: 10px;
-                            text-align: left;
-                        ">
+                        <th style="padding:10px;text-align:left;">
                             Przed zmianą
                         </th>
-
-                        <th style="
-                            padding: 10px;
-                        ">
+                        <th style="padding:10px;">
                         </th>
-
-                        <th style="
-                            padding: 10px;
-                            text-align: left;
-                        ">
+                        <th style="padding:10px;text-align:left;">
                             Po zmianie
                         </th>
                     </tr>
                 </thead>
-
                 <tbody>
                     {}
                 </tbody>
@@ -557,39 +673,18 @@ class FlotivoLogEntryAdmin(
             table_rows,
         )
 
-    def format_value(
-        self,
-        value,
-    ):
-        if value is None:
-            return "Brak"
-
-        value = str(value)
-
-        if value == "None":
-            return "Brak"
-
-        if value == "":
-            return "Puste"
-
-        return value
-
     def has_module_permission(
         self,
         request,
     ):
-        return (
-            request.user.is_superuser
-        )
+        return request.user.is_superuser
 
     def has_view_permission(
         self,
         request,
         obj=None,
     ):
-        return (
-            request.user.is_superuser
-        )
+        return request.user.is_superuser
 
     def has_add_permission(
         self,

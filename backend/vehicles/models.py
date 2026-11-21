@@ -151,6 +151,46 @@ class Vehicle(models.Model):
     )
 
     class Meta:
+        indexes = [
+            models.Index(
+                fields=[
+                    "organization",
+                    "is_deleted",
+                ],
+                name="veh_org_deleted_idx",
+            ),
+            models.Index(
+                fields=[
+                    "organization",
+                    "company",
+                    "is_deleted",
+                ],
+                name="veh_org_comp_del_idx",
+            ),
+            models.Index(
+                fields=[
+                    "organization",
+                    "status",
+                    "is_deleted",
+                ],
+                name="veh_org_status_idx",
+            ),
+            models.Index(
+                fields=[
+                    "organization",
+                    "insurance_expiry_date",
+                ],
+                name="veh_org_ins_exp_idx",
+            ),
+            models.Index(
+                fields=[
+                    "organization",
+                    "inspection_expiry_date",
+                ],
+                name="veh_org_insp_exp_idx",
+            ),
+        ]
+
         constraints = [
             models.UniqueConstraint(
                 fields=[
@@ -474,6 +514,16 @@ class ServiceRecord(models.Model):
             "-created_at",
         ]
 
+        indexes = [
+            models.Index(
+                fields=[
+                    "vehicle",
+                    "service_date",
+                ],
+                name="service_vehicle_date_idx",
+            ),
+        ]
+
     def __str__(self):
         return (
             f"{self.vehicle} - "
@@ -561,6 +611,22 @@ class VehicleDocument(models.Model):
     class Meta:
         ordering = [
             "-created_at",
+        ]
+
+        indexes = [
+            models.Index(
+                fields=[
+                    "vehicle",
+                    "expiry_date",
+                ],
+                name="doc_vehicle_expiry_idx",
+            ),
+            models.Index(
+                fields=[
+                    "expiry_date",
+                ],
+                name="doc_expiry_idx",
+            ),
         ]
 
     def __str__(self):

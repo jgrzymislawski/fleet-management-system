@@ -1,9 +1,15 @@
-from django.contrib import admin, messages
+from django.contrib import (
+    admin,
+    messages,
+)
 from django.db import transaction
 
 from auditlog.context import set_actor
 
-from .models import Driver
+from .models import (
+    Driver,
+    DriverVehicleAssignment,
+)
 
 
 class DriverDeletedStatusFilter(
@@ -70,6 +76,10 @@ class DriverAdmin(
         "last_name",
         "license_number",
         "phone_number",
+    )
+
+    list_select_related = (
+        "organization",
     )
 
     ordering = (
@@ -197,7 +207,6 @@ class DriverAdmin(
 
                 try:
                     driver.restore()
-
                     restored += 1
 
                 except Exception as exc:
@@ -261,3 +270,67 @@ class DriverAdmin(
                 request,
                 driver,
             )
+
+
+@admin.register(DriverVehicleAssignment)
+class DriverVehicleAssignmentAdmin(
+    admin.ModelAdmin
+):
+    list_display = (
+        "id",
+        "vehicle",
+        "driver_display",
+        "start_date",
+        "end_date",
+        "active_status",
+        "created_at",
+    )
+
+    list_filter = (
+        "start_date",
+        "end_date",
+        "vehicle__organization",
+    )
+
+    search_fields = (
+        "vehicle__registration_number",
+        "vehicle__brand",
+        "vehicle__model",
+        "driver__first_name",
+        "driver__last_name",
+        "driver_name",
+    )
+
+    list_select_related = (
+        "vehicle",
+        "driver",
+        "vehicle__organization",
+    )
+
+    ordering = (
+        "-start_date",
+        "-created_at",
+    )
+
+    readonly_fields = (
+        "created_at",
+    )
+
+    @admin.display(
+        description="Kierowca",
+    )
+    def driver_display(
+        self,
+        obj,
+    ):
+        return obj.driver_display_name
+
+    @admin.display(
+        description="Aktywne",
+        boolean=True,
+    )
+    def active_status(
+        self,
+        obj,
+    ):
+        return obj.is_active

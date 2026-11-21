@@ -1,22 +1,24 @@
 from django.urls import (
-    path,
     include,
+    path,
 )
 
 from rest_framework.routers import (
     DefaultRouter,
 )
 
+from .bulk_views import (
+    DriverBulkUpdateView,
+)
+from .import_views import (
+    DriverImportTemplateView,
+    DriverImportView,
+)
 from .views import (
-    DriverViewSet,
     DriverVehicleAssignmentViewSet,
+    DriverViewSet,
 )
 
-from .import_views import (
-    DriverImportView,
-    DriverImportTemplateView,
-)
-from .bulk_views import DriverBulkUpdateView
 
 router = DefaultRouter()
 
@@ -39,22 +41,20 @@ urlpatterns = [
         DriverImportView.as_view(),
         name="driver-import",
     ),
-
     path(
         "drivers/import-template/",
         DriverImportTemplateView.as_view(),
         name="driver-import-template",
     ),
-
+    path(
+        "drivers/bulk-update/",
+        DriverBulkUpdateView.as_view(),
+        name="drivers-bulk-update",
+    ),
     path(
         "",
         include(
             router.urls
         ),
     ),
-path(
-    "drivers/bulk-update/",
-    DriverBulkUpdateView.as_view(),
-    name="drivers-bulk-update",
-),
 ]

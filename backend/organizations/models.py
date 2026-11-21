@@ -85,6 +85,16 @@ class Company(models.Model):
             "Companies"
         )
 
+        indexes = [
+            models.Index(
+                fields=[
+                    "organization",
+                    "is_active",
+                ],
+                name="company_org_active_idx",
+            ),
+        ]
+
     def __str__(self):
         return self.name
 
@@ -147,6 +157,17 @@ class OrganizationMembership(models.Model):
             *args,
             **kwargs,
         )
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=[
+                    "organization",
+                    "role",
+                ],
+                name="membership_org_role_idx",
+            ),
+        ]
 
     def __str__(self):
         return (

@@ -75,6 +75,30 @@ class Driver(models.Model):
     )
 
     class Meta:
+        indexes = [
+            models.Index(
+                fields=[
+                    "organization",
+                    "is_deleted",
+                ],
+                name="drv_org_deleted_idx",
+            ),
+            models.Index(
+                fields=[
+                    "organization",
+                    "license_expiry_date",
+                ],
+                name="drv_org_lic_exp_idx",
+            ),
+            models.Index(
+                fields=[
+                    "organization",
+                    "medical_exam_expiry_date",
+                ],
+                name="drv_org_med_exp_idx",
+            ),
+        ]
+
         constraints = [
             models.UniqueConstraint(
                 fields=[
@@ -267,6 +291,23 @@ class DriverVehicleAssignment(models.Model):
         ordering = [
             "-start_date",
             "-created_at",
+        ]
+
+        indexes = [
+            models.Index(
+                fields=[
+                    "vehicle",
+                    "end_date",
+                ],
+                name="assign_vehicle_end_idx",
+            ),
+            models.Index(
+                fields=[
+                    "driver",
+                    "start_date",
+                ],
+                name="assign_driver_start_idx",
+            ),
         ]
 
         constraints = [

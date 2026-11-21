@@ -194,6 +194,23 @@ class NotificationLog(models.Model):
             "-sent_at",
         ]
 
+        indexes = [
+            models.Index(
+                fields=[
+                    "organization",
+                    "sent_at",
+                ],
+                name="notif_org_sent_idx",
+            ),
+            models.Index(
+                fields=[
+                    "user",
+                    "sent_at",
+                ],
+                name="notif_user_sent_idx",
+            ),
+        ]
+
         constraints = [
             models.UniqueConstraint(
                 fields=[
