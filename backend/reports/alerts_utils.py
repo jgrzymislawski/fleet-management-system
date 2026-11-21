@@ -1,5 +1,6 @@
 from decimal import Decimal
 from io import BytesIO
+from xml.sax.saxutils import escape
 
 from django.utils import timezone
 
@@ -22,6 +23,40 @@ from reportlab.platypus import (
 )
 
 from vehicles.pdf_utils import register_fonts
+
+
+DANGEROUS_FORMULA_PREFIXES = (
+    "=",
+    "+",
+    "-",
+    "@",
+)
+
+
+def sanitize_spreadsheet_value(value):
+    if not isinstance(
+        value,
+        str,
+    ):
+        return value
+
+    stripped_value = value.lstrip()
+
+    if stripped_value.startswith(
+        DANGEROUS_FORMULA_PREFIXES
+    ):
+        return f"'{value}"
+
+    return value
+
+
+def safe_pdf_text(value):
+    if value is None:
+        return ""
+
+    return escape(
+        str(value)
+    )
 
 
 def format_date(value):
@@ -96,40 +131,50 @@ def create_alerts_report_workbook(
     summary_sheet.append(
         [
             "Kategoria",
-            filters.get("category_name")
-            or "Wszystkie",
+            sanitize_spreadsheet_value(
+                filters.get("category_name")
+                or "Wszystkie"
+            ),
         ]
     )
 
     summary_sheet.append(
         [
             "Pilność",
-            filters.get("status_name")
-            or "Wszystkie",
+            sanitize_spreadsheet_value(
+                filters.get("status_name")
+                or "Wszystkie"
+            ),
         ]
     )
 
     summary_sheet.append(
         [
             "Spółka",
-            filters.get("company_name")
-            or "Wszystkie",
+            sanitize_spreadsheet_value(
+                filters.get("company_name")
+                or "Wszystkie"
+            ),
         ]
     )
 
     summary_sheet.append(
         [
             "Oddział",
-            filters.get("branch")
-            or "Wszystkie",
+            sanitize_spreadsheet_value(
+                filters.get("branch")
+                or "Wszystkie"
+            ),
         ]
     )
 
     summary_sheet.append(
         [
             "Pojazd",
-            filters.get("vehicle_name")
-            or "Wszystkie",
+            sanitize_spreadsheet_value(
+                filters.get("vehicle_name")
+                or "Wszystkie"
+            ),
         ]
     )
 
@@ -207,18 +252,32 @@ def create_alerts_report_workbook(
                 get_category_name(
                     alert["category"]
                 ),
-                alert["name"],
-                alert["secondary"],
-                alert["type"],
+                sanitize_spreadsheet_value(
+                    alert["name"]
+                ),
+                sanitize_spreadsheet_value(
+                    alert["secondary"]
+                ),
+                sanitize_spreadsheet_value(
+                    alert["type"]
+                ),
                 alert["date"],
-                alert["days_text"],
-                alert["status"],
-                alert.get(
-                    "company_name"
-                ) or "",
-                alert.get(
-                    "branch"
-                ) or "",
+                sanitize_spreadsheet_value(
+                    alert["days_text"]
+                ),
+                sanitize_spreadsheet_value(
+                    alert["status"]
+                ),
+                sanitize_spreadsheet_value(
+                    alert.get(
+                        "company_name"
+                    ) or ""
+                ),
+                sanitize_spreadsheet_value(
+                    alert.get(
+                        "branch"
+                    ) or ""
+                ),
             ]
         )
 
@@ -329,34 +388,44 @@ def create_alerts_report_pdf(
     filters_data = [
         [
             "Kategoria",
-            filters.get(
-                "category_name"
-            )
-            or "Wszystkie",
+            safe_pdf_text(
+                filters.get(
+                    "category_name"
+                )
+                or "Wszystkie"
+            ),
             "Pilność",
-            filters.get(
-                "status_name"
-            )
-            or "Wszystkie",
+            safe_pdf_text(
+                filters.get(
+                    "status_name"
+                )
+                or "Wszystkie"
+            ),
         ],
         [
             "Spółka",
-            filters.get(
-                "company_name"
-            )
-            or "Wszystkie",
+            safe_pdf_text(
+                filters.get(
+                    "company_name"
+                )
+                or "Wszystkie"
+            ),
             "Oddział",
-            filters.get(
-                "branch"
-            )
-            or "Wszystkie",
+            safe_pdf_text(
+                filters.get(
+                    "branch"
+                )
+                or "Wszystkie"
+            ),
         ],
         [
             "Pojazd",
-            filters.get(
-                "vehicle_name"
-            )
-            or "Wszystkie",
+            safe_pdf_text(
+                filters.get(
+                    "vehicle_name"
+                )
+                or "Wszystkie"
+            ),
             "",
             "",
         ],
@@ -590,39 +659,47 @@ def create_alerts_report_pdf(
                     ),
                     Paragraph(
                         (
-                            f"<b>{alert['name']}</b>"
-                            f"<br/>{alert['secondary']}"
+                            f"<b>{safe_pdf_text(alert['name'])}</b>"
+                            f"<br/>{safe_pdf_text(alert['secondary'])}"
                         ),
                         normal_style,
                     ),
                     Paragraph(
-                        alert["type"],
+                        safe_pdf_text(
+                            alert["type"]
+                        ),
                         normal_style,
                     ),
                     format_date(
                         alert["date"]
                     ),
                     Paragraph(
-                        alert[
-                            "days_text"
-                        ],
-                        normal_style,
-                    ),
-                    Paragraph(
-                        (
-                            alert.get(
-                                "company_name"
-                            )
-                            or "-"
+                        safe_pdf_text(
+                            alert[
+                                "days_text"
+                            ]
                         ),
                         normal_style,
                     ),
                     Paragraph(
                         (
-                            alert.get(
-                                "branch"
+                            safe_pdf_text(
+                                alert.get(
+                                    "company_name"
+                                )
+                                or "-"
                             )
-                            or "-"
+                        ),
+                        normal_style,
+                    ),
+                    Paragraph(
+                        (
+                            safe_pdf_text(
+                                alert.get(
+                                    "branch"
+                                )
+                                or "-"
+                            )
                         ),
                         normal_style,
                     ),

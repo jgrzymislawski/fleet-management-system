@@ -4,24 +4,28 @@ from io import BytesIO
 from django.http import HttpResponse
 
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from organizations.models import (
-    OrganizationMembership,
     CompanyAccess,
+    OrganizationMembership,
 )
 
 from vehicles.models import (
-    Vehicle,
     ServiceRecord,
+    Vehicle,
 )
 
 from .export_utils import (
     create_service_costs_pdf,
     create_service_costs_workbook,
 )
+
+
+MAX_REPORT_RECORDS = 20000
 
 
 def user_is_superuser(user):
@@ -42,7 +46,7 @@ def get_membership(user):
     ):
         return None
 
-    return (
+    membership = (
         OrganizationMembership.objects
         .select_related(
             "organization"
@@ -52,6 +56,19 @@ def get_membership(user):
         )
         .first()
     )
+
+    if (
+        membership is not None
+        and not membership.organization.is_active
+    ):
+        raise PermissionDenied(
+            (
+                "Organizacja użytkownika "
+                "jest nieaktywna."
+            )
+        )
+
+    return membership
 
 
 def get_accessible_vehicles(user):
@@ -66,7 +83,8 @@ def get_accessible_vehicles(user):
                 .filter(
                     organization=(
                         membership.organization
-                    )
+                    ),
+                    company__is_active=True,
                 )
             )
 
@@ -74,6 +92,9 @@ def get_accessible_vehicles(user):
             CompanyAccess.objects
             .filter(
                 membership=membership,
+                company__organization=(
+                    membership.organization
+                ),
                 company__is_active=True,
             )
             .values_list(
@@ -98,7 +119,9 @@ def get_accessible_vehicles(user):
     ):
         return (
             Vehicle.active_objects
-            .all()
+            .filter(
+                organization__is_active=True,
+            )
         )
 
     return (
@@ -108,12 +131,21 @@ def get_accessible_vehicles(user):
 
 
 def parse_date(value):
-    if not value:
+    if value in (
+        None,
+        "",
+    ):
+        return None
+
+    if not isinstance(
+        value,
+        str,
+    ):
         return None
 
     try:
         return datetime.strptime(
-            value,
+            value.strip(),
             "%Y-%m-%d",
         ).date()
 
@@ -121,12 +153,40 @@ def parse_date(value):
         return None
 
 
-class ReportOptionsView(APIView):
+def parse_positive_id(value):
+    if value in (
+        None,
+        "",
+    ):
+        return None
+
+    try:
+        parsed_value = int(
+            value
+        )
+    except (
+        TypeError,
+        ValueError,
+    ):
+        return None
+
+    if parsed_value <= 0:
+        return None
+
+    return parsed_value
+
+
+class ReportOptionsView(
+    APIView
+):
     permission_classes = [
-        IsAuthenticated
+        IsAuthenticated,
     ]
 
-    def get(self, request):
+    def get(
+        self,
+        request,
+    ):
         vehicles = (
             get_accessible_vehicles(
                 request.user
@@ -137,13 +197,12 @@ class ReportOptionsView(APIView):
             .order_by(
                 "brand",
                 "model",
+                "registration_number",
             )
         )
 
         companies_by_id = {}
-
         branches = set()
-
         vehicle_options = []
 
         for vehicle in vehicles:
@@ -213,15 +272,37 @@ class ServiceCostsReportView(
     APIView
 ):
     permission_classes = [
-        IsAuthenticated
+        IsAuthenticated,
     ]
 
-    def post(self, request):
-        report_format = (
-            request.data.get(
-                "format",
-                "pdf",
+    def post(
+        self,
+        request,
+    ):
+        report_format = request.data.get(
+            "format",
+            "pdf",
+        )
+
+        if not isinstance(
+            report_format,
+            str,
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Nieprawidłowy format raportu."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
+
+        report_format = (
+            report_format
+            .strip()
+            .lower()
         )
 
         if report_format not in (
@@ -239,16 +320,12 @@ class ServiceCostsReportView(
                 ),
             )
 
-        date_from_raw = (
-            request.data.get(
-                "date_from"
-            )
+        date_from_raw = request.data.get(
+            "date_from"
         )
 
-        date_to_raw = (
-            request.data.get(
-                "date_to"
-            )
+        date_to_raw = request.data.get(
+            "date_to"
         )
 
         date_from = parse_date(
@@ -260,7 +337,10 @@ class ServiceCostsReportView(
         )
 
         if (
-            date_from_raw
+            date_from_raw not in (
+                None,
+                "",
+            )
             and date_from is None
         ):
             return Response(
@@ -275,7 +355,10 @@ class ServiceCostsReportView(
             )
 
         if (
-            date_to_raw
+            date_to_raw not in (
+                None,
+                "",
+            )
             and date_to is None
         ):
             return Response(
@@ -297,7 +380,8 @@ class ServiceCostsReportView(
             return Response(
                 {
                     "detail": (
-                        "Data początkowa nie może być późniejsza od końcowej."
+                        "Data początkowa nie może być "
+                        "późniejsza od końcowej."
                     )
                 },
                 status=(
@@ -305,26 +389,93 @@ class ServiceCostsReportView(
                 ),
             )
 
-        company_id = (
-            request.data.get(
-                "company_id"
-            )
+        company_id_raw = request.data.get(
+            "company_id"
         )
 
-        branch = (
-            request.data.get(
-                "branch",
+        vehicle_id_raw = request.data.get(
+            "vehicle_id"
+        )
+
+        branch = request.data.get(
+            "branch",
+            "",
+        )
+
+        if not isinstance(
+            branch,
+            str,
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Oddział musi być tekstem."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        branch = branch.strip()
+
+        if len(branch) > 120:
+            return Response(
+                {
+                    "detail": (
+                        "Nazwa oddziału jest zbyt długa."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        company_id = parse_positive_id(
+            company_id_raw
+        )
+
+        if (
+            company_id_raw not in (
+                None,
                 "",
             )
-        )
-
-        vehicle_id = (
-            request.data.get(
-                "vehicle_id"
+            and company_id is None
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Nieprawidłowe ID spółki."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
+
+        vehicle_id = parse_positive_id(
+            vehicle_id_raw
         )
 
-        vehicles = (
+        if (
+            vehicle_id_raw not in (
+                None,
+                "",
+            )
+            and vehicle_id is None
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Nieprawidłowe ID pojazdu."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        accessible_vehicles = (
             get_accessible_vehicles(
                 request.user
             )
@@ -333,78 +484,49 @@ class ServiceCostsReportView(
             )
         )
 
-        if company_id:
-            try:
-                company_id = int(
-                    company_id
-                )
+        selected_company = None
 
-            except (
-                TypeError,
-                ValueError,
-            ):
+        if company_id is not None:
+            selected_company = (
+                accessible_vehicles
+                .filter(
+                    company_id=company_id
+                )
+                .exclude(
+                    company__isnull=True
+                )
+                .values(
+                    "company_id",
+                    "company__name",
+                )
+                .first()
+            )
+
+            if selected_company is None:
                 return Response(
                     {
                         "detail": (
-                            "Nieprawidłowe ID spółki."
+                            "Nie znaleziono spółki "
+                            "lub nie masz do niej dostępu."
                         )
                     },
                     status=(
-                        status.HTTP_400_BAD_REQUEST
+                        status.HTTP_404_NOT_FOUND
                     ),
                 )
-
-            vehicles = (
-                vehicles.filter(
-                    company_id=company_id
-                )
-            )
-
-        if branch:
-            vehicles = (
-                vehicles.filter(
-                    branch=branch
-                )
-            )
 
         selected_vehicle = None
 
-        if vehicle_id:
-            try:
-                vehicle_id = int(
-                    vehicle_id
-                )
-
-            except (
-                TypeError,
-                ValueError,
-            ):
-                return Response(
-                    {
-                        "detail": (
-                            "Nieprawidłowe ID pojazdu."
-                        )
-                    },
-                    status=(
-                        status.HTTP_400_BAD_REQUEST
-                    ),
-                )
-
-            vehicles = (
-                vehicles.filter(
+        if vehicle_id is not None:
+            selected_vehicle = (
+                accessible_vehicles
+                .filter(
                     id=vehicle_id
                 )
+                .first()
             )
 
-        vehicle_list = list(
-            vehicles.order_by(
-                "brand",
-                "model",
-            )
-        )
-
-        if vehicle_id:
-            if not vehicle_list:
+            if selected_vehicle is None:
                 return Response(
                     {
                         "detail": (
@@ -417,9 +539,66 @@ class ServiceCostsReportView(
                     ),
                 )
 
-            selected_vehicle = (
-                vehicle_list[0]
+            if (
+                company_id is not None
+                and selected_vehicle.company_id
+                != company_id
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            "Wybrany pojazd nie należy "
+                            "do wybranej spółki."
+                        )
+                    },
+                    status=(
+                        status.HTTP_400_BAD_REQUEST
+                    ),
+                )
+
+            if (
+                branch
+                and (
+                    selected_vehicle.branch
+                    or ""
+                ) != branch
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            "Wybrany pojazd nie należy "
+                            "do wybranego oddziału."
+                        )
+                    },
+                    status=(
+                        status.HTTP_400_BAD_REQUEST
+                    ),
+                )
+
+        vehicles = accessible_vehicles
+
+        if company_id is not None:
+            vehicles = vehicles.filter(
+                company_id=company_id
             )
+
+        if branch:
+            vehicles = vehicles.filter(
+                branch=branch
+            )
+
+        if vehicle_id is not None:
+            vehicles = vehicles.filter(
+                id=vehicle_id
+            )
+
+        vehicle_list = list(
+            vehicles.order_by(
+                "brand",
+                "model",
+                "registration_number",
+            )
+        )
 
         vehicle_ids = [
             vehicle.id
@@ -437,6 +616,10 @@ class ServiceCostsReportView(
             .select_related(
                 "vehicle",
                 "vehicle__company",
+            )
+            .order_by(
+                "-service_date",
+                "-created_at",
             )
         )
 
@@ -458,36 +641,39 @@ class ServiceCostsReportView(
                 )
             )
 
-        service_records = list(
-            service_records.order_by(
-                "-service_date",
-                "-created_at",
+        if (
+            service_records[
+                MAX_REPORT_RECORDS:
+                MAX_REPORT_RECORDS + 1
+            ].exists()
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Raport zawiera zbyt dużo wpisów. "
+                        "Zawęź zakres dat lub wybierz "
+                        "spółkę, oddział albo pojazd."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
+
+        service_records = list(
+            service_records[
+                :MAX_REPORT_RECORDS
+            ]
         )
 
         company_name = None
 
-        if company_id:
-            company = next(
-                (
-                    vehicle.company
-                    for vehicle
-                    in vehicle_list
-                    if (
-                        vehicle.company
-                        and (
-                            vehicle.company_id
-                            == company_id
-                        )
-                    )
-                ),
-                None,
+        if selected_company:
+            company_name = (
+                selected_company[
+                    "company__name"
+                ]
             )
-
-            if company:
-                company_name = (
-                    company.name
-                )
 
         vehicle_name = None
 
@@ -495,7 +681,9 @@ class ServiceCostsReportView(
             vehicle_name = (
                 f"{selected_vehicle.brand} "
                 f"{selected_vehicle.model} "
-                f"({selected_vehicle.registration_number})"
+                "("
+                f"{selected_vehicle.registration_number}"
+                ")"
             )
 
         filters = {
@@ -525,13 +713,11 @@ class ServiceCostsReportView(
         }
 
         if report_format == "pdf":
-            pdf = (
-                create_service_costs_pdf(
-                    service_records=(
-                        service_records
-                    ),
-                    filters=filters,
-                )
+            pdf = create_service_costs_pdf(
+                service_records=(
+                    service_records
+                ),
+                filters=filters,
             )
 
             response = HttpResponse(
@@ -565,7 +751,9 @@ class ServiceCostsReportView(
             output
         )
 
-        output.seek(0)
+        output.seek(
+            0
+        )
 
         response = HttpResponse(
             output.getvalue(),

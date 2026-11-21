@@ -1,5 +1,6 @@
 from decimal import Decimal
 from io import BytesIO
+from xml.sax.saxutils import escape
 
 from django.utils import timezone
 
@@ -22,6 +23,38 @@ from reportlab.platypus import (
 )
 
 from vehicles.pdf_utils import register_fonts
+
+
+DANGEROUS_FORMULA_PREFIXES = (
+    "=",
+    "+",
+    "-",
+    "@",
+)
+
+
+def sanitize_spreadsheet_value(value):
+    if not isinstance(
+        value,
+        str,
+    ):
+        return value
+
+    if value.lstrip().startswith(
+        DANGEROUS_FORMULA_PREFIXES
+    ):
+        return f"'{value}"
+
+    return value
+
+
+def safe_pdf_text(value):
+    if value is None:
+        return ""
+
+    return escape(
+        str(value)
+    )
 
 
 def format_money(value):
@@ -103,35 +136,35 @@ def create_service_costs_workbook(
     summary_sheet.append(
         [
             "Data od",
-            filters.get("date_from") or "Wszystkie",
+            sanitize_spreadsheet_value(filters.get("date_from") or "Wszystkie"),
         ]
     )
 
     summary_sheet.append(
         [
             "Data do",
-            filters.get("date_to") or "Wszystkie",
+            sanitize_spreadsheet_value(filters.get("date_to") or "Wszystkie"),
         ]
     )
 
     summary_sheet.append(
         [
             "Spółka",
-            filters.get("company_name") or "Wszystkie",
+            sanitize_spreadsheet_value(filters.get("company_name") or "Wszystkie"),
         ]
     )
 
     summary_sheet.append(
         [
             "Oddział",
-            filters.get("branch") or "Wszystkie",
+            sanitize_spreadsheet_value(filters.get("branch") or "Wszystkie"),
         ]
     )
 
     summary_sheet.append(
         [
             "Pojazd",
-            filters.get("vehicle_name") or "Wszystkie",
+            sanitize_spreadsheet_value(filters.get("vehicle_name") or "Wszystkie"),
         ]
     )
 
@@ -167,7 +200,7 @@ def create_service_costs_workbook(
             [
                 "Najdroższy wpis",
                 (
-                    f"{most_expensive.title} - "
+                    f"{sanitize_spreadsheet_value(most_expensive.title)} - "
                     f"{most_expensive.cost:.2f} zł"
                 ),
             ]
@@ -208,16 +241,28 @@ def create_service_costs_workbook(
         details_sheet.append(
             [
                 record.service_date,
-                f"{vehicle.brand} {vehicle.model}",
-                vehicle.registration_number,
+                sanitize_spreadsheet_value(
+                    f"{vehicle.brand} {vehicle.model}"
+                ),
+                sanitize_spreadsheet_value(
+                    vehicle.registration_number
+                ),
                 (
-                    vehicle.company.name
+                    sanitize_spreadsheet_value(
+                        vehicle.company.name
+                    )
                     if vehicle.company
                     else ""
                 ),
-                vehicle.branch or "",
-                record.title,
-                record.description or "",
+                sanitize_spreadsheet_value(
+                    vehicle.branch or ""
+                ),
+                sanitize_spreadsheet_value(
+                    record.title
+                ),
+                sanitize_spreadsheet_value(
+                    record.description or ""
+                ),
                 record.mileage,
                 float(
                     record.cost
@@ -324,13 +369,19 @@ def create_service_costs_pdf(
                 f"{filters.get('date_to') or 'bez ograniczenia'}"
             ),
             "Spółka",
-            filters.get("company_name") or "Wszystkie",
+            safe_pdf_text(
+                filters.get("company_name") or "Wszystkie"
+            ),
         ],
         [
             "Oddział",
-            filters.get("branch") or "Wszystkie",
+            safe_pdf_text(
+                filters.get("branch") or "Wszystkie"
+            ),
             "Pojazd",
-            filters.get("vehicle_name") or "Wszystkie",
+            safe_pdf_text(
+                filters.get("vehicle_name") or "Wszystkie"
+            ),
         ],
     ]
 
@@ -423,7 +474,7 @@ def create_service_costs_pdf(
         )
 
         most_expensive_text = (
-            f"{most_expensive.title} "
+            f"{safe_pdf_text(most_expensive.title)} "
             f"({format_money(most_expensive.cost)})"
         )
 
@@ -551,26 +602,32 @@ def create_service_costs_pdf(
                     ),
                     Paragraph(
                         (
-                            f"{vehicle.brand} "
-                            f"{vehicle.model}"
+                            f"{safe_pdf_text(vehicle.brand)} "
+                            f"{safe_pdf_text(vehicle.model)}"
                         ),
                         normal_style,
                     ),
                     vehicle.registration_number,
                     Paragraph(
                         (
-                            vehicle.company.name
+                            safe_pdf_text(
+                                vehicle.company.name
+                            )
                             if vehicle.company
                             else "-"
                         ),
                         normal_style,
                     ),
                     Paragraph(
-                        vehicle.branch or "-",
+                        safe_pdf_text(
+                            vehicle.branch or "-"
+                        ),
                         normal_style,
                     ),
                     Paragraph(
-                        record.title,
+                        safe_pdf_text(
+                            record.title
+                        ),
                         normal_style,
                     ),
                     (

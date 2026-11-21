@@ -1,4 +1,6 @@
 from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 from rest_framework import status
 from rest_framework.exceptions import (
@@ -55,12 +57,17 @@ def get_membership(user):
     )
 
 
-def get_admin_membership(user):
+def get_active_membership(user):
     membership = get_membership(
         user
     )
 
     if membership is None:
+        if user_is_superuser(
+            user
+        ):
+            return None
+
         raise PermissionDenied(
             (
                 "Użytkownik nie jest przypisany "
@@ -73,6 +80,23 @@ def get_admin_membership(user):
             (
                 "Organizacja użytkownika "
                 "jest nieaktywna."
+            )
+        )
+
+    return membership
+
+
+def get_admin_membership(user):
+    membership = get_active_membership(
+        user
+    )
+
+    if membership is None:
+        raise PermissionDenied(
+            (
+                "Konto administratora systemu "
+                "nie jest kontem administratora "
+                "organizacji."
             )
         )
 
@@ -98,7 +122,7 @@ class CurrentUserView(
         self,
         request,
     ):
-        membership = get_membership(
+        membership = get_active_membership(
             request.user
         )
 
@@ -215,20 +239,11 @@ class CompanyListView(
         self,
         request,
     ):
-        membership = get_membership(
+        membership = get_active_membership(
             request.user
         )
 
         if membership is not None:
-            if (
-                not membership
-                .organization
-                .is_active
-            ):
-                return Response(
-                    []
-                )
-
             if membership.role == "admin":
                 companies = (
                     Company.objects
@@ -425,6 +440,23 @@ class ChangePasswordView(
                             "inne niż aktualne."
                         )
                     ]
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        try:
+            validate_password(
+                new_password,
+                user=user,
+            )
+        except DjangoValidationError as error:
+            return Response(
+                {
+                    "new_password": list(
+                        error.messages
+                    )
                 },
                 status=(
                     status.HTTP_400_BAD_REQUEST

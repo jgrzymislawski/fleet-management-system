@@ -22,52 +22,132 @@ class AlertsReportView(
     APIView
 ):
     permission_classes = [
-        IsAuthenticated
+        IsAuthenticated,
     ]
 
     def post(
         self,
         request,
     ):
-        report_format = (
-            request.data.get(
-                "format",
-                "pdf",
-            )
+        report_format = request.data.get(
+            "format",
+            "pdf",
         )
+
+        category = request.data.get(
+            "category",
+            "all",
+        )
+
+        alert_status = request.data.get(
+            "status",
+            "all",
+        )
+
+        company_id = request.data.get(
+            "company_id"
+        )
+
+        branch = request.data.get(
+            "branch",
+            "",
+        )
+
+        vehicle_id = request.data.get(
+            "vehicle_id"
+        )
+
+        if not isinstance(
+            report_format,
+            str,
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Nieprawidłowy format raportu."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        report_format = (
+            report_format
+            .strip()
+            .lower()
+        )
+
+        if not isinstance(
+            category,
+            str,
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Nieprawidłowa kategoria."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
 
         category = (
-            request.data.get(
-                "category",
-                "all",
-            )
+            category
+            .strip()
+            .lower()
         )
+
+        if not isinstance(
+            alert_status,
+            str,
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Nieprawidłowy filtr pilności."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
 
         alert_status = (
-            request.data.get(
-                "status",
-                "all",
-            )
+            alert_status
+            .strip()
+            .lower()
         )
 
-        company_id = (
-            request.data.get(
-                "company_id"
+        if not isinstance(
+            branch,
+            str,
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Oddział musi być tekstem."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
-        )
 
-        branch = (
-            request.data.get(
-                "branch",
-                "",
-            )
-        )
+        branch = branch.strip()
 
-        vehicle_id = (
-            request.data.get(
-                "vehicle_id"
+        if len(branch) > 120:
+            return Response(
+                {
+                    "detail": (
+                        "Nazwa oddziału jest zbyt długa."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
             )
-        )
 
         if report_format not in (
             "pdf",
@@ -80,8 +160,7 @@ class AlertsReportView(
                     )
                 },
                 status=(
-                    status
-                    .HTTP_400_BAD_REQUEST
+                    status.HTTP_400_BAD_REQUEST
                 ),
             )
 
@@ -97,8 +176,7 @@ class AlertsReportView(
                     )
                 },
                 status=(
-                    status
-                    .HTTP_400_BAD_REQUEST
+                    status.HTTP_400_BAD_REQUEST
                 ),
             )
 
@@ -115,17 +193,18 @@ class AlertsReportView(
                     )
                 },
                 status=(
-                    status
-                    .HTTP_400_BAD_REQUEST
+                    status.HTTP_400_BAD_REQUEST
                 ),
             )
 
-        if company_id:
+        if company_id not in (
+            None,
+            "",
+        ):
             try:
                 company_id = int(
                     company_id
                 )
-
             except (
                 TypeError,
                 ValueError,
@@ -137,17 +216,34 @@ class AlertsReportView(
                         )
                     },
                     status=(
-                        status
-                        .HTTP_400_BAD_REQUEST
+                        status.HTTP_400_BAD_REQUEST
                     ),
                 )
 
-        if vehicle_id:
+            if company_id <= 0:
+                return Response(
+                    {
+                        "detail": (
+                            "ID spółki musi być "
+                            "większe od zera."
+                        )
+                    },
+                    status=(
+                        status.HTTP_400_BAD_REQUEST
+                    ),
+                )
+
+        else:
+            company_id = None
+
+        if vehicle_id not in (
+            None,
+            "",
+        ):
             try:
                 vehicle_id = int(
                     vehicle_id
                 )
-
             except (
                 TypeError,
                 ValueError,
@@ -159,10 +255,25 @@ class AlertsReportView(
                         )
                     },
                     status=(
-                        status
-                        .HTTP_400_BAD_REQUEST
+                        status.HTTP_400_BAD_REQUEST
                     ),
                 )
+
+            if vehicle_id <= 0:
+                return Response(
+                    {
+                        "detail": (
+                            "ID pojazdu musi być "
+                            "większe od zera."
+                        )
+                    },
+                    status=(
+                        status.HTTP_400_BAD_REQUEST
+                    ),
+                )
+
+        else:
+            vehicle_id = None
 
         accessible_vehicles = (
             get_accessible_vehicles(
@@ -175,7 +286,7 @@ class AlertsReportView(
 
         selected_company = None
 
-        if company_id:
+        if company_id is not None:
             selected_company = (
                 accessible_vehicles
                 .filter(
@@ -191,9 +302,22 @@ class AlertsReportView(
                 .first()
             )
 
+            if selected_company is None:
+                return Response(
+                    {
+                        "detail": (
+                            "Nie znaleziono spółki "
+                            "lub nie masz do niej dostępu."
+                        )
+                    },
+                    status=(
+                        status.HTTP_404_NOT_FOUND
+                    ),
+                )
+
         selected_vehicle = None
 
-        if vehicle_id:
+        if vehicle_id is not None:
             selected_vehicle = (
                 accessible_vehicles
                 .filter(
@@ -211,24 +335,34 @@ class AlertsReportView(
                         )
                     },
                     status=(
-                        status
-                        .HTTP_404_NOT_FOUND
+                        status.HTTP_404_NOT_FOUND
+                    ),
+                )
+
+            if (
+                company_id is not None
+                and selected_vehicle.company_id
+                != company_id
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            "Wybrany pojazd nie należy "
+                            "do wybranej spółki."
+                        )
+                    },
+                    status=(
+                        status.HTTP_400_BAD_REQUEST
                     ),
                 )
 
         alerts = build_alerts(
             user=request.user,
             category=category,
-            alert_status=(
-                alert_status
-            ),
-            company_id=(
-                company_id
-            ),
+            alert_status=alert_status,
+            company_id=company_id,
             branch=branch,
-            vehicle_id=(
-                vehicle_id
-            ),
+            vehicle_id=vehicle_id,
         )
 
         category_names = {
@@ -239,9 +373,7 @@ class AlertsReportView(
 
         status_names = {
             "all": "Wszystkie",
-            "expired": (
-                "Po terminie"
-            ),
+            "expired": "Po terminie",
             "7_days": (
                 "Wygasa w ciągu 7 dni"
             ),
@@ -265,9 +397,9 @@ class AlertsReportView(
             vehicle_name = (
                 f"{selected_vehicle.brand} "
                 f"{selected_vehicle.model} "
-                f"("
+                "("
                 f"{selected_vehicle.registration_number}"
-                f")"
+                ")"
             )
 
         filters = {
@@ -293,11 +425,9 @@ class AlertsReportView(
         }
 
         if report_format == "pdf":
-            pdf = (
-                create_alerts_report_pdf(
-                    alerts=alerts,
-                    filters=filters,
-                )
+            pdf = create_alerts_report_pdf(
+                alerts=alerts,
+                filters=filters,
             )
 
             response = HttpResponse(
@@ -325,9 +455,13 @@ class AlertsReportView(
 
         output = BytesIO()
 
-        workbook.save(output)
+        workbook.save(
+            output
+        )
 
-        output.seek(0)
+        output.seek(
+            0
+        )
 
         response = HttpResponse(
             output.getvalue(),

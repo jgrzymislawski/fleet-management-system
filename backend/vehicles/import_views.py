@@ -95,6 +95,37 @@ class VehicleImportView(APIView):
                 ),
             )
 
+        max_file_size = (
+            5
+            * 1024
+            * 1024
+        )
+
+        if uploaded_file.size > max_file_size:
+            return Response(
+                {
+                    "detail": (
+                        "Maksymalny rozmiar pliku "
+                        "importu to 5 MB."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        if uploaded_file.size == 0:
+            return Response(
+                {
+                    "detail": (
+                        "Przesłany plik jest pusty."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
         filename = (
             uploaded_file.name
             .lower()
@@ -119,6 +150,7 @@ class VehicleImportView(APIView):
             workbook = load_workbook(
                 uploaded_file,
                 data_only=True,
+                read_only=True,
             )
 
         except Exception:
@@ -135,6 +167,24 @@ class VehicleImportView(APIView):
             )
 
         worksheet = workbook.active
+
+        max_rows = 5001
+
+        if worksheet.max_row > max_rows:
+            workbook.close()
+
+            return Response(
+                {
+                    "detail": (
+                        "Plik zawiera zbyt wiele wierszy. "
+                        "Jednorazowo można importować "
+                        "maksymalnie 5000 pojazdów."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
 
         headers = [
             normalize_text(
@@ -651,6 +701,8 @@ class VehicleImportView(APIView):
                     }
                 )
 
+        workbook.close()
+
         return Response(
             {
                 "imported": imported,
@@ -761,6 +813,7 @@ class VehicleImportView(APIView):
                         company_name
                     ),
                     is_active=True,
+                    organization__is_active=True,
                 )
             )
 

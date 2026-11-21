@@ -1,4 +1,5 @@
 import mimetypes
+import re
 from pathlib import Path
 
 from django.db import transaction
@@ -14,6 +15,10 @@ from .models import (
     ServiceRecord,
     VehicleDocument,
 )
+
+
+VIN_PATTERN = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")
+REGISTRATION_PATTERN = re.compile(r"^[A-Z0-9-]{2,20}$")
 
 
 class VehicleSerializer(
@@ -43,6 +48,164 @@ class VehicleSerializer(
             "deleted_at",
         ]
 
+    def validate_brand(
+        self,
+        value,
+    ):
+        value = value.strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "Marka pojazdu jest wymagana."
+            )
+
+        return value
+
+    def validate_model(
+        self,
+        value,
+    ):
+        value = value.strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "Model pojazdu jest wymagany."
+            )
+
+        return value
+
+    def validate_registration_number(
+        self,
+        value,
+    ):
+        value = (
+            value.strip()
+            .upper()
+            .replace(" ", "")
+        )
+
+        if not value:
+            raise serializers.ValidationError(
+                "Numer rejestracyjny jest wymagany."
+            )
+
+        if not REGISTRATION_PATTERN.fullmatch(
+            value
+        ):
+            raise serializers.ValidationError(
+                (
+                    "Numer rejestracyjny może zawierać "
+                    "wyłącznie litery, cyfry i myślnik."
+                )
+            )
+
+        return value
+
+    def validate_vin(
+        self,
+        value,
+    ):
+        if value in (
+            None,
+            "",
+        ):
+            return None
+
+        value = (
+            str(value)
+            .strip()
+            .upper()
+            .replace(" ", "")
+        )
+
+        if not VIN_PATTERN.fullmatch(
+            value
+        ):
+            raise serializers.ValidationError(
+                (
+                    "VIN musi mieć dokładnie 17 znaków, "
+                    "składać się z cyfr i liter oraz nie "
+                    "może zawierać liter I, O ani Q."
+                )
+            )
+
+        return value
+
+    def validate_year(
+        self,
+        value,
+    ):
+        maximum_year = (
+            timezone.localdate().year
+            + 1
+        )
+
+        if value < 1900:
+            raise serializers.ValidationError(
+                "Rok produkcji nie może być wcześniejszy niż 1900."
+            )
+
+        if value > maximum_year:
+            raise serializers.ValidationError(
+                (
+                    "Rok produkcji nie może być późniejszy "
+                    f"niż {maximum_year}."
+                )
+            )
+
+        return value
+
+    def validate_branch(
+        self,
+        value,
+    ):
+        return value.strip()
+
+    def _get_target_organization(
+        self,
+        company,
+    ):
+        request = self.context.get(
+            "request"
+        )
+
+        if request is None:
+            if self.instance:
+                return (
+                    self.instance.organization
+                )
+
+            return None
+
+        membership = (
+            OrganizationMembership.objects
+            .select_related(
+                "organization"
+            )
+            .filter(
+                user=request.user
+            )
+            .first()
+        )
+
+        if membership is not None:
+            return membership.organization
+
+        if getattr(
+            request.user,
+            "is_superuser",
+            False,
+        ):
+            if company is not None:
+                return company.organization
+
+            if self.instance:
+                return (
+                    self.instance.organization
+                )
+
+        return None
+
     def validate(
         self,
         attrs,
@@ -57,6 +220,14 @@ class VehicleSerializer(
 
         company = attrs.get(
             "company"
+        )
+
+        registration_number = attrs.get(
+            "registration_number"
+        )
+
+        vin = attrs.get(
+            "vin"
         )
 
         if self.instance:
@@ -74,6 +245,14 @@ class VehicleSerializer(
                 company = (
                     self.instance.company
                 )
+
+            if "registration_number" not in attrs:
+                registration_number = (
+                    self.instance.registration_number
+                )
+
+            if "vin" not in attrs:
+                vin = self.instance.vin
 
         if isinstance(
             driver_name,
@@ -209,6 +388,73 @@ class VehicleSerializer(
                             "Użytkownik nie jest "
                             "przypisany do żadnej "
                             "organizacji."
+                        )
+                    }
+                )
+
+        organization = (
+            self._get_target_organization(
+                company
+            )
+        )
+
+        if (
+            organization is not None
+            and registration_number
+        ):
+            duplicate_registration = (
+                Vehicle.active_objects
+                .filter(
+                    organization=organization,
+                    registration_number__iexact=(
+                        registration_number
+                    ),
+                )
+            )
+
+            if self.instance:
+                duplicate_registration = (
+                    duplicate_registration.exclude(
+                        pk=self.instance.pk
+                    )
+                )
+
+            if duplicate_registration.exists():
+                raise serializers.ValidationError(
+                    {
+                        "registration_number": (
+                            "Aktywny pojazd z tym numerem "
+                            "rejestracyjnym już istnieje "
+                            "w tej organizacji."
+                        )
+                    }
+                )
+
+        if (
+            organization is not None
+            and vin
+        ):
+            duplicate_vin = (
+                Vehicle.active_objects
+                .filter(
+                    organization=organization,
+                    vin__iexact=vin,
+                )
+            )
+
+            if self.instance:
+                duplicate_vin = (
+                    duplicate_vin.exclude(
+                        pk=self.instance.pk
+                    )
+                )
+
+            if duplicate_vin.exists():
+                raise serializers.ValidationError(
+                    {
+                        "vin": (
+                            "Aktywny pojazd z tym VIN-em "
+                            "już istnieje w tej organizacji."
                         )
                     }
                 )
@@ -392,6 +638,50 @@ class ServiceRecordSerializer(
 
         return vehicle
 
+    def validate_title(
+        self,
+        value,
+    ):
+        value = value.strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "Tytuł wpisu serwisowego jest wymagany."
+            )
+
+        return value
+
+    def validate_description(
+        self,
+        value,
+    ):
+        return value.strip()
+
+    def validate_cost(
+        self,
+        value,
+    ):
+        if value < 0:
+            raise serializers.ValidationError(
+                "Koszt nie może być ujemny."
+            )
+
+        return value
+
+    def validate_service_date(
+        self,
+        value,
+    ):
+        if value > timezone.localdate():
+            raise serializers.ValidationError(
+                (
+                    "Data wykonanej usługi nie może "
+                    "być datą przyszłą."
+                )
+            )
+
+        return value
+
 
 class VehicleDocumentSerializer(
     serializers.ModelSerializer
@@ -414,6 +704,29 @@ class VehicleDocumentSerializer(
 
         return vehicle
 
+    def validate_document_number(
+        self,
+        value,
+    ):
+        return value.strip()
+
+    def validate_notes(
+        self,
+        value,
+    ):
+        return value.strip()
+
+    def validate_cost(
+        self,
+        value,
+    ):
+        if value is not None and value < 0:
+            raise serializers.ValidationError(
+                "Koszt dokumentu nie może być ujemny."
+            )
+
+        return value
+
     def validate_file(
         self,
         file,
@@ -430,6 +743,11 @@ class VehicleDocumentSerializer(
                     "Maksymalny rozmiar "
                     "pliku to 10 MB."
                 )
+            )
+
+        if file.size == 0:
+            raise serializers.ValidationError(
+                "Przesłany plik jest pusty."
             )
 
         allowed_extensions = {
@@ -496,4 +814,81 @@ class VehicleDocumentSerializer(
                 )
             )
 
+        position = file.tell()
+        header = file.read(16)
+        file.seek(position)
+
+        valid_signature = False
+
+        if extension == ".pdf":
+            valid_signature = (
+                header.startswith(
+                    b"%PDF-"
+                )
+            )
+
+        elif extension in {
+            ".jpg",
+            ".jpeg",
+        }:
+            valid_signature = (
+                header.startswith(
+                    b"\xff\xd8\xff"
+                )
+            )
+
+        elif extension == ".png":
+            valid_signature = (
+                header.startswith(
+                    b"\x89PNG\r\n\x1a\n"
+                )
+            )
+
+        if not valid_signature:
+            raise serializers.ValidationError(
+                (
+                    "Zawartość pliku nie odpowiada "
+                    "jego rozszerzeniu."
+                )
+            )
+
         return file
+
+    def validate(
+        self,
+        attrs,
+    ):
+        issue_date = attrs.get(
+            "issue_date"
+        )
+
+        expiry_date = attrs.get(
+            "expiry_date"
+        )
+
+        if self.instance:
+            if "issue_date" not in attrs:
+                issue_date = (
+                    self.instance.issue_date
+                )
+
+            if "expiry_date" not in attrs:
+                expiry_date = (
+                    self.instance.expiry_date
+                )
+
+        if (
+            issue_date
+            and expiry_date
+            and issue_date > expiry_date
+        ):
+            raise serializers.ValidationError(
+                {
+                    "expiry_date": (
+                        "Data ważności nie może być "
+                        "wcześniejsza niż data wystawienia."
+                    )
+                }
+            )
+
+        return attrs

@@ -1,3 +1,5 @@
+import logging
+
 from django.db import transaction
 
 from auditlog.context import set_actor
@@ -18,6 +20,9 @@ from .views import (
     user_is_superuser,
     validate_company_for_vehicle,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class VehicleBulkUpdateView(
@@ -71,12 +76,33 @@ class VehicleBulkUpdateView(
                 ),
             )
 
+        if len(vehicle_ids) > 500:
+            return Response(
+                {
+                    "detail": (
+                        "Jedna operacja masowa może "
+                        "obejmować maksymalnie 500 pojazdów."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        parsed_vehicle_ids = []
+
         try:
-            vehicle_ids = [
-                int(vehicle_id)
-                for vehicle_id
-                in vehicle_ids
-            ]
+            for vehicle_id in vehicle_ids:
+                parsed_id = int(
+                    vehicle_id
+                )
+
+                if parsed_id <= 0:
+                    raise ValueError
+
+                parsed_vehicle_ids.append(
+                    parsed_id
+                )
 
         except (
             TypeError,
@@ -96,7 +122,7 @@ class VehicleBulkUpdateView(
 
         vehicle_ids = list(
             dict.fromkeys(
-                vehicle_ids
+                parsed_vehicle_ids
             )
         )
 
@@ -364,6 +390,13 @@ class VehicleBulkUpdateView(
                 )
             )
 
+        elif user_is_superuser(
+            request.user
+        ):
+            vehicles = vehicles.filter(
+                organization__is_active=True
+            )
+
         vehicles_by_id = {
             vehicle.id: vehicle
             for vehicle in vehicles
@@ -525,7 +558,15 @@ class VehicleBulkUpdateView(
                     }
                 )
 
-            except Exception as exc:
+            except Exception:
+                logger.exception(
+                    (
+                        "Nieoczekiwany błąd podczas "
+                        "operacji masowej dla pojazdu %s."
+                    ),
+                    vehicle.id,
+                )
+
                 skipped += 1
 
                 errors.append(
@@ -537,7 +578,8 @@ class VehicleBulkUpdateView(
                             str(vehicle)
                         ),
                         "message": (
-                            str(exc)
+                            "Nie udało się wykonać operacji "
+                            "dla tego pojazdu."
                         ),
                     }
                 )

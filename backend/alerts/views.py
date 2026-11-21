@@ -6,9 +6,11 @@ from rest_framework.views import APIView
 from .services import build_alerts
 
 
-class AlertsListView(APIView):
+class AlertsListView(
+    APIView
+):
     permission_classes = [
-        IsAuthenticated
+        IsAuthenticated,
     ]
 
     def get(
@@ -34,49 +36,92 @@ class AlertsListView(APIView):
                     )
                 },
                 status=(
-                    status
-                    .HTTP_400_BAD_REQUEST
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        raw_page = (
+            request.query_params.get(
+                "page",
+                1,
+            )
+        )
+
+        raw_page_size = (
+            request.query_params.get(
+                "page_size",
+                20,
+            )
+        )
+
+        try:
+            page = int(
+                raw_page
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Parametr page musi być "
+                        "liczbą całkowitą."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
                 ),
             )
 
         try:
-            page = int(
-                request.query_params.get(
-                    "page",
-                    1,
-                )
-            )
-        except (
-            TypeError,
-            ValueError,
-        ):
-            page = 1
-
-        try:
             page_size = int(
-                request.query_params.get(
-                    "page_size",
-                    20,
-                )
+                raw_page_size
             )
         except (
             TypeError,
             ValueError,
         ):
-            page_size = 20
+            return Response(
+                {
+                    "detail": (
+                        "Parametr page_size musi być "
+                        "liczbą całkowitą."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
 
-        page = max(
-            page,
-            1,
-        )
+        if page < 1:
+            return Response(
+                {
+                    "detail": (
+                        "Parametr page musi być "
+                        "większy od zera."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
 
-        page_size = min(
-            max(
-                page_size,
-                1,
-            ),
-            100,
-        )
+        if (
+            page_size < 1
+            or page_size > 100
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Parametr page_size musi mieścić "
+                        "się w zakresie 1-100."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
 
         all_alerts = build_alerts(
             user=request.user,
@@ -86,13 +131,19 @@ class AlertsListView(APIView):
         vehicle_count = sum(
             1
             for alert in all_alerts
-            if alert["category"] == "vehicle"
+            if (
+                alert["category"]
+                == "vehicle"
+            )
         )
 
         driver_count = sum(
             1
             for alert in all_alerts
-            if alert["category"] == "driver"
+            if (
+                alert["category"]
+                == "driver"
+            )
         )
 
         if category == "vehicles":
@@ -184,9 +235,7 @@ class AlertsListView(APIView):
                             alert["status"]
                         ),
                         "className": (
-                            (
-                                "alert-status-expired"
-                            )
+                            "alert-status-expired"
                             if (
                                 alert[
                                     "status_code"

@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -63,7 +64,7 @@ def get_membership(user):
     ):
         return None
 
-    return (
+    membership = (
         OrganizationMembership.objects
         .select_related(
             "organization"
@@ -73,6 +74,19 @@ def get_membership(user):
         )
         .first()
     )
+
+    if (
+        membership is not None
+        and not membership.organization.is_active
+    ):
+        raise PermissionDenied(
+            (
+                "Organizacja użytkownika "
+                "jest nieaktywna."
+            )
+        )
+
+    return membership
 
 
 def is_system_administrator(actor):
@@ -158,6 +172,42 @@ def get_changes_dict(log_entry):
     return changes
 
 
+SENSITIVE_FIELD_FRAGMENTS = (
+    "password",
+    "token",
+    "secret",
+    "api_key",
+    "apikey",
+    "access_token",
+    "refresh_token",
+)
+
+
+def is_sensitive_field(field_name):
+    normalized = (
+        str(field_name or "")
+        .strip()
+        .lower()
+        .replace("-", "_")
+    )
+
+    return any(
+        fragment in normalized
+        for fragment
+        in SENSITIVE_FIELD_FRAGMENTS
+    )
+
+
+def mask_sensitive_value(value):
+    if value in (
+        None,
+        "",
+    ):
+        return value
+
+    return "********"
+
+
 def normalize_id(value):
     if value in (
         None,
@@ -177,7 +227,10 @@ def normalize_id(value):
         return None
 
 
-def get_company_name(value):
+def get_company_name(
+    value,
+    organization,
+):
     company_id = normalize_id(
         value
     )
@@ -188,7 +241,8 @@ def get_company_name(value):
     company = (
         Company.objects
         .filter(
-            id=company_id
+            id=company_id,
+            organization=organization,
         )
         .only(
             "name"
@@ -199,10 +253,13 @@ def get_company_name(value):
     if company:
         return company.name
 
-    return f"Spółka #{company_id}"
+    return "brak"
 
 
-def parse_changes(log_entry):
+def parse_changes(
+    log_entry,
+    organization,
+):
     changes = get_changes_dict(
         log_entry
     )
@@ -226,13 +283,26 @@ def parse_changes(log_entry):
             old_value = values[0]
             new_value = values[1]
 
-        if field == "company":
-            old_value = get_company_name(
+        if is_sensitive_field(
+            field
+        ):
+            old_value = mask_sensitive_value(
                 old_value
             )
 
-            new_value = get_company_name(
+            new_value = mask_sensitive_value(
                 new_value
+            )
+
+        elif field == "company":
+            old_value = get_company_name(
+                old_value,
+                organization,
+            )
+
+            new_value = get_company_name(
+                new_value,
+                organization,
             )
 
         parsed.append(
@@ -791,44 +861,93 @@ class OrganizationActivityView(
             )
         ]
 
-        action_filter = (
-            request.query_params
-            .get(
+        raw_action_filter = (
+            request.query_params.get(
                 "action",
                 "",
             )
+        )
+
+        raw_user_filter = (
+            request.query_params.get(
+                "user",
+                "",
+            )
+        )
+
+        raw_model_filter = (
+            request.query_params.get(
+                "model",
+                "",
+            )
+        )
+
+        raw_search = (
+            request.query_params.get(
+                "search",
+                "",
+            )
+        )
+
+        if not all(
+            isinstance(
+                value,
+                str,
+            )
+            for value in (
+                raw_action_filter,
+                raw_user_filter,
+                raw_model_filter,
+                raw_search,
+            )
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Nieprawidłowe parametry "
+                        "filtrowania."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        action_filter = (
+            raw_action_filter
             .strip()
             .lower()
         )
 
         user_filter = (
-            request.query_params
-            .get(
-                "user",
-                "",
-            )
+            raw_user_filter
             .strip()
         )
 
         model_filter = (
-            request.query_params
-            .get(
-                "model",
-                "",
-            )
+            raw_model_filter
             .strip()
             .lower()
         )
 
         search = (
-            request.query_params
-            .get(
-                "search",
-                "",
-            )
+            raw_search
             .strip()
             .lower()
         )
+
+        if len(search) > 200:
+            return Response(
+                {
+                    "detail": (
+                        "Wyszukiwana fraza może mieć "
+                        "maksymalnie 200 znaków."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
 
         action_mapping = {
             "0": LogEntry.Action.CREATE,
@@ -840,6 +959,78 @@ class OrganizationActivityView(
             "delete": LogEntry.Action.DELETE,
             "access": LogEntry.Action.ACCESS,
         }
+
+        if (
+            action_filter
+            and action_filter
+            not in action_mapping
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Nieprawidłowa wartość "
+                        "parametru action."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        if user_filter:
+            try:
+                parsed_user_filter = int(
+                    user_filter
+                )
+            except (
+                TypeError,
+                ValueError,
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            "Parametr user musi być "
+                            "prawidłowym ID użytkownika."
+                        )
+                    },
+                    status=(
+                        status.HTTP_400_BAD_REQUEST
+                    ),
+                )
+
+            if parsed_user_filter <= 0:
+                return Response(
+                    {
+                        "detail": (
+                            "ID użytkownika musi być "
+                            "większe od zera."
+                        )
+                    },
+                    status=(
+                        status.HTTP_400_BAD_REQUEST
+                    ),
+                )
+
+            user_filter = str(
+                parsed_user_filter
+            )
+
+        if (
+            model_filter
+            and model_filter
+            not in model_options_map
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Nieprawidłowa wartość "
+                        "parametru model."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
 
         if action_filter in action_mapping:
             organization_logs = [
@@ -924,7 +1115,17 @@ class OrganizationActivityView(
             TypeError,
             ValueError,
         ):
-            page = 1
+            return Response(
+                {
+                    "detail": (
+                        "Parametr page musi być "
+                        "liczbą całkowitą."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
 
         try:
             page_size = int(
@@ -937,20 +1138,46 @@ class OrganizationActivityView(
             TypeError,
             ValueError,
         ):
-            page_size = 20
+            return Response(
+                {
+                    "detail": (
+                        "Parametr page_size musi być "
+                        "liczbą całkowitą."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
 
-        page = max(
-            page,
-            1,
-        )
+        if page < 1:
+            return Response(
+                {
+                    "detail": (
+                        "Parametr page musi być "
+                        "większy od zera."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
 
-        page_size = min(
-            max(
-                page_size,
-                1,
-            ),
-            100,
-        )
+        if (
+            page_size < 1
+            or page_size > 100
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Parametr page_size musi mieścić "
+                        "się w zakresie 1-100."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
 
         total_pages = max(
             1,
@@ -1053,7 +1280,8 @@ class OrganizationActivityView(
 
                     "changes": (
                         parse_changes(
-                            log_entry
+                            log_entry,
+                            organization,
                         )
                     ),
                 }

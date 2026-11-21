@@ -2,6 +2,29 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
 
 
+DANGEROUS_FORMULA_PREFIXES = (
+    "=",
+    "+",
+    "-",
+    "@",
+)
+
+
+def sanitize_spreadsheet_value(value):
+    if not isinstance(
+        value,
+        str,
+    ):
+        return value
+
+    if value.startswith(
+        DANGEROUS_FORMULA_PREFIXES
+    ):
+        return f"'{value}"
+
+    return value
+
+
 def get_license_categories(driver):
     categories = driver.license_categories or []
 
@@ -39,13 +62,25 @@ def create_driver_workbook(drivers):
 
     for driver in drivers:
         worksheet.append([
-            driver.first_name,
-            driver.last_name,
-            driver.license_number,
-            get_license_categories(driver),
+            sanitize_spreadsheet_value(
+                driver.first_name
+            ),
+            sanitize_spreadsheet_value(
+                driver.last_name
+            ),
+            sanitize_spreadsheet_value(
+                driver.license_number
+            ),
+            sanitize_spreadsheet_value(
+                get_license_categories(
+                    driver
+                )
+            ),
             driver.license_expiry_date,
             driver.medical_exam_expiry_date,
-            driver.phone_number or "",
+            sanitize_spreadsheet_value(
+                driver.phone_number or ""
+            ),
             driver.hired_at,
         ])
 
@@ -61,9 +96,13 @@ def create_driver_workbook(drivers):
     }
 
     for column, width in column_widths.items():
-        worksheet.column_dimensions[column].width = width
+        worksheet.column_dimensions[
+            column
+        ].width = width
 
     worksheet.freeze_panes = "A2"
-    worksheet.auto_filter.ref = worksheet.dimensions
+    worksheet.auto_filter.ref = (
+        worksheet.dimensions
+    )
 
     return workbook

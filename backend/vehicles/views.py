@@ -1,13 +1,15 @@
 from io import BytesIO
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 
 from django.http import HttpResponse
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from auditlog.context import set_actor
@@ -68,12 +70,25 @@ def get_membership(user):
     ):
         return None
 
-    return (
+    membership = (
         OrganizationMembership.objects
         .select_related("organization")
         .filter(user=user)
         .first()
     )
+
+    if (
+        membership is not None
+        and not membership.organization.is_active
+    ):
+        raise PermissionDenied(
+            (
+                "Organizacja użytkownika "
+                "jest nieaktywna."
+            )
+        )
+
+    return membership
 
 
 def get_accessible_vehicles(user):
@@ -89,6 +104,9 @@ def get_accessible_vehicles(user):
             CompanyAccess.objects
             .filter(
                 membership=membership,
+                company__organization=(
+                    membership.organization
+                ),
                 company__is_active=True,
             )
             .values_list(
@@ -104,7 +122,12 @@ def get_accessible_vehicles(user):
         )
 
     if user_is_superuser(user):
-        return Vehicle.active_objects.all()
+        return (
+            Vehicle.active_objects
+            .filter(
+                organization__is_active=True
+            )
+        )
 
     return Vehicle.active_objects.none()
 
@@ -220,6 +243,7 @@ def validate_company_for_vehicle(
 def parse_id_list(
     raw_ids,
     field_name,
+    max_items=5000,
 ):
     if not isinstance(
         raw_ids,
@@ -229,11 +253,29 @@ def parse_id_list(
             f"{field_name} musi być listą."
         )
 
+    if len(raw_ids) > max_items:
+        raise ValueError(
+            (
+                f"{field_name} może zawierać "
+                f"maksymalnie {max_items} elementów."
+            )
+        )
+
+    parsed_ids = []
+
     try:
-        return [
-            int(item_id)
-            for item_id in raw_ids
-        ]
+        for item_id in raw_ids:
+            parsed_id = int(
+                item_id
+            )
+
+            if parsed_id <= 0:
+                raise ValueError
+
+            parsed_ids.append(
+                parsed_id
+            )
+
     except (
         TypeError,
         ValueError,
@@ -241,6 +283,124 @@ def parse_id_list(
         raise ValueError(
             "Lista zawiera nieprawidłowe ID."
         ) from exc
+
+    return list(
+        dict.fromkeys(
+            parsed_ids
+        )
+    )
+
+
+def parse_query_integer(
+    raw_value,
+    field_name,
+):
+    if raw_value in (
+        None,
+        "",
+    ):
+        return None
+
+    try:
+        value = int(
+            raw_value
+        )
+    except (
+        TypeError,
+        ValueError,
+    ) as exc:
+        raise ValidationError(
+            {
+                field_name: [
+                    "Podaj prawidłową liczbę całkowitą."
+                ]
+            }
+        ) from exc
+
+    if value <= 0:
+        raise ValidationError(
+            {
+                field_name: [
+                    "Wartość musi być większa od zera."
+                ]
+            }
+        )
+
+    return value
+
+
+def parse_query_date(
+    raw_value,
+    field_name,
+):
+    if raw_value in (
+        None,
+        "",
+    ):
+        return None
+
+    value = parse_date(
+        str(raw_value)
+    )
+
+    if value is None:
+        raise ValidationError(
+            {
+                field_name: [
+                    "Podaj datę w formacie RRRR-MM-DD."
+                ]
+            }
+        )
+
+    return value
+
+
+def parse_query_decimal(
+    raw_value,
+    field_name,
+):
+    if raw_value in (
+        None,
+        "",
+    ):
+        return None
+
+    try:
+        value = Decimal(
+            str(raw_value)
+        )
+    except (
+        InvalidOperation,
+        TypeError,
+        ValueError,
+    ) as exc:
+        raise ValidationError(
+            {
+                field_name: [
+                    "Podaj prawidłową wartość liczbową."
+                ]
+            }
+        ) from exc
+
+    if not value.is_finite():
+        raise ValidationError(
+            {
+                field_name: [
+                    "Podaj prawidłową wartość liczbową."
+                ]
+            }
+        )
+
+    if value < 0:
+        raise ValidationError(
+            {
+                field_name: [
+                    "Wartość nie może być ujemna."
+                ]
+            }
+        )
+
+    return value
 
 
 def create_xlsx_response(
@@ -342,19 +502,43 @@ class VehicleViewSet(
 
             for year in years:
                 try:
-                    valid_years.append(
-                        int(year)
+                    parsed_year = int(
+                        year
                     )
                 except (
                     TypeError,
                     ValueError,
-                ):
-                    continue
+                ) as exc:
+                    raise ValidationError(
+                        {
+                            "year": [
+                                (
+                                    "Filtr roku zawiera "
+                                    "nieprawidłową wartość."
+                                )
+                            ]
+                        }
+                    ) from exc
 
-            if valid_years:
-                queryset = queryset.filter(
-                    year__in=valid_years
+                if parsed_year < 1900:
+                    raise ValidationError(
+                        {
+                            "year": [
+                                (
+                                    "Rok w filtrze nie może "
+                                    "być wcześniejszy niż 1900."
+                                )
+                            ]
+                        }
+                    )
+
+                valid_years.append(
+                    parsed_year
                 )
+
+            queryset = queryset.filter(
+                year__in=valid_years
+            )
 
         vehicle_types = (
             self._get_csv_values(
@@ -1177,16 +1361,15 @@ class ServiceRecordViewSet(
             )
         )
 
-        vehicle_id = (
-            self.request.query_params
-            .get(
+        vehicle_id = parse_query_integer(
+            self.request.query_params.get(
                 "vehicle",
                 "",
-            )
-            .strip()
+            ),
+            "vehicle",
         )
 
-        if vehicle_id:
+        if vehicle_id is not None:
             queryset = queryset.filter(
                 vehicle_id=vehicle_id
             )
@@ -1219,58 +1402,86 @@ class ServiceRecordViewSet(
                 )
             )
 
-        date_from = (
-            self.request.query_params
-            .get(
+        date_from = parse_query_date(
+            self.request.query_params.get(
                 "date_from",
                 "",
-            )
-            .strip()
+            ),
+            "date_from",
         )
 
-        if date_from:
+        date_to = parse_query_date(
+            self.request.query_params.get(
+                "date_to",
+                "",
+            ),
+            "date_to",
+        )
+
+        if (
+            date_from is not None
+            and date_to is not None
+            and date_from > date_to
+        ):
+            raise ValidationError(
+                {
+                    "date_to": [
+                        (
+                            "Data końcowa nie może być "
+                            "wcześniejsza niż początkowa."
+                        )
+                    ]
+                }
+            )
+
+        if date_from is not None:
             queryset = queryset.filter(
                 service_date__gte=date_from
             )
 
-        date_to = (
-            self.request.query_params
-            .get(
-                "date_to",
-                "",
-            )
-            .strip()
-        )
-
-        if date_to:
+        if date_to is not None:
             queryset = queryset.filter(
                 service_date__lte=date_to
             )
 
-        cost_min = (
-            self.request.query_params
-            .get(
+        cost_min = parse_query_decimal(
+            self.request.query_params.get(
                 "cost_min",
                 "",
-            )
-            .strip()
+            ),
+            "cost_min",
         )
 
-        if cost_min:
+        cost_max = parse_query_decimal(
+            self.request.query_params.get(
+                "cost_max",
+                "",
+            ),
+            "cost_max",
+        )
+
+        if (
+            cost_min is not None
+            and cost_max is not None
+            and cost_min > cost_max
+        ):
+            raise ValidationError(
+                {
+                    "cost_max": [
+                        (
+                            "Maksymalny koszt nie może być "
+                            "mniejszy niż minimalny."
+                        )
+                    ]
+                }
+            )
+
+        if cost_min is not None:
             queryset = queryset.filter(
                 cost__gte=cost_min
             )
 
-        cost_max = (
-            self.request.query_params
-            .get(
-                "cost_max",
-                "",
-            )
-            .strip()
-        )
-
-        if cost_max:
+        if cost_max is not None:
             queryset = queryset.filter(
                 cost__lte=cost_max
             )
@@ -1527,99 +1738,6 @@ class VehicleDocumentViewSet(
         return queryset.order_by(
             "-created_at"
         )
-
-    def perform_create(
-        self,
-        serializer,
-    ):
-        vehicle = (
-            serializer.validated_data.get(
-                "vehicle"
-            )
-        )
-
-        ensure_vehicle_edit_permission(
-            self.request.user,
-            vehicle,
-        )
-
-        with set_actor(
-            self.request.user
-        ):
-            serializer.save()
-
-    def perform_update(
-        self,
-        serializer,
-    ):
-        document = self.get_object()
-
-        old_vehicle = (
-            document.vehicle
-        )
-
-        ensure_vehicle_edit_permission(
-            self.request.user,
-            old_vehicle,
-        )
-
-        new_vehicle = (
-            serializer.validated_data.get(
-                "vehicle",
-                old_vehicle,
-            )
-        )
-
-        ensure_vehicle_edit_permission(
-            self.request.user,
-            new_vehicle,
-        )
-
-        with set_actor(
-            self.request.user
-        ):
-            serializer.save()
-
-    def perform_destroy(
-        self,
-        instance,
-    ):
-        ensure_vehicle_edit_permission(
-            self.request.user,
-            instance.vehicle,
-        )
-
-        with set_actor(
-            self.request.user
-        ):
-            instance.delete()
-    queryset = VehicleDocument.objects.all()
-    serializer_class = VehicleDocumentSerializer
-
-    def get_queryset(self):
-        vehicles = get_accessible_vehicles(
-            self.request.user
-        )
-
-        queryset = (
-            VehicleDocument.objects
-            .filter(
-                vehicle__in=vehicles
-            )
-        )
-
-        vehicle_id = (
-            self.request.query_params.get(
-                "vehicle"
-            )
-        )
-
-        if vehicle_id:
-            queryset = queryset.filter(
-                vehicle_id=vehicle_id
-            )
-
-        return queryset
 
     def perform_create(
         self,

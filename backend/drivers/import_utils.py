@@ -98,6 +98,14 @@ def parse_license_categories(
         .replace("/", ",")
     )
 
+    aliases = {
+        "BE": "B+E",
+        "C1E": "C1+E",
+        "CE": "C+E",
+        "D1E": "D1+E",
+        "DE": "D+E",
+    }
+
     categories = []
 
     for item in text.split(","):
@@ -109,6 +117,11 @@ def parse_license_categories(
 
         if not category:
             continue
+
+        category = aliases.get(
+            category,
+            category,
+        )
 
         if category not in categories:
             categories.append(
@@ -153,7 +166,7 @@ def create_driver_import_template():
         "Jan",
         "Kowalski",
         "ABC123456",
-        "B, C, CE",
+        "B, C, C+E",
         "2028-05-20",
         "2027-11-15",
         "500600700",

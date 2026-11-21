@@ -1,3 +1,5 @@
+import logging
+
 from django.db import transaction
 
 from auditlog.context import set_actor
@@ -15,6 +17,9 @@ from .views import (
     get_membership,
     user_is_superuser,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class DriverBulkUpdateView(
@@ -64,12 +69,34 @@ class DriverBulkUpdateView(
                 ),
             )
 
+        if len(driver_ids) > 500:
+            return Response(
+                {
+                    "detail": (
+                        "Jedna operacja masowa może "
+                        "obejmować maksymalnie "
+                        "500 kierowców."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        parsed_driver_ids = []
+
         try:
-            driver_ids = [
-                int(driver_id)
-                for driver_id
-                in driver_ids
-            ]
+            for driver_id in driver_ids:
+                parsed_id = int(
+                    driver_id
+                )
+
+                if parsed_id <= 0:
+                    raise ValueError
+
+                parsed_driver_ids.append(
+                    parsed_id
+                )
 
         except (
             TypeError,
@@ -89,7 +116,7 @@ class DriverBulkUpdateView(
 
         driver_ids = list(
             dict.fromkeys(
-                driver_ids
+                parsed_driver_ids
             )
         )
 
@@ -147,9 +174,14 @@ class DriverBulkUpdateView(
                 )
             )
 
-        elif not user_is_superuser(
+        elif user_is_superuser(
             request.user
         ):
+            drivers = drivers.filter(
+                organization__is_active=True
+            )
+
+        else:
             return Response(
                 {
                     "detail": (
@@ -268,7 +300,15 @@ class DriverBulkUpdateView(
                     }
                 )
 
-            except Exception as exc:
+            except Exception:
+                logger.exception(
+                    (
+                        "Nieoczekiwany błąd podczas "
+                        "operacji masowej dla kierowcy %s."
+                    ),
+                    driver.id,
+                )
+
                 skipped += 1
 
                 errors.append(
@@ -280,7 +320,8 @@ class DriverBulkUpdateView(
                             str(driver)
                         ),
                         "message": (
-                            str(exc)
+                            "Nie udało się wykonać operacji "
+                            "dla tego kierowcy."
                         ),
                     }
                 )

@@ -30,19 +30,24 @@ class ContactFormRateThrottle(
             request
         )
 
+        if not ident:
+            return None
+
         return self.cache_format % {
             "scope": self.scope,
             "ident": ident,
         }
 
 
-class ContactFormView(APIView):
+class ContactFormView(
+    APIView
+):
     permission_classes = [
-        AllowAny
+        AllowAny,
     ]
 
     throttle_classes = [
-        ContactFormRateThrottle
+        ContactFormRateThrottle,
     ]
 
     authentication_classes = []
@@ -51,15 +56,19 @@ class ContactFormView(APIView):
         self,
         request,
     ):
-        serializer = ContactFormSerializer(
-            data=request.data,
+        serializer = (
+            ContactFormSerializer(
+                data=request.data,
+            )
         )
 
         serializer.is_valid(
             raise_exception=True,
         )
 
-        data = serializer.validated_data
+        data = (
+            serializer.validated_data
+        )
 
         name = data["name"]
         email = data["email"]
@@ -75,6 +84,37 @@ class ContactFormView(APIView):
         )
 
         message = data["message"]
+
+        contact_email_address = (
+            getattr(
+                settings,
+                "CONTACT_EMAIL",
+                "",
+            )
+            or ""
+        ).strip()
+
+        if not contact_email_address:
+            logger.error(
+                (
+                    "CONTACT_EMAIL nie jest "
+                    "skonfigurowany."
+                )
+            )
+
+            return Response(
+                {
+                    "detail": (
+                        "Nie udało się wysłać "
+                        "wiadomości. "
+                        "Spróbuj ponownie później."
+                    )
+                },
+                status=(
+                    status
+                    .HTTP_503_SERVICE_UNAVAILABLE
+                ),
+            )
 
         email_body = (
             "Nowe zgłoszenie z formularza Flotivo\n\n"
@@ -97,10 +137,10 @@ class ContactFormView(APIView):
                     settings.DEFAULT_FROM_EMAIL
                 ),
                 to=[
-                    settings.CONTACT_EMAIL
+                    contact_email_address,
                 ],
                 reply_to=[
-                    email
+                    email,
                 ],
             )
 
@@ -110,9 +150,11 @@ class ContactFormView(APIView):
 
         except Exception:
             logger.exception(
-                "Nie udało się wysłać "
-                "wiadomości z formularza "
-                "kontaktowego."
+                (
+                    "Nie udało się wysłać "
+                    "wiadomości z formularza "
+                    "kontaktowego."
+                )
             )
 
             return Response(
@@ -136,5 +178,7 @@ class ContactFormView(APIView):
                     "wysłana."
                 )
             },
-            status=status.HTTP_200_OK,
+            status=(
+                status.HTTP_200_OK
+            ),
         )

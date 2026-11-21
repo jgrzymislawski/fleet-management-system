@@ -1,3 +1,4 @@
+import re
 from io import BytesIO
 
 from django.db import transaction
@@ -7,7 +8,7 @@ from django.utils import timezone
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -39,6 +40,24 @@ def user_is_superuser(user):
     )
 
 
+def sanitize_filename_part(value):
+    value = str(
+        value or ""
+    ).strip()
+
+    value = re.sub(
+        r"[^A-Za-z0-9._-]+",
+        "-",
+        value,
+    )
+
+    value = value.strip(
+        ".-_"
+    )
+
+    return value or "kierowca"
+
+
 def get_membership(user):
     if not getattr(
         user,
@@ -47,7 +66,7 @@ def get_membership(user):
     ):
         return None
 
-    return (
+    membership = (
         OrganizationMembership.objects
         .select_related(
             "organization"
@@ -57,6 +76,19 @@ def get_membership(user):
         )
         .first()
     )
+
+    if (
+        membership is not None
+        and not membership.organization.is_active
+    ):
+        raise PermissionDenied(
+            (
+                "Organizacja użytkownika "
+                "jest nieaktywna."
+            )
+        )
+
+    return membership
 
 
 def ensure_driver_management_permission(user):
@@ -122,7 +154,9 @@ class DriverViewSet(
         elif user_is_superuser(user):
             queryset = (
                 Driver.active_objects
-                .all()
+                .filter(
+                    organization__is_active=True
+                )
             )
 
         else:
@@ -253,12 +287,33 @@ class DriverViewSet(
                 ),
             )
 
+        if len(driver_ids) > 5000:
+            return Response(
+                {
+                    "detail": (
+                        "Można wyeksportować maksymalnie "
+                        "5000 kierowców w jednym żądaniu."
+                    )
+                },
+                status=(
+                    status.HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        parsed_driver_ids = []
+
         try:
-            driver_ids = [
-                int(driver_id)
-                for driver_id
-                in driver_ids
-            ]
+            for driver_id in driver_ids:
+                parsed_id = int(
+                    driver_id
+                )
+
+                if parsed_id <= 0:
+                    raise ValueError
+
+                parsed_driver_ids.append(
+                    parsed_id
+                )
 
         except (
             TypeError,
@@ -274,6 +329,12 @@ class DriverViewSet(
                     status.HTTP_400_BAD_REQUEST
                 ),
             )
+
+        driver_ids = list(
+            dict.fromkeys(
+                parsed_driver_ids
+            )
+        )
 
         queryset = (
             self.get_queryset()
@@ -394,10 +455,18 @@ class DriverViewSet(
             assignments=assignments,
         )
 
+        first_name = sanitize_filename_part(
+            driver.first_name
+        )
+
+        last_name = sanitize_filename_part(
+            driver.last_name
+        )
+
         filename = (
             "flotivo-kierowca-"
-            f"{driver.first_name}-"
-            f"{driver.last_name}-"
+            f"{first_name}-"
+            f"{last_name}-"
             f"{timezone.localdate()}.pdf"
         )
 
@@ -679,7 +748,10 @@ class DriverVehicleAssignmentViewSet(
                     membership
                     .company_accesses
                     .filter(
-                        company__is_active=True
+                        company__organization=(
+                            membership.organization
+                        ),
+                        company__is_active=True,
                     )
                     .values_list(
                         "company_id",
@@ -694,7 +766,12 @@ class DriverVehicleAssignmentViewSet(
                     vehicle__company__is_active=True,
                 )
 
-        elif not user_is_superuser(user):
+        elif user_is_superuser(user):
+            queryset = queryset.filter(
+                vehicle__organization__is_active=True
+            )
+
+        else:
             return (
                 DriverVehicleAssignment.objects
                 .none()
@@ -707,6 +784,34 @@ class DriverVehicleAssignmentViewSet(
         )
 
         if vehicle_id:
+            try:
+                vehicle_id = int(
+                    vehicle_id
+                )
+            except (
+                TypeError,
+                ValueError,
+            ) as exc:
+                raise ValidationError(
+                    {
+                        "vehicle": [
+                            "Podaj prawidłowe ID pojazdu."
+                        ]
+                    }
+                ) from exc
+
+            if vehicle_id <= 0:
+                raise ValidationError(
+                    {
+                        "vehicle": [
+                            (
+                                "ID pojazdu musi być "
+                                "większe od zera."
+                            )
+                        ]
+                    }
+                )
+
             queryset = queryset.filter(
                 vehicle_id=vehicle_id
             )
@@ -718,6 +823,34 @@ class DriverVehicleAssignmentViewSet(
         )
 
         if driver_id:
+            try:
+                driver_id = int(
+                    driver_id
+                )
+            except (
+                TypeError,
+                ValueError,
+            ) as exc:
+                raise ValidationError(
+                    {
+                        "driver": [
+                            "Podaj prawidłowe ID kierowcy."
+                        ]
+                    }
+                ) from exc
+
+            if driver_id <= 0:
+                raise ValidationError(
+                    {
+                        "driver": [
+                            (
+                                "ID kierowcy musi być "
+                                "większe od zera."
+                            )
+                        ]
+                    }
+                )
+
             queryset = queryset.filter(
                 driver_id=driver_id
             )
@@ -818,6 +951,18 @@ class DriverVehicleAssignmentViewSet(
             return
 
         if user_is_superuser(user):
+            if (
+                vehicle.organization_id is None
+                or not vehicle.organization.is_active
+            ):
+                raise PermissionDenied(
+                    (
+                        "Nie można zarządzać "
+                        "przypisaniami pojazdu "
+                        "z nieaktywnej organizacji."
+                    )
+                )
+
             return
 
         raise PermissionDenied(

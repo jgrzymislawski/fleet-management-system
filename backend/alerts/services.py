@@ -2,6 +2,8 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from rest_framework.exceptions import PermissionDenied
+
 from organizations.models import (
     OrganizationMembership,
     CompanyAccess,
@@ -33,7 +35,7 @@ def get_membership(user):
     ):
         return None
 
-    return (
+    membership = (
         OrganizationMembership.objects
         .select_related(
             "organization"
@@ -43,6 +45,19 @@ def get_membership(user):
         )
         .first()
     )
+
+    if (
+        membership is not None
+        and not membership.organization.is_active
+    ):
+        raise PermissionDenied(
+            (
+                "Organizacja użytkownika "
+                "jest nieaktywna."
+            )
+        )
+
+    return membership
 
 
 def get_accessible_vehicles(user):
@@ -65,6 +80,9 @@ def get_accessible_vehicles(user):
             CompanyAccess.objects
             .filter(
                 membership=membership,
+                company__organization=(
+                    membership.organization
+                ),
                 company__is_active=True,
             )
             .values_list(
@@ -91,7 +109,9 @@ def get_accessible_vehicles(user):
     ):
         return (
             Vehicle.active_objects
-            .all()
+            .filter(
+                organization__is_active=True
+            )
         )
 
     return (
@@ -126,7 +146,9 @@ def get_accessible_drivers(user):
     ):
         return (
             Driver.active_objects
-            .all()
+            .filter(
+                organization__is_active=True
+            )
         )
 
     return (
