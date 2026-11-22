@@ -1,3 +1,4 @@
+
 services:
   db:
     image: postgres:17
@@ -17,6 +18,25 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  redis:
+    image: redis:7.4-alpine
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli ping | grep -q '^PONG$'"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -25,6 +45,8 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: 5432
+      REDIS_URL: redis://redis:6379/1
+      REDIS_TEST_URL: redis://redis:6379/2
     volumes:
       - static_prod_data:/app/staticfiles
       - media_prod_data:/app/media
@@ -32,6 +54,8 @@ services:
       - "8000"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test:

@@ -35,27 +35,38 @@ import EditUserPage from "./components/EditUserPage";
 import AdminNotificationSettingsPage from "./components/AdminNotificationSettingsPage";
 import ActivityLogPage from "./components/ActivityLogPage";
 import useIdleLogout from "./hooks/useIdleLogout";
-import { logoutSession } from "./api/client";
 import { useAuth } from "./context/AuthContext";
+import { logoutSession } from "./api/client";
 import "./App.css";
 
 function App() {
   const navigate = useNavigate();
   const { user, loadingUser, loadUser, clearUser } = useAuth();
 
-  const isLoggedIn = Boolean(localStorage.getItem("access_token"));
+  // Uwierzytelnienie ustalamy na podstawie pobranego uzytkownika,
+  // a nie istnienia tokenu w localStorage.
+  const isLoggedIn = Boolean(user);
 
   const clearSession = useCallback(() => {
-    void logoutSession().catch(() => {
-      console.warn("Nie udało się potwierdzić wylogowania na serwerze.");
-    });
-
     clearUser();
+
+    void logoutSession().catch(() => {
+      window.alert(
+        "Wylogowano lokalnie, ale serwer nie potwierdził " +
+          "unieważnienia sesji. Sprawdź połączenie z internetem. " +
+          "Sesja na serwerze może nadal być aktywna.",
+      );
+    });
   }, [clearUser]);
 
   const handleLoginSuccess = async () => {
-    await loadUser();
+    const authenticatedUser = await loadUser();
+    if (!authenticatedUser) {
+      throw new Error("Nie udało się potwierdzić tożsamości użytkownika.");
+    }
+
     navigate("/dashboard", { replace: true });
+    return authenticatedUser;
   };
 
   const handleLogout = useCallback(() => {
@@ -71,15 +82,11 @@ function App() {
   useIdleLogout(isLoggedIn, handleIdleLogout, 15 * 60 * 1000);
 
   const protectedElement = (element) => {
-    if (!isLoggedIn) {
-      return <Navigate to="/login" replace />;
-    }
-
     if (loadingUser) {
       return <div className="dashboard-route-loading">Ładowanie...</div>;
     }
 
-    if (!user) {
+    if (!isLoggedIn) {
       return <Navigate to="/login" replace />;
     }
 
@@ -87,15 +94,11 @@ function App() {
   };
 
   const adminElement = (element) => {
-    if (!isLoggedIn) {
-      return <Navigate to="/login" replace />;
-    }
-
     if (loadingUser) {
       return <div className="dashboard-route-loading">Ładowanie...</div>;
     }
 
-    if (!user) {
+    if (!isLoggedIn) {
       return <Navigate to="/login" replace />;
     }
 
@@ -116,7 +119,9 @@ function App() {
       <Route
         path="/login"
         element={
-          isLoggedIn && user && !loadingUser ? (
+          loadingUser ? (
+            <div className="dashboard-route-loading">Ładowanie sesji...</div>
+          ) : isLoggedIn ? (
             <Navigate to="/dashboard" replace />
           ) : (
             <Login onLoginSuccess={handleLoginSuccess} />

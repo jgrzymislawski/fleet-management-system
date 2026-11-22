@@ -2,32 +2,22 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import apiClient, {
   getCsrfToken,
-  markSessionAuthenticated,
+  logoutSession,
+  setAuthenticatedSession,
 } from "../api/client";
 import cars from "../assets/cars.jpg";
 import "./Login.css";
 
 function Login({ onLoginSuccess }) {
   const navigate = useNavigate();
-
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleUsernameChange = (event) => {
-    setUsername(event.target.value);
-    setError("");
-  };
-
-  const handlePasswordChange = (event) => {
-    setPassword(event.target.value);
-    setError("");
-  };
-
   const getLoginError = (err) => {
     if (!err.response) {
-      return "Nie udało się połączyć z serwerem. Spróbuj ponownie.";
+      return "Nie udało się potwierdzić logowania. Sprawdź połączenie z serwerem.";
     }
 
     if (err.response.status === 429) {
@@ -51,55 +41,39 @@ function Login({ onLoginSuccess }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
-    if (loading) {
-      return;
-    }
+    if (loading) return;
 
     const normalizedUsername = username.trim();
-
     if (!normalizedUsername || !password) {
       setError("Wprowadź login i hasło.");
       return;
     }
 
+    let sessionStarted = false;
+
     try {
       setLoading(true);
       setError("");
 
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-
       const csrfToken = await getCsrfToken();
-
       const response = await apiClient.post(
         "auth/token/",
-        {
-          username: normalizedUsername,
-          password,
-        },
-        {
-          headers: {
-            "X-CSRFToken": csrfToken,
-          },
-        },
+        { username: normalizedUsername, password },
+        { headers: { "X-CSRFToken": csrfToken } },
       );
 
-      const accessToken = response.data?.access;
+      const token = response.data?.access;
+      if (!token) throw new Error("Serwer nie zwrócił access tokenu.");
 
-      if (!accessToken) {
-        throw new Error("Serwer nie zwrócił access tokenu.");
-      }
+      setAuthenticatedSession(token);
+      sessionStarted = true;
 
-      localStorage.setItem("access_token", accessToken);
-
-      markSessionAuthenticated();
-
+      // App pobiera /auth/me i dopiero po sukcesie otwiera panel.
       await onLoginSuccess();
     } catch (err) {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-
+      if (sessionStarted) {
+        await logoutSession().catch(() => {});
+      }
       setError(getLoginError(err));
     } finally {
       setLoading(false);
@@ -107,18 +81,12 @@ function Login({ onLoginSuccess }) {
   };
 
   return (
-    <div
-      className="login-page"
-      style={{
-        backgroundImage: `url(${cars})`,
-      }}
-    >
+    <div className="login-page" style={{ backgroundImage: `url(${cars})` }}>
       <div className="login-overlay" />
 
       <main className="login-card">
         <div className="login-brand">
           <span className="login-brand-name">Flotivo</span>
-
           <span className="login-brand-description">
             System zarządzania flotą
           </span>
@@ -132,13 +100,15 @@ function Login({ onLoginSuccess }) {
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="login-field">
             <label htmlFor="username">Login</label>
-
             <input
               id="username"
               name="username"
               type="text"
               value={username}
-              onChange={handleUsernameChange}
+              onChange={(event) => {
+                setUsername(event.target.value);
+                setError("");
+              }}
               placeholder="Wprowadź login"
               autoComplete="username"
               autoCapitalize="none"
@@ -150,13 +120,15 @@ function Login({ onLoginSuccess }) {
 
           <div className="login-field">
             <label htmlFor="password">Hasło</label>
-
             <input
               id="password"
               name="password"
               type="password"
               value={password}
-              onChange={handlePasswordChange}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setError("");
+              }}
               placeholder="Wprowadź hasło"
               autoComplete="current-password"
               disabled={loading}
