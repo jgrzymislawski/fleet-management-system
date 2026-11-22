@@ -35,6 +35,7 @@ import EditUserPage from "./components/EditUserPage";
 import AdminNotificationSettingsPage from "./components/AdminNotificationSettingsPage";
 import ActivityLogPage from "./components/ActivityLogPage";
 import useIdleLogout from "./hooks/useIdleLogout";
+import { logoutSession } from "./api/client";
 import { useAuth } from "./context/AuthContext";
 import "./App.css";
 
@@ -45,8 +46,10 @@ function App() {
   const isLoggedIn = Boolean(localStorage.getItem("access_token"));
 
   const clearSession = useCallback(() => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
+    void logoutSession().catch(() => {
+      console.warn("Nie udało się potwierdzić wylogowania na serwerze.");
+    });
+
     clearUser();
   }, [clearUser]);
 

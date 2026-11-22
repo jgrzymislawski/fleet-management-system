@@ -1,35 +1,47 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/";
+const API_URL = import.meta.env.VITE_API_URL || "/api/";
 
 const normalizedApiUrl = API_URL.endsWith("/") ? API_URL : `${API_URL}/`;
 
 const apiClient = axios.create({
   baseURL: normalizedApiUrl,
   timeout: 15000,
+  withCredentials: true,
 });
 
-const refreshClient = axios.create({
+const authClient = axios.create({
   baseURL: normalizedApiUrl,
   timeout: 15000,
+  withCredentials: true,
 });
 
-const publicEndpoints = ["auth/token/", "auth/token/refresh/", "contact/"];
+const publicEndpoints = [
+  "auth/token/",
+  "auth/token/refresh/",
+  "auth/token/blacklist/",
+  "auth/csrf/",
+  "contact/",
+];
 
-const normalizeUrl = (url = "") => {
-  return String(url).replace(/^\/+/, "");
-};
+const normalizeUrl = (url = "") => String(url).replace(/^\/+/, "");
 
 const isPublicEndpoint = (url = "") => {
-  const normalizedUrl = normalizeUrl(url);
+  const normalized = normalizeUrl(url);
 
   return publicEndpoints.some(
     (endpoint) =>
-      normalizedUrl === endpoint || normalizedUrl.endsWith(`/${endpoint}`),
+      normalized === endpoint || normalized.endsWith(`/${endpoint}`),
   );
 };
 
-const clearTokens = () => {
+let sessionGeneration = 0;
+let sessionEnded = false;
+let refreshPromise = null;
+
+const clearLocalTokens = () => {
+  sessionGeneration += 1;
+
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
 };
@@ -40,44 +52,109 @@ const redirectToLogin = () => {
   }
 };
 
-let refreshPromise = null;
+const readCookie = (name) => {
+  const prefix = `${name}=`;
 
-const refreshAccessToken = async () => {
+  const cookie = document.cookie
+    .split("; ")
+    .find((item) => item.startsWith(prefix));
+
+  if (!cookie) {
+    return null;
+  }
+
+  return decodeURIComponent(cookie.substring(prefix.length));
+};
+
+export const getCsrfToken = async () => {
+  await authClient.get("auth/csrf/");
+
+  const token = readCookie("csrftoken");
+
+  if (!token) {
+    throw new Error("Nie udało się uzyskać tokenu CSRF.");
+  }
+
+  return token;
+};
+
+export const markSessionAuthenticated = () => {
+  sessionEnded = false;
+
+  // Usuwamy token z poprzedniej wersji logowania.
+  localStorage.removeItem("refresh_token");
+};
+
+export const logoutSession = async () => {
+  const pendingRefresh = refreshPromise;
+
+  sessionEnded = true;
+  clearLocalTokens();
+
+  // Czekamy, az ewentualne odswiezanie sie zakonczy,
+  // aby serwer nie ustawil nowego cookie po wylogowaniu.
+  if (pendingRefresh) {
+    await pendingRefresh.catch(() => {});
+  }
+
+  const csrfToken = await getCsrfToken();
+
+  await authClient.post(
+    "auth/token/blacklist/",
+    {},
+    {
+      headers: {
+        "X-CSRFToken": csrfToken,
+      },
+    },
+  );
+};
+
+export const refreshAccessToken = async () => {
+  if (sessionEnded) {
+    throw new Error("Sesja została zakończona.");
+  }
+
   if (refreshPromise) {
     return refreshPromise;
   }
 
-  const refreshToken = localStorage.getItem("refresh_token");
+  const myGeneration = sessionGeneration;
 
-  if (!refreshToken) {
-    clearTokens();
-    redirectToLogin();
+  refreshPromise = (async () => {
+    const csrfToken = await getCsrfToken();
 
-    throw new Error("Brak tokenu odświeżającego.");
-  }
+    const response = await authClient.post(
+      "auth/token/refresh/",
+      {},
+      {
+        headers: {
+          "X-CSRFToken": csrfToken,
+        },
+      },
+    );
 
-  refreshPromise = refreshClient
-    .post("auth/token/refresh/", {
-      refresh: refreshToken,
-    })
-    .then((response) => {
-      const newAccessToken = response.data?.access;
+    if (myGeneration !== sessionGeneration || sessionEnded) {
+      throw new Error("Sesja została zakończona.");
+    }
 
-      if (!newAccessToken) {
-        throw new Error("Serwer nie zwrócił nowego tokenu dostępu.");
-      }
+    const accessToken = response.data?.access;
 
-      localStorage.setItem("access_token", newAccessToken);
+    if (!accessToken) {
+      throw new Error("Serwer nie zwrócił access tokenu.");
+    }
 
-      if (response.data?.refresh) {
-        localStorage.setItem("refresh_token", response.data.refresh);
-      }
+    localStorage.setItem("access_token", accessToken);
 
-      return newAccessToken;
-    })
+    localStorage.removeItem("refresh_token");
+
+    return accessToken;
+  })()
     .catch((error) => {
-      clearTokens();
-      redirectToLogin();
+      if (myGeneration === sessionGeneration) {
+        clearLocalTokens();
+        redirectToLogin();
+      }
 
       throw error;
     })
@@ -90,6 +167,8 @@ const refreshAccessToken = async () => {
 
 apiClient.interceptors.request.use(
   (config) => {
+    config._sessionGeneration = sessionGeneration;
+
     const token = localStorage.getItem("access_token");
 
     if (token && !isPublicEndpoint(config.url)) {
@@ -116,25 +195,23 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (isPublicEndpoint(originalRequest.url)) {
-      return Promise.reject(error);
-    }
-
-    if (originalRequest._retry) {
-      clearTokens();
-      redirectToLogin();
-
+    if (
+      isPublicEndpoint(originalRequest.url) ||
+      originalRequest._retry ||
+      sessionEnded ||
+      originalRequest._sessionGeneration !== sessionGeneration
+    ) {
       return Promise.reject(error);
     }
 
     originalRequest._retry = true;
 
     try {
-      const newAccessToken = await refreshAccessToken();
+      const accessToken = await refreshAccessToken();
 
       originalRequest.headers = originalRequest.headers || {};
 
-      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+      originalRequest.headers.Authorization = `Bearer ${accessToken}`;
 
       return apiClient(originalRequest);
     } catch (refreshError) {

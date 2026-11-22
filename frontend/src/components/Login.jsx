@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import apiClient from "../api/client";
-import { useAuth } from "../context/AuthContext";
+import apiClient, {
+  getCsrfToken,
+  markSessionAuthenticated,
+} from "../api/client";
 import cars from "../assets/cars.jpg";
 import "./Login.css";
 
 function Login({ onLoginSuccess }) {
   const navigate = useNavigate();
-  const { loadUser } = useAuth();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -16,18 +17,12 @@ function Login({ onLoginSuccess }) {
 
   const handleUsernameChange = (event) => {
     setUsername(event.target.value);
-
-    if (error) {
-      setError("");
-    }
+    setError("");
   };
 
   const handlePasswordChange = (event) => {
     setPassword(event.target.value);
-
-    if (error) {
-      setError("");
-    }
+    setError("");
   };
 
   const getLoginError = (err) => {
@@ -35,7 +30,15 @@ function Login({ onLoginSuccess }) {
       return "Nie udało się połączyć z serwerem. Spróbuj ponownie.";
     }
 
-    if (err.response.status === 401 || err.response.status === 400) {
+    if (err.response.status === 429) {
+      return "Zbyt wiele prób logowania. Spróbuj ponownie później.";
+    }
+
+    if (err.response.status === 403) {
+      return "Nie udało się zweryfikować żądania. Odśwież stronę i spróbuj ponownie.";
+    }
+
+    if (err.response.status === 400 || err.response.status === 401) {
       return "Nieprawidłowy login lub hasło.";
     }
 
@@ -57,7 +60,6 @@ function Login({ onLoginSuccess }) {
 
     if (!normalizedUsername || !password) {
       setError("Wprowadź login i hasło.");
-
       return;
     }
 
@@ -66,30 +68,36 @@ function Login({ onLoginSuccess }) {
       setError("");
 
       localStorage.removeItem("access_token");
-
       localStorage.removeItem("refresh_token");
 
-      const response = await apiClient.post("auth/token/", {
-        username: normalizedUsername,
-        password,
-      });
+      const csrfToken = await getCsrfToken();
 
-      if (!response.data?.access || !response.data?.refresh) {
-        throw new Error("Brak tokenów uwierzytelniających.");
+      const response = await apiClient.post(
+        "auth/token/",
+        {
+          username: normalizedUsername,
+          password,
+        },
+        {
+          headers: {
+            "X-CSRFToken": csrfToken,
+          },
+        },
+      );
+
+      const accessToken = response.data?.access;
+
+      if (!accessToken) {
+        throw new Error("Serwer nie zwrócił access tokenu.");
       }
 
-      localStorage.setItem("access_token", response.data.access);
+      localStorage.setItem("access_token", accessToken);
 
-      localStorage.setItem("refresh_token", response.data.refresh);
+      markSessionAuthenticated();
 
-      await loadUser();
-
-      onLoginSuccess();
+      await onLoginSuccess();
     } catch (err) {
-      console.error("Błąd logowania:", err);
-
       localStorage.removeItem("access_token");
-
       localStorage.removeItem("refresh_token");
 
       setError(getLoginError(err));
@@ -118,7 +126,6 @@ function Login({ onLoginSuccess }) {
 
         <div className="login-heading">
           <h1>Zaloguj się</h1>
-
           <p>Wprowadź dane dostępowe do swojego konta.</p>
         </div>
 
