@@ -8,34 +8,23 @@ import { useAuth } from "../context/AuthContext";
 function Dashboard({ onLogout }) {
   const navigate = useNavigate();
   const { user } = useAuth();
+
   const [vehicleCount, setVehicleCount] = useState(0);
   const [driverCount, setDriverCount] = useState(0);
   const [attentionCount, setAttentionCount] = useState(0);
   const [recentVehicleCount, setRecentVehicleCount] = useState(0);
   const [recentVehicles, setRecentVehicles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const [error, setError] = useState("");
+
   const canViewDriverAlerts = user?.role === "admin";
 
   useEffect(() => {
     let isMounted = true;
 
-    const parseDate = (value) => {
-      if (!value) return null;
-      const date = new Date(value);
-      return Number.isNaN(date.getTime()) ? null : date;
-    };
-
-    const isWithinWarningPeriod = (value, warningLimit) => {
-      const date = parseDate(value);
-      if (!date) return false;
-      date.setHours(0, 0, 0, 0);
-      return date <= warningLimit;
-    };
-
     const loadDashboard = async () => {
       setIsLoading(true);
-      setLoadError(false);
+      setError("");
 
       try {
         const [vehicles, drivers, documents] = await Promise.all([
@@ -44,14 +33,12 @@ function Dashboard({ onLogout }) {
           fetchAllPages(apiClient, "vehicle-documents/"),
         ]);
 
-        if (!isMounted) return;
+        if (!isMounted) {
+          return;
+        }
 
-        const safeVehicles = Array.isArray(vehicles) ? vehicles : [];
-        const safeDrivers = Array.isArray(drivers) ? drivers : [];
-        const safeDocuments = Array.isArray(documents) ? documents : [];
-
-        setVehicleCount(safeVehicles.length);
-        setDriverCount(safeDrivers.length);
+        setVehicleCount(vehicles.length);
+        setDriverCount(drivers.length);
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -61,49 +48,79 @@ function Dashboard({ onLogout }) {
 
         let attentionItems = 0;
 
-        safeVehicles.forEach((vehicle) => {
-          if (
-            isWithinWarningPeriod(vehicle.inspection_expiry_date, warningLimit)
-          ) {
-            attentionItems += 1;
+        vehicles.forEach((vehicle) => {
+          if (vehicle.inspection_expiry_date) {
+            const inspectionDate = new Date(vehicle.inspection_expiry_date);
+            inspectionDate.setHours(0, 0, 0, 0);
+
+            if (
+              !Number.isNaN(inspectionDate.getTime()) &&
+              inspectionDate <= warningLimit
+            ) {
+              attentionItems += 1;
+            }
           }
 
-          if (
-            isWithinWarningPeriod(vehicle.insurance_expiry_date, warningLimit)
-          ) {
-            attentionItems += 1;
+          if (vehicle.insurance_expiry_date) {
+            const insuranceDate = new Date(vehicle.insurance_expiry_date);
+            insuranceDate.setHours(0, 0, 0, 0);
+
+            if (
+              !Number.isNaN(insuranceDate.getTime()) &&
+              insuranceDate <= warningLimit
+            ) {
+              attentionItems += 1;
+            }
           }
         });
 
-        safeDocuments.forEach((document) => {
+        documents.forEach((document) => {
+          if (!document.expiry_date) {
+            return;
+          }
+
           if (
-            !document.expiry_date ||
             document.document_type === "oc" ||
             document.document_type === "inspection"
           ) {
             return;
           }
 
-          if (isWithinWarningPeriod(document.expiry_date, warningLimit)) {
+          const expiryDate = new Date(document.expiry_date);
+          expiryDate.setHours(0, 0, 0, 0);
+
+          if (
+            !Number.isNaN(expiryDate.getTime()) &&
+            expiryDate <= warningLimit
+          ) {
             attentionItems += 1;
           }
         });
 
         if (canViewDriverAlerts) {
-          safeDrivers.forEach((driver) => {
-            if (
-              isWithinWarningPeriod(driver.license_expiry_date, warningLimit)
-            ) {
-              attentionItems += 1;
+          drivers.forEach((driver) => {
+            if (driver.license_expiry_date) {
+              const licenseDate = new Date(driver.license_expiry_date);
+              licenseDate.setHours(0, 0, 0, 0);
+
+              if (
+                !Number.isNaN(licenseDate.getTime()) &&
+                licenseDate <= warningLimit
+              ) {
+                attentionItems += 1;
+              }
             }
 
-            if (
-              isWithinWarningPeriod(
-                driver.medical_exam_expiry_date,
-                warningLimit,
-              )
-            ) {
-              attentionItems += 1;
+            if (driver.medical_exam_expiry_date) {
+              const medicalDate = new Date(driver.medical_exam_expiry_date);
+              medicalDate.setHours(0, 0, 0, 0);
+
+              if (
+                !Number.isNaN(medicalDate.getTime()) &&
+                medicalDate <= warningLimit
+              ) {
+                attentionItems += 1;
+              }
             }
           });
         }
@@ -113,37 +130,50 @@ function Dashboard({ onLogout }) {
         const thirtyDaysAgo = new Date(today);
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const recentlyAdded = safeVehicles.filter((vehicle) => {
-          const createdAt = parseDate(vehicle.created_at);
-          return createdAt && createdAt >= thirtyDaysAgo;
+        const recentlyAdded = vehicles.filter((vehicle) => {
+          if (!vehicle.created_at) {
+            return false;
+          }
+
+          const createdAt = new Date(vehicle.created_at);
+
+          return (
+            !Number.isNaN(createdAt.getTime()) && createdAt >= thirtyDaysAgo
+          );
         });
 
         setRecentVehicleCount(recentlyAdded.length);
 
-        const recent = [...safeVehicles]
+        const recent = [...vehicles]
           .sort((a, b) => {
-            const dateA = parseDate(a.created_at);
-            const dateB = parseDate(b.created_at);
+            const dateA = new Date(a.created_at).getTime();
+            const dateB = new Date(b.created_at).getTime();
 
-            if (!dateA && !dateB) return 0;
-            if (!dateA) return 1;
-            if (!dateB) return -1;
+            if (Number.isNaN(dateA) && Number.isNaN(dateB)) {
+              return 0;
+            }
+
+            if (Number.isNaN(dateA)) {
+              return 1;
+            }
+
+            if (Number.isNaN(dateB)) {
+              return -1;
+            }
 
             return dateB - dateA;
           })
           .slice(0, 5);
 
         setRecentVehicles(recent);
-      } catch (error) {
-        if (!isMounted) return;
+      } catch (loadError) {
+        console.error("Nie udało się pobrać danych pulpitu:", loadError);
 
-        console.error("Nie udało się pobrać danych pulpitu:", error);
-        setLoadError(true);
-        setVehicleCount(0);
-        setDriverCount(0);
-        setAttentionCount(0);
-        setRecentVehicleCount(0);
-        setRecentVehicles([]);
+        if (isMounted) {
+          setError(
+            "Nie udało się pobrać danych pulpitu. Spróbuj ponownie później.",
+          );
+        }
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -158,26 +188,28 @@ function Dashboard({ onLogout }) {
     };
   }, [canViewDriverAlerts]);
 
-  const getStatusLabel = (status) => {
-    if (status === "active") return "Aktywny";
-    if (status === "maintenance") return "W serwisie";
-    if (status === "inactive") return "Nieaktywny";
-    return "Brak danych";
+  const getVehicleStatusLabel = (status) => {
+    switch (status) {
+      case "active":
+        return "Aktywny";
+      case "maintenance":
+        return "W serwisie";
+      case "inactive":
+        return "Nieaktywny";
+      default:
+        return "Nieznany";
+    }
   };
 
-  const getStatusClass = (status) => {
-    if (
-      status === "active" ||
-      status === "maintenance" ||
-      status === "inactive"
-    ) {
+  const getVehicleStatusClass = (status) => {
+    if (["active", "maintenance", "inactive"].includes(status)) {
       return `vehicle-status vehicle-status-${status}`;
     }
 
-    return "vehicle-status vehicle-status-unknown";
+    return "vehicle-status vehicle-status-inactive";
   };
 
-  const displayValue = (value) => (isLoading ? "–" : value);
+  const displayValue = (value) => (isLoading ? "—" : value);
 
   return (
     <div className="dashboard-layout">
@@ -185,14 +217,10 @@ function Dashboard({ onLogout }) {
 
       <main className="dashboard-content">
         <h1>Pulpit</h1>
+
         <p>Witaj w panelu zarządzania flotą Flotivo.</p>
 
-        {loadError && (
-          <div className="dashboard-error" role="alert">
-            Nie udało się pobrać danych pulpitu. Odśwież stronę i spróbuj
-            ponownie.
-          </div>
-        )}
+        {error && <div className="dashboard-error">{error}</div>}
 
         <div className="dashboard-stats">
           <button
@@ -201,9 +229,11 @@ function Dashboard({ onLogout }) {
             onClick={() => navigate("/vehicles")}
           >
             <span className="dashboard-card-label">Pojazdy</span>
+
             <strong className="dashboard-card-value">
               {displayValue(vehicleCount)}
             </strong>
+
             <span className="dashboard-card-description">
               Wszystkie pojazdy w systemie
             </span>
@@ -215,9 +245,11 @@ function Dashboard({ onLogout }) {
             onClick={() => navigate("/drivers")}
           >
             <span className="dashboard-card-label">Kierowcy</span>
+
             <strong className="dashboard-card-value">
               {displayValue(driverCount)}
             </strong>
+
             <span className="dashboard-card-description">
               Kierowcy w systemie
             </span>
@@ -229,11 +261,15 @@ function Dashboard({ onLogout }) {
             onClick={() => navigate("/alerts")}
           >
             <span className="dashboard-card-label">Wymagają uwagi</span>
+
             <strong className="dashboard-card-value">
               {displayValue(attentionCount)}
             </strong>
+
             <span className="dashboard-card-description">
-              Terminy pojazdów i kierowców po terminie lub do 30 dni
+              {canViewDriverAlerts
+                ? "Terminy pojazdów i kierowców po terminie lub do 30 dni"
+                : "Terminy pojazdów po terminie lub do 30 dni"}
             </span>
           </button>
 
@@ -243,9 +279,11 @@ function Dashboard({ onLogout }) {
             onClick={() => navigate("/vehicles?recent=1")}
           >
             <span className="dashboard-card-label">Ostatnio dodane</span>
+
             <strong className="dashboard-card-value">
               {displayValue(recentVehicleCount)}
             </strong>
+
             <span className="dashboard-card-description">
               Pojazdy dodane w ostatnich 30 dniach
             </span>
@@ -255,6 +293,7 @@ function Dashboard({ onLogout }) {
         <section className="dashboard-recent">
           <div className="dashboard-section-header">
             <h2>Ostatnio dodane pojazdy</h2>
+
             <span>
               {isLoading
                 ? "Ładowanie..."
@@ -270,27 +309,38 @@ function Dashboard({ onLogout }) {
               <span>Status</span>
             </div>
 
-            {!isLoading && recentVehicles.length === 0 && (
+            {!isLoading && recentVehicles.length === 0 ? (
               <div className="dashboard-table-empty">
-                {loadError
-                  ? "Nie udało się pobrać listy pojazdów."
-                  : "Brak pojazdów do wyświetlenia."}
-              </div>
-            )}
+                <div className="dashboard-table-empty-icon">🚗</div>
 
-            {recentVehicles.map((vehicle) => (
-              <div className="dashboard-table-row" key={vehicle.id}>
-                <span>
-                  {[vehicle.brand, vehicle.model].filter(Boolean).join(" ") ||
-                    "Brak danych"}
-                </span>
-                <span>{vehicle.registration_number || "Brak danych"}</span>
-                <span>{vehicle.year || "Brak danych"}</span>
-                <span className={getStatusClass(vehicle.status)}>
-                  {getStatusLabel(vehicle.status)}
-                </span>
+                <h3>Brak pojazdów</h3>
+
+                <p>
+                  Nie masz jeszcze żadnych pojazdów w systemie. Dodaj pierwszy,
+                  aby rozpocząć zarządzanie flotą.
+                </p>
+
+                <button type="button" onClick={() => navigate("/vehicles/add")}>
+                  Dodaj pierwszy pojazd
+                </button>
               </div>
-            ))}
+            ) : (
+              recentVehicles.map((vehicle) => (
+                <div className="dashboard-table-row" key={vehicle.id}>
+                  <span>
+                    {vehicle.brand || "—"} {vehicle.model || ""}
+                  </span>
+
+                  <span>{vehicle.registration_number || "—"}</span>
+
+                  <span>{vehicle.year || "—"}</span>
+
+                  <span className={getVehicleStatusClass(vehicle.status)}>
+                    {getVehicleStatusLabel(vehicle.status)}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </section>
       </main>

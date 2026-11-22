@@ -14,12 +14,11 @@ from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
-    SimpleDocTemplate,
     Paragraph,
+    SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
-    PageBreak,
 )
 
 
@@ -700,10 +699,6 @@ def create_vehicle_card_pdf(
         )
 
     story.append(
-        PageBreak()
-    )
-
-    story.append(
         Paragraph(
             "Dokumenty pojazdu",
             section_style,
@@ -847,7 +842,7 @@ def create_vehicle_card_pdf(
     story.append(
         Spacer(
             1,
-            12 * mm,
+            8 * mm,
         )
     )
 

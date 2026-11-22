@@ -14,7 +14,7 @@ const refreshClient = axios.create({
   timeout: 15000,
 });
 
-const publicEndpoints = ["token/", "token/refresh/", "contact/"];
+const publicEndpoints = ["auth/token/", "auth/token/refresh/", "contact/"];
 
 const normalizeUrl = (url = "") => {
   return String(url).replace(/^\/+/, "");
@@ -52,11 +52,12 @@ const refreshAccessToken = async () => {
   if (!refreshToken) {
     clearTokens();
     redirectToLogin();
+
     throw new Error("Brak tokenu odświeżającego.");
   }
 
   refreshPromise = refreshClient
-    .post("token/refresh/", {
+    .post("auth/token/refresh/", {
       refresh: refreshToken,
     })
     .then((response) => {
@@ -77,6 +78,7 @@ const refreshAccessToken = async () => {
     .catch((error) => {
       clearTokens();
       redirectToLogin();
+
       throw error;
     })
     .finally(() => {
@@ -92,6 +94,7 @@ apiClient.interceptors.request.use(
 
     if (token && !isPublicEndpoint(config.url)) {
       config.headers = config.headers || {};
+
       config.headers.Authorization = `Bearer ${token}`;
     }
 
@@ -130,6 +133,7 @@ apiClient.interceptors.response.use(
       const newAccessToken = await refreshAccessToken();
 
       originalRequest.headers = originalRequest.headers || {};
+
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
       return apiClient(originalRequest);

@@ -57,6 +57,7 @@ function Login({ onLoginSuccess }) {
 
     if (!normalizedUsername || !password) {
       setError("Wprowadź login i hasło.");
+
       return;
     }
 
@@ -65,9 +66,10 @@ function Login({ onLoginSuccess }) {
       setError("");
 
       localStorage.removeItem("access_token");
+
       localStorage.removeItem("refresh_token");
 
-      const response = await apiClient.post("token/", {
+      const response = await apiClient.post("auth/token/", {
         username: normalizedUsername,
         password,
       });
@@ -77,14 +79,17 @@ function Login({ onLoginSuccess }) {
       }
 
       localStorage.setItem("access_token", response.data.access);
+
       localStorage.setItem("refresh_token", response.data.refresh);
 
       await loadUser();
+
       onLoginSuccess();
     } catch (err) {
       console.error("Błąd logowania:", err);
 
       localStorage.removeItem("access_token");
+
       localStorage.removeItem("refresh_token");
 
       setError(getLoginError(err));
@@ -105,6 +110,7 @@ function Login({ onLoginSuccess }) {
       <main className="login-card">
         <div className="login-brand">
           <span className="login-brand-name">Flotivo</span>
+
           <span className="login-brand-description">
             System zarządzania flotą
           </span>
@@ -112,6 +118,7 @@ function Login({ onLoginSuccess }) {
 
         <div className="login-heading">
           <h1>Zaloguj się</h1>
+
           <p>Wprowadź dane dostępowe do swojego konta.</p>
         </div>
 

@@ -1,4 +1,3 @@
-# ==== Python / Django ====
 __pycache__/
 *.py[cod]
 *$py.class
@@ -11,7 +10,6 @@ venv/
 .installed.cfg
 *.egg
 
-# Django
 *.log
 local_settings.py
 db.sqlite3
@@ -19,7 +17,6 @@ db.sqlite3-journal
 media/
 staticfiles/
 
-# ==== Node / React ====
 node_modules/
 dist/
 build/
@@ -29,26 +26,22 @@ yarn-debug.log*
 yarn-error.log*
 .eslintcache
 
-# ==== Zmienne środowiskowe / sekrety ====
 .env
 .env.local
 .env.*.local
 backend/.env
 frontend/.env
+backend/.env.production
 
-# ==== Docker ====
 *.pid
 
-# ==== IDE / edytory ====
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# ==== System operacyjny ====
 .DS_Store
 Thumbs.db
 
-# ==== Certbot / SSL (jak dojdziesz do wdrożenia) ====
 certbot/conf/
 backend/media/

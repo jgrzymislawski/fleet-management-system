@@ -79,23 +79,26 @@ function ChangePasswordPage({ onLogout }) {
       !formData.confirm_password
     ) {
       setError("Wypełnij wszystkie pola.");
+
       return;
     }
 
     if (formData.new_password !== formData.confirm_password) {
       setError("Nowe hasła nie są takie same.");
+
       return;
     }
 
     if (formData.current_password === formData.new_password) {
       setError("Nowe hasło musi różnić się od aktualnego hasła.");
+
       return;
     }
 
     try {
       setSaving(true);
 
-      const response = await apiClient.post("change-password/", formData);
+      const response = await apiClient.post("auth/change-password/", formData);
 
       setSuccess(response.data?.detail || "Hasło zostało zmienione.");
 
@@ -106,6 +109,7 @@ function ChangePasswordPage({ onLogout }) {
       });
     } catch (err) {
       console.error("Błąd zmiany hasła:", err);
+
       setError(getBackendError(err));
     } finally {
       setSaving(false);
@@ -127,6 +131,7 @@ function ChangePasswordPage({ onLogout }) {
           </button>
 
           <h1>Zmiana hasła</h1>
+
           <p>Ustaw nowe hasło do swojego konta Flotivo.</p>
         </div>
 
@@ -134,6 +139,7 @@ function ChangePasswordPage({ onLogout }) {
           <form className="change-password-form" onSubmit={handleSubmit}>
             <div className="change-password-field">
               <label htmlFor="current_password">Aktualne hasło</label>
+
               <input
                 id="current_password"
                 name="current_password"
@@ -148,6 +154,7 @@ function ChangePasswordPage({ onLogout }) {
 
             <div className="change-password-field">
               <label htmlFor="new_password">Nowe hasło</label>
+
               <input
                 id="new_password"
                 name="new_password"
@@ -162,6 +169,7 @@ function ChangePasswordPage({ onLogout }) {
 
             <div className="change-password-field">
               <label htmlFor="confirm_password">Powtórz nowe hasło</label>
+
               <input
                 id="confirm_password"
                 name="confirm_password"

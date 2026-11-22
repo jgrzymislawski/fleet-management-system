@@ -262,7 +262,7 @@ function StatisticsPage({ onLogout }) {
       setError(null);
 
       const response = await apiClient.post(
-        "vehicles/statistics-pdf/",
+        "reports/statistics/",
         {
           vehicle_ids: selectedVehicleIds,
         },
@@ -336,6 +336,7 @@ function StatisticsPage({ onLogout }) {
               disabled={loading}
             >
               <span>{getVehicleFilterText()}</span>
+
               <span>{showVehicleFilter ? "▲" : "▼"}</span>
             </button>
 
@@ -367,6 +368,7 @@ function StatisticsPage({ onLogout }) {
                     checked={selectedVehicleIds.length === 0}
                     onChange={clearSelectedVehicles}
                   />
+
                   <span>Wszystkie pojazdy</span>
                 </label>
 
@@ -386,6 +388,7 @@ function StatisticsPage({ onLogout }) {
 
                       <div className="statistics-filter-vehicle-info">
                         <span>{getVehicleName(vehicle)}</span>
+
                         <strong>
                           {vehicle.registration_number || "Brak rejestracji"}
                         </strong>
@@ -407,21 +410,25 @@ function StatisticsPage({ onLogout }) {
         <div className="statistics-cards">
           <div className="statistics-card">
             <span>Łączny koszt napraw</span>
+
             <strong>{loading ? "–" : formatCost(totalCost)}</strong>
           </div>
 
           <div className="statistics-card">
             <span>Liczba napraw</span>
+
             <strong>{loading ? "–" : filteredRecords.length}</strong>
           </div>
 
           <div className="statistics-card">
             <span>Średni koszt naprawy</span>
+
             <strong>{loading ? "–" : formatCost(averageCost)}</strong>
           </div>
 
           <div className="statistics-card">
             <span>Najdroższa naprawa</span>
+
             <strong>
               {loading
                 ? "–"
@@ -436,6 +443,7 @@ function StatisticsPage({ onLogout }) {
           <div className="statistics-table-header-top">
             <div>
               <h2>Historia kosztów</h2>
+
               <p>Naprawy uwzględnione w aktualnych statystykach.</p>
             </div>
 
@@ -469,7 +477,9 @@ function StatisticsPage({ onLogout }) {
                     </div>
 
                     <span>{record.title || "Bez nazwy"}</span>
+
                     <span>{formatDate(record.service_date)}</span>
+
                     <strong>{formatCost(record.cost)}</strong>
                   </div>
                 );

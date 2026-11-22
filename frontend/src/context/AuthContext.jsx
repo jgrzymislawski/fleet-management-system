@@ -25,13 +25,14 @@ export function AuthProvider({ children }) {
     if (!accessToken) {
       setUser(null);
       setLoadingUser(false);
+
       return null;
     }
 
     try {
       setLoadingUser(true);
 
-      const response = await apiClient.get("me/");
+      const response = await apiClient.get("auth/me/");
 
       setUser(response.data);
 

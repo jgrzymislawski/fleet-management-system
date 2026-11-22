@@ -686,9 +686,22 @@ class ServiceRecordSerializer(
 class VehicleDocumentSerializer(
     serializers.ModelSerializer
 ):
+    has_file = serializers.SerializerMethodField()
+
     class Meta:
         model = VehicleDocument
         fields = "__all__"
+        extra_kwargs = {
+            "file": {
+                "write_only": True,
+            },
+        }
+
+    def get_has_file(
+        self,
+        obj,
+    ):
+        return bool(obj.file)
 
     def validate_vehicle(
         self,

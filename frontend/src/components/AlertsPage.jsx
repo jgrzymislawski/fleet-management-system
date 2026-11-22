@@ -1,38 +1,23 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import Sidebar from "./sidebar/Sidebar";
 import apiClient from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import "./AlertsPage.css";
 
 function AlertsPage({ onLogout }) {
-  const navigate = useNavigate();
   const { user } = useAuth();
 
   const [alerts, setAlerts] = useState([]);
   const [filter, setFilter] = useState("all");
-  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [exportingXlsx, setExportingXlsx] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
-  const [vehicleCount, setVehicleCount] = useState(0);
-  const [driverCount, setDriverCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [error, setError] = useState(null);
 
-  const pageSize = 20;
   const canViewDriverAlerts = user?.role === "admin";
 
   useEffect(() => {
-    if (!canViewDriverAlerts && filter === "drivers") {
-      setFilter("all");
-      setCurrentPage(1);
-    }
-  }, [canViewDriverAlerts, filter]);
-
-  useEffect(() => {
-    let active = true;
+    let isMounted = true;
 
     const loadAlerts = async () => {
       try {
@@ -42,40 +27,26 @@ function AlertsPage({ onLogout }) {
         const response = await apiClient.get("alerts/", {
           params: {
             category: filter,
-            page: currentPage,
-            page_size: pageSize,
           },
         });
 
-        if (!active) return;
-
-        const data = response.data || {};
-
-        setAlerts(Array.isArray(data.results) ? data.results : []);
-        setTotalCount(Number(data.total_count) || 0);
-        setVehicleCount(Number(data.vehicle_count) || 0);
-        setDriverCount(Number(data.driver_count) || 0);
-        setTotalPages(Math.max(1, Number(data.total_pages) || 1));
-
-        if (
-          data.page &&
-          Number(data.page) !== currentPage &&
-          Number(data.page) > 0
-        ) {
-          setCurrentPage(Number(data.page));
+        if (!isMounted) {
+          return;
         }
-      } catch (err) {
-        if (!active) return;
 
-        console.error("Błąd pobierania alertów:", err);
-        setAlerts([]);
-        setTotalCount(0);
-        setVehicleCount(0);
-        setDriverCount(0);
-        setTotalPages(1);
-        setError("Nie udało się pobrać alertów.");
+        const data = Array.isArray(response.data)
+          ? response.data
+          : response.data?.results || [];
+
+        setAlerts(data);
+      } catch (loadError) {
+        console.error(loadError);
+
+        if (isMounted) {
+          setError("Nie udało się pobrać alertów.");
+        }
       } finally {
-        if (active) {
+        if (isMounted) {
           setLoading(false);
         }
       }
@@ -84,88 +55,87 @@ function AlertsPage({ onLogout }) {
     loadAlerts();
 
     return () => {
-      active = false;
+      isMounted = false;
     };
-  }, [currentPage, filter]);
+  }, [filter]);
 
-  const formatDate = (date) => {
-    if (!date) return "-";
-
-    const parsedDate = new Date(date);
-
-    if (Number.isNaN(parsedDate.getTime())) {
-      return "-";
+  const filteredAlerts = useMemo(() => {
+    if (canViewDriverAlerts) {
+      return alerts;
     }
 
-    return parsedDate.toLocaleDateString("pl-PL");
-  };
+    return alerts.filter((alert) => alert.category !== "drivers");
+  }, [alerts, canViewDriverAlerts]);
 
-  const handleFilterChange = (newFilter) => {
-    if (newFilter === "drivers" && !canViewDriverAlerts) {
-      return;
+  const expiredCount = useMemo(
+    () => filteredAlerts.filter((alert) => alert.status === "expired").length,
+    [filteredAlerts],
+  );
+
+  const sevenDaysCount = useMemo(
+    () => filteredAlerts.filter((alert) => alert.status === "7_days").length,
+    [filteredAlerts],
+  );
+
+  const thirtyDaysCount = useMemo(
+    () => filteredAlerts.filter((alert) => alert.status === "30_days").length,
+    [filteredAlerts],
+  );
+
+  const totalCount = filteredAlerts.length;
+
+  const formatDate = (value) => {
+    if (!value) {
+      return "—";
     }
 
-    setCurrentPage(1);
-    setFilter(newFilter);
-  };
-
-  const handleAlertClick = (alert) => {
-    if (!alert?.targetId) return;
-
-    if (alert.category === "driver") {
-      if (canViewDriverAlerts) {
-        navigate(`/drivers/${alert.targetId}`);
-      }
-
-      return;
-    }
-
-    navigate(`/vehicles/${alert.targetId}`);
-  };
-
-  const getExportFilename = (response, fallback) => {
-    const contentDisposition = response.headers?.["content-disposition"];
-
-    if (!contentDisposition) {
-      return fallback;
-    }
-
-    const filenameMatch = contentDisposition.match(
-      /filename\*?=(?:UTF-8''|")?([^";]+)/i,
+    return new Intl.DateTimeFormat("pl-PL").format(
+      new Date(`${value}T00:00:00`),
     );
+  };
 
-    if (!filenameMatch?.[1]) {
-      return fallback;
-    }
-
-    try {
-      return decodeURIComponent(filenameMatch[1].replace(/"/g, ""));
-    } catch {
-      return filenameMatch[1].replace(/"/g, "");
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case "expired":
+        return "Po terminie";
+      case "7_days":
+        return "Do 7 dni";
+      case "30_days":
+        return "Do 30 dni";
+      default:
+        return "Termin";
     }
   };
 
-  const downloadFile = (response, mimeType, fallbackFilename) => {
-    const blob = new Blob([response.data], {
+  const getCategoryLabel = (category) => {
+    if (category === "drivers") {
+      return "Kierowca";
+    }
+
+    return "Pojazd";
+  };
+
+  const downloadBlob = (data, filename, mimeType) => {
+    const blob = new Blob([data], {
       type: mimeType,
     });
 
-    const downloadUrl = window.URL.createObjectURL(blob);
+    const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
 
-    link.href = downloadUrl;
-    link.download = getExportFilename(response, fallbackFilename);
+    link.href = url;
+    link.download = filename;
 
     document.body.appendChild(link);
+
     link.click();
     link.remove();
 
-    window.URL.revokeObjectURL(downloadUrl);
+    window.URL.revokeObjectURL(url);
   };
 
   const handleExportXlsx = async () => {
     if (totalCount === 0) {
-      setError("Brak alertów do wyeksportowania.");
       return;
     }
 
@@ -174,23 +144,25 @@ function AlertsPage({ onLogout }) {
       setError(null);
 
       const response = await apiClient.post(
-        "vehicles/alerts-export/",
+        "reports/alerts/",
         {
+          format: "xlsx",
           category: filter,
+          status: "all",
         },
         {
           responseType: "blob",
         },
       );
 
-      downloadFile(
-        response,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      downloadBlob(
+        response.data,
         "flotivo-alerty.xlsx",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       );
-    } catch (err) {
-      console.error("Błąd eksportu alertów:", err);
-      setError("Nie udało się wyeksportować alertów.");
+    } catch (exportError) {
+      console.error(exportError);
+      setError("Nie udało się wyeksportować alertów do XLSX.");
     } finally {
       setExportingXlsx(false);
     }
@@ -198,7 +170,6 @@ function AlertsPage({ onLogout }) {
 
   const handleExportPdf = async () => {
     if (totalCount === 0) {
-      setError("Brak alertów do wygenerowania raportu.");
       return;
     }
 
@@ -207,72 +178,33 @@ function AlertsPage({ onLogout }) {
       setError(null);
 
       const response = await apiClient.post(
-        "vehicles/alerts-pdf/",
+        "reports/alerts/",
         {
+          format: "pdf",
           category: filter,
+          status: "all",
         },
         {
           responseType: "blob",
         },
       );
 
-      downloadFile(response, "application/pdf", "flotivo-alerty.pdf");
-    } catch (err) {
-      console.error("Błąd eksportu raportu alertów:", err);
-      setError("Nie udało się wygenerować raportu alertów.");
+      downloadBlob(response.data, "flotivo-alerty.pdf", "application/pdf");
+    } catch (exportError) {
+      console.error(exportError);
+      setError("Nie udało się wygenerować raportu PDF.");
     } finally {
       setExportingPdf(false);
     }
   };
 
-  const handlePreviousPage = () => {
-    if (currentPage > 1 && !loading) {
-      setCurrentPage((page) => page - 1);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages && !loading) {
-      setCurrentPage((page) => page + 1);
-    }
-  };
-
-  const getAlertCategoryName = (category) =>
-    category === "driver" ? "Kierowca" : "Pojazd";
-
-  const getAlertCategoryClass = (category) =>
-    category === "driver"
-      ? "alert-category alert-category-driver"
-      : "alert-category alert-category-vehicle";
-
-  const getAlertStatusClass = (alert) => {
-    const className = alert?.status?.className;
-
-    if (
-      className === "alert-status-warning" ||
-      className === "alert-status-expired"
-    ) {
-      return className;
-    }
-
-    return "alert-status-warning";
-  };
-
   return (
-    <div className="dashboard-layout">
+    <div className="alerts-layout">
       <Sidebar onLogout={onLogout} />
 
-      <main className="dashboard-content">
-        <div className="alerts-header">
+      <main className="alerts-content">
+        <div className="alerts-page-header">
           <div>
-            <button
-              type="button"
-              className="alerts-back"
-              onClick={() => navigate("/dashboard")}
-            >
-              ← Wróć do dashboardu
-            </button>
-
             <h1>Wymagają uwagi</h1>
 
             <p>
@@ -302,138 +234,97 @@ function AlertsPage({ onLogout }) {
           </div>
         </div>
 
-        {error && (
-          <div className="alerts-error" role="alert">
-            {error}
+        {error && <div className="alerts-error">{error}</div>}
+
+        <div className="alerts-summary">
+          <div className="alerts-summary-card">
+            <span>Wszystkie</span>
+            <strong>{loading ? "—" : totalCount}</strong>
           </div>
-        )}
+
+          <div className="alerts-summary-card alerts-summary-expired">
+            <span>Po terminie</span>
+            <strong>{loading ? "—" : expiredCount}</strong>
+          </div>
+
+          <div className="alerts-summary-card alerts-summary-warning">
+            <span>Do 7 dni</span>
+            <strong>{loading ? "—" : sevenDaysCount}</strong>
+          </div>
+
+          <div className="alerts-summary-card alerts-summary-upcoming">
+            <span>Do 30 dni</span>
+            <strong>{loading ? "—" : thirtyDaysCount}</strong>
+          </div>
+        </div>
 
         <div className="alerts-toolbar">
           <div className="alerts-filters">
             <button
               type="button"
-              className={
-                filter === "all"
-                  ? "alerts-filter alerts-filter-active"
-                  : "alerts-filter"
-              }
-              onClick={() => handleFilterChange("all")}
+              className={filter === "all" ? "active" : ""}
+              onClick={() => setFilter("all")}
             >
               Wszystkie
-              <span>{totalCount}</span>
             </button>
 
             <button
               type="button"
-              className={
-                filter === "vehicles"
-                  ? "alerts-filter alerts-filter-active"
-                  : "alerts-filter"
-              }
-              onClick={() => handleFilterChange("vehicles")}
+              className={filter === "vehicles" ? "active" : ""}
+              onClick={() => setFilter("vehicles")}
             >
               Pojazdy
-              <span>{vehicleCount}</span>
             </button>
 
             {canViewDriverAlerts && (
               <button
                 type="button"
-                className={
-                  filter === "drivers"
-                    ? "alerts-filter alerts-filter-active"
-                    : "alerts-filter"
-                }
-                onClick={() => handleFilterChange("drivers")}
+                className={filter === "drivers" ? "active" : ""}
+                onClick={() => setFilter("drivers")}
               >
                 Kierowcy
-                <span>{driverCount}</span>
               </button>
             )}
           </div>
-
-          <div className="alerts-count">
-            {loading ? "Ładowanie..." : `Na tej stronie: ${alerts.length}`}
-          </div>
         </div>
 
-        {loading ? (
-          <div className="alerts-empty">Ładowanie alertów...</div>
-        ) : (
-          <>
-            <div className="alerts-list">
-              {alerts.map((alert) => (
-                <button
-                  type="button"
-                  key={alert.id}
-                  className="alert-item"
-                  onClick={() => handleAlertClick(alert)}
-                  disabled={!alert.targetId}
-                >
-                  <div className="alert-item-main">
-                    <div className="alert-name-row">
-                      <span className="alert-vehicle-name">
-                        {alert.name || "Brak danych"}
-                      </span>
+        <section className="alerts-table-wrapper">
+          <div className="alerts-table-header">
+            <span>Typ</span>
+            <span>Element</span>
+            <span>Termin</span>
+            <span>Status</span>
+          </div>
 
-                      <span className={getAlertCategoryClass(alert.category)}>
-                        {getAlertCategoryName(alert.category)}
-                      </span>
-                    </div>
+          {loading ? (
+            <div className="alerts-empty">Ładowanie alertów...</div>
+          ) : filteredAlerts.length === 0 ? (
+            <div className="alerts-empty">Brak alertów wymagających uwagi.</div>
+          ) : (
+            filteredAlerts.map((alert) => (
+              <div
+                className="alerts-table-row"
+                key={`${alert.category}-${alert.type}-${alert.id}`}
+              >
+                <span>{getCategoryLabel(alert.category)}</span>
 
-                    <span className="alert-registration">
-                      {alert.secondary || "Brak dodatkowych danych"}
-                    </span>
-                  </div>
+                <span>
+                  <strong>{alert.title || "—"}</strong>
 
-                  <div className="alert-type">
-                    {alert.type || "Brak typu alertu"}
-                  </div>
-
-                  <div className="alert-date">{formatDate(alert.date)}</div>
-
-                  <span
-                    className={`alert-status ${getAlertStatusClass(alert)}`}
-                  >
-                    {alert.status?.text || "Wymaga uwagi"}
-                  </span>
-                </button>
-              ))}
-
-              {alerts.length === 0 && !error && (
-                <div className="alerts-empty">
-                  Brak terminów wymagających uwagi w wybranej kategorii.
-                </div>
-              )}
-            </div>
-
-            {totalPages > 1 && (
-              <div className="alerts-pagination">
-                <button
-                  type="button"
-                  className="alerts-pagination-button"
-                  onClick={handlePreviousPage}
-                  disabled={currentPage <= 1 || loading}
-                >
-                  ← Poprzednia
-                </button>
-
-                <span className="alerts-pagination-info">
-                  Strona {currentPage} z {totalPages}
+                  {alert.subtitle && <small>{alert.subtitle}</small>}
                 </span>
 
-                <button
-                  type="button"
-                  className="alerts-pagination-button"
-                  onClick={handleNextPage}
-                  disabled={currentPage >= totalPages || loading}
-                >
-                  Następna →
-                </button>
+                <span>{formatDate(alert.expiry_date)}</span>
+
+                <span>
+                  <span className={`alert-status alert-status-${alert.status}`}>
+                    {getStatusLabel(alert.status)}
+                  </span>
+                </span>
               </div>
-            )}
-          </>
-        )}
+            ))
+          )}
+        </section>
       </main>
     </div>
   );

@@ -370,7 +370,7 @@ function ReportsPage({ onLogout }) {
       setError(null);
 
       const response = await apiClient.post(
-        "vehicles/statistics-pdf/",
+        "reports/statistics/",
         {
           vehicle_ids: [],
         },
@@ -398,9 +398,11 @@ function ReportsPage({ onLogout }) {
       setError(null);
 
       const response = await apiClient.post(
-        "vehicles/alerts-pdf/",
+        "reports/alerts/",
         {
+          format: "pdf",
           category: "all",
+          status: "all",
         },
         {
           responseType: "blob",
@@ -422,9 +424,11 @@ function ReportsPage({ onLogout }) {
       setError(null);
 
       const response = await apiClient.post(
-        "vehicles/alerts-export/",
+        "reports/alerts/",
         {
+          format: "xlsx",
           category: "all",
+          status: "all",
         },
         {
           responseType: "blob",

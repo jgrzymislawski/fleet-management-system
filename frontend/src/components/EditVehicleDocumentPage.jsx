@@ -26,7 +26,7 @@ function EditVehicleDocumentPage({ onLogout }) {
   const { canEditCompany } = useAuth();
 
   const [vehicles, setVehicles] = useState([]);
-  const [existingFile, setExistingFile] = useState("");
+  const [hasExistingFile, setHasExistingFile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -76,7 +76,7 @@ function EditVehicleDocumentPage({ onLogout }) {
         }
 
         setVehicles(editableVehicles);
-        setExistingFile(document.file || "");
+        setHasExistingFile(Boolean(document.has_file));
 
         setFormData({
           vehicle: String(document.vehicle || ""),
@@ -442,7 +442,7 @@ function EditVehicleDocumentPage({ onLogout }) {
                 pliku: 10 MB.
               </span>
 
-              {existingFile && !formData.file && (
+              {hasExistingFile && !formData.file && (
                 <span className="document-form-selected-file">
                   Dokument posiada już załączony plik.
                 </span>

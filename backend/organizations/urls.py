@@ -1,31 +1,19 @@
 from django.urls import path
 
 from .views import (
-    CurrentUserView,
-    CompanyListView,
-    ChangePasswordView,
-    AdminCompanyListCreateView,
     AdminCompanyDetailView,
-    AdminUserListView,
+    AdminCompanyListCreateView,
     AdminUserDetailView,
+    AdminUserListView,
+    CompanyListView,
 )
 
 
 urlpatterns = [
     path(
-        "me/",
-        CurrentUserView.as_view(),
-        name="current-user",
-    ),
-    path(
         "companies/",
         CompanyListView.as_view(),
         name="company-list",
-    ),
-    path(
-        "change-password/",
-        ChangePasswordView.as_view(),
-        name="change-password",
     ),
     path(
         "admin/companies/",
