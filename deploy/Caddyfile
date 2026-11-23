@@ -1,0 +1,36 @@
+
+# Flotivo - produkcyjny reverse proxy
+
+{$FLOTIVO_DOMAIN} {
+    encode zstd gzip
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Blokada bezposredniego dostepu do dokumentow
+    handle /media/* {
+        respond "Not Found" 404
+    }
+
+    # Django REST API
+    handle /api/* {
+        request_body {
+            max_size 12MB
+        }
+
+        reverse_proxy backend:8000
+    }
+
+    # Panel administracyjny Django
+    handle /admin/* {
+        reverse_proxy backend:8000
+    }
+
+    # React, Nginx i pliki static
+    handle {
+        reverse_proxy frontend:80
+    }
+}

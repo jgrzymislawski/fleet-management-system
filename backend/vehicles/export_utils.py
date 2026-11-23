@@ -1,6 +1,8 @@
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
 
+from config.spreadsheet_security import sanitize_workbook
+
 
 def get_driver_name(vehicle):
     if vehicle.driver:
@@ -100,7 +102,7 @@ def create_vehicle_workbook(vehicles):
 
     worksheet.auto_filter.ref = worksheet.dimensions
 
-    return workbook
+    return sanitize_workbook(workbook)
 
 def create_service_workbook(service_records):
     workbook = Workbook()
@@ -156,4 +158,4 @@ def create_service_workbook(service_records):
     worksheet.freeze_panes = "A2"
     worksheet.auto_filter.ref = worksheet.dimensions
 
-    return workbook
+    return sanitize_workbook(workbook)

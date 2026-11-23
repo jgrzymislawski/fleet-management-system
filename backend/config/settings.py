@@ -353,6 +353,7 @@ DEFAULT_AUTO_FIELD = (
 )
 
 
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         (
@@ -367,6 +368,7 @@ REST_FRAMEWORK = {
             "IsAuthenticated"
         ),
     ),
+    "NUM_PROXIES": 1 if IS_PRODUCTION else 0,
 }
 
 

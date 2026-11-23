@@ -4,20 +4,12 @@ from io import BytesIO
 from django.http import HttpResponse
 
 from rest_framework import status
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from organizations.models import (
-    CompanyAccess,
-    OrganizationMembership,
-)
-
-from vehicles.models import (
-    ServiceRecord,
-    Vehicle,
-)
+from vehicles.access import get_accessible_vehicles
+from vehicles.models import ServiceRecord
 
 from .export_utils import (
     create_service_costs_pdf,
@@ -26,108 +18,6 @@ from .export_utils import (
 
 
 MAX_REPORT_RECORDS = 20000
-
-
-def user_is_superuser(user):
-    return bool(
-        getattr(
-            user,
-            "is_superuser",
-            False,
-        )
-    )
-
-
-def get_membership(user):
-    if not getattr(
-        user,
-        "is_authenticated",
-        False,
-    ):
-        return None
-
-    membership = (
-        OrganizationMembership.objects
-        .select_related(
-            "organization"
-        )
-        .filter(
-            user=user
-        )
-        .first()
-    )
-
-    if (
-        membership is not None
-        and not membership.organization.is_active
-    ):
-        raise PermissionDenied(
-            (
-                "Organizacja użytkownika "
-                "jest nieaktywna."
-            )
-        )
-
-    return membership
-
-
-def get_accessible_vehicles(user):
-    membership = get_membership(
-        user
-    )
-
-    if membership is not None:
-        if membership.role == "admin":
-            return (
-                Vehicle.active_objects
-                .filter(
-                    organization=(
-                        membership.organization
-                    ),
-                    company__is_active=True,
-                )
-            )
-
-        company_ids = (
-            CompanyAccess.objects
-            .filter(
-                membership=membership,
-                company__organization=(
-                    membership.organization
-                ),
-                company__is_active=True,
-            )
-            .values_list(
-                "company_id",
-                flat=True,
-            )
-        )
-
-        return (
-            Vehicle.active_objects
-            .filter(
-                organization=(
-                    membership.organization
-                ),
-                company_id__in=company_ids,
-                company__is_active=True,
-            )
-        )
-
-    if user_is_superuser(
-        user
-    ):
-        return (
-            Vehicle.active_objects
-            .filter(
-                organization__is_active=True,
-            )
-        )
-
-    return (
-        Vehicle.active_objects
-        .none()
-    )
 
 
 def parse_date(value):
