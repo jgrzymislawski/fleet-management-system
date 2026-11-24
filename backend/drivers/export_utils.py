@@ -1,6 +1,8 @@
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
 
+from config.spreadsheet_security import sanitize_workbook
+
 
 DANGEROUS_FORMULA_PREFIXES = (
     "=",
@@ -105,4 +107,4 @@ def create_driver_workbook(drivers):
         worksheet.dimensions
     )
 
-    return workbook
+    return sanitize_workbook(workbook)

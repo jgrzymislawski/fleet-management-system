@@ -1,1 +1,7 @@
-@import "tailwindcss";
+
+/*
+ * Flotivo korzysta z wlasnych arkuszy CSS.
+ *
+ * Style globalne znajduja sie w App.css.
+ * Style podstron znajduja sie przy komponentach.
+ */

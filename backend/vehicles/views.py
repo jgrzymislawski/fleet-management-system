@@ -14,12 +14,15 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from auditlog.context import set_actor
 
-from organizations.models import (
-    OrganizationMembership,
-    CompanyAccess,
-)
+from organizations.models import CompanyAccess
 
 from drivers.models import DriverVehicleAssignment
+
+from .access import (
+    get_accessible_vehicles,
+    get_membership,
+    user_is_superuser,
+)
 
 from .models import (
     Vehicle,
@@ -39,86 +42,6 @@ from .export_utils import (
 )
 
 from .pdf_utils import create_vehicle_card_pdf
-
-
-def user_is_superuser(user):
-    return bool(
-        getattr(
-            user,
-            "is_superuser",
-            False,
-        )
-    )
-
-
-def get_membership(user):
-    if not getattr(
-        user,
-        "is_authenticated",
-        False,
-    ):
-        return None
-
-    membership = (
-        OrganizationMembership.objects
-        .select_related("organization")
-        .filter(user=user)
-        .first()
-    )
-
-    if (
-        membership is not None
-        and not membership.organization.is_active
-    ):
-        raise PermissionDenied(
-            (
-                "Organizacja użytkownika "
-                "jest nieaktywna."
-            )
-        )
-
-    return membership
-
-
-def get_accessible_vehicles(user):
-    membership = get_membership(user)
-
-    if membership is not None:
-        if membership.role == "admin":
-            return Vehicle.active_objects.filter(
-                organization=membership.organization,
-            )
-
-        company_ids = (
-            CompanyAccess.objects
-            .filter(
-                membership=membership,
-                company__organization=(
-                    membership.organization
-                ),
-                company__is_active=True,
-            )
-            .values_list(
-                "company_id",
-                flat=True,
-            )
-        )
-
-        return Vehicle.active_objects.filter(
-            organization=membership.organization,
-            company_id__in=company_ids,
-            company__is_active=True,
-        )
-
-    if user_is_superuser(user):
-        return (
-            Vehicle.active_objects
-            .filter(
-                organization__is_active=True
-            )
-        )
-
-    return Vehicle.active_objects.none()
 
 
 def can_edit_company(

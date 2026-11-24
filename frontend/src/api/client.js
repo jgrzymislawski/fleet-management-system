@@ -1,83 +1,144 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/";
-
-const normalizedApiUrl = API_URL.endsWith("/") ? API_URL : `${API_URL}/`;
+// Frontend i API powinny dzialac pod jednym adresem (Nginx: /api/).
+const API_URL = import.meta.env.VITE_API_URL || "/api/";
+const baseURL = API_URL.endsWith("/") ? API_URL : `${API_URL}/`;
+const SIGNED_OUT_KEY = "flotivo_signed_out";
+const SESSION_EXPIRED_EVENT = "flotivo:session-expired";
 
 const apiClient = axios.create({
-  baseURL: normalizedApiUrl,
+  baseURL,
   timeout: 15000,
+  withCredentials: true,
 });
 
-const refreshClient = axios.create({
-  baseURL: normalizedApiUrl,
+// Osobny klient zapobiega zapetleniu interceptorow podczas odnawiania.
+const authClient = axios.create({
+  baseURL,
   timeout: 15000,
+  withCredentials: true,
 });
 
-const publicEndpoints = ["auth/token/", "auth/token/refresh/", "contact/"];
-
-const normalizeUrl = (url = "") => {
-  return String(url).replace(/^\/+/, "");
-};
-
-const isPublicEndpoint = (url = "") => {
-  const normalizedUrl = normalizeUrl(url);
-
-  return publicEndpoints.some(
-    (endpoint) =>
-      normalizedUrl === endpoint || normalizedUrl.endsWith(`/${endpoint}`),
-  );
-};
-
-const clearTokens = () => {
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("refresh_token");
-};
-
-const redirectToLogin = () => {
-  if (window.location.pathname !== "/login") {
-    window.location.replace("/login");
-  }
-};
-
+let accessToken = null;
+let sessionVersion = 0;
 let refreshPromise = null;
 
-const refreshAccessToken = async () => {
-  if (refreshPromise) {
-    return refreshPromise;
+const publicEndpoints = [
+  "auth/token/",
+  "auth/token/refresh/",
+  "auth/token/blacklist/",
+  "auth/csrf/",
+  "contact/",
+];
+
+function isPublicEndpoint(url = "") {
+  const path = String(url).replace(/^\/+/, "");
+  return publicEndpoints.some(
+    (endpoint) => path === endpoint || path.endsWith(`/${endpoint}`),
+  );
+}
+
+function removeLegacyTokens() {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+}
+
+// Serializuje operacje na rotowanym cookie miedzy kartami tej samej witryny.
+async function withCookieLock(operation) {
+  if (navigator.locks?.request) {
+    return navigator.locks.request("flotivo-refresh-cookie", operation);
+  }
+  return operation();
+}
+
+// Migracja ze starszej wersji Flotivo: nie przejmujemy starych tokenow.
+removeLegacyTokens();
+
+export function wasExplicitlySignedOut() {
+  return localStorage.getItem(SIGNED_OUT_KEY) === "1";
+}
+
+export function clearAccessToken() {
+  sessionVersion += 1;
+  accessToken = null;
+  removeLegacyTokens();
+}
+
+export function setAuthenticatedSession(token) {
+  if (!token) {
+    throw new Error("Brak access tokenu.");
   }
 
-  const refreshToken = localStorage.getItem("refresh_token");
+  sessionVersion += 1;
+  accessToken = token;
+  localStorage.removeItem(SIGNED_OUT_KEY);
+  removeLegacyTokens();
+}
 
-  if (!refreshToken) {
-    clearTokens();
-    redirectToLogin();
+function readCookie(name) {
+  const prefix = `${name}=`;
+  const cookie = document.cookie
+    .split("; ")
+    .find((item) => item.startsWith(prefix));
 
-    throw new Error("Brak tokenu odświeżającego.");
+  return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
+}
+
+export async function getCsrfToken() {
+  await authClient.get("auth/csrf/");
+  const token = readCookie("csrftoken");
+
+  if (!token) {
+    throw new Error("Nie udało się pobrać tokenu CSRF.");
   }
 
-  refreshPromise = refreshClient
-    .post("auth/token/refresh/", {
-      refresh: refreshToken,
-    })
-    .then((response) => {
-      const newAccessToken = response.data?.access;
+  return token;
+}
 
-      if (!newAccessToken) {
-        throw new Error("Serwer nie zwrócił nowego tokenu dostępu.");
-      }
+export async function refreshAccessToken() {
+  if (wasExplicitlySignedOut()) {
+    throw new Error("Sesja została wylogowana.");
+  }
 
-      localStorage.setItem("access_token", newAccessToken);
+  if (refreshPromise) return refreshPromise;
 
-      if (response.data?.refresh) {
-        localStorage.setItem("refresh_token", response.data.refresh);
-      }
+  const requestVersion = sessionVersion;
 
-      return newAccessToken;
-    })
+  refreshPromise = withCookieLock(async () => {
+    if (requestVersion !== sessionVersion || wasExplicitlySignedOut()) {
+      throw new Error("Sesja została zakończona.");
+    }
+
+    const csrfToken = await getCsrfToken();
+    const response = await authClient.post(
+      "auth/token/refresh/",
+      {},
+      { headers: { "X-CSRFToken": csrfToken } },
+    );
+
+    if (requestVersion !== sessionVersion || wasExplicitlySignedOut()) {
+      throw new Error("Sesja została zakończona.");
+    }
+
+    const token = response.data?.access;
+    if (!token) throw new Error("Serwer nie zwrócił access tokenu.");
+
+    // Token istnieje wylacznie w pamieci karty przegladarki.
+    accessToken = token;
+    return token;
+  })
     .catch((error) => {
-      clearTokens();
-      redirectToLogin();
+      const invalidSession =
+        error.response?.status === 401 || error.response?.status === 403;
+
+      if (
+        invalidSession &&
+        requestVersion === sessionVersion &&
+        !wasExplicitlySignedOut()
+      ) {
+        clearAccessToken();
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+      }
 
       throw error;
     })
@@ -86,57 +147,63 @@ const refreshAccessToken = async () => {
     });
 
   return refreshPromise;
-};
+}
 
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("access_token");
+export async function logoutSession() {
+  // Blokujemy odtwarzanie sesji takze po ponownym otwarciu karty.
+  const pendingRefresh = refreshPromise;
+  clearAccessToken();
+  localStorage.setItem(SIGNED_OUT_KEY, "1");
 
-    if (token && !isPublicEndpoint(config.url)) {
-      config.headers = config.headers || {};
+  // Zapobiega pozostawieniu cookie rotowanego przez wczesniejsze zadanie.
+  if (pendingRefresh) {
+    await pendingRefresh.catch(() => {});
+  }
 
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+  await withCookieLock(async () => {
+    const csrfToken = await getCsrfToken();
+    await authClient.post(
+      "auth/token/blacklist/",
+      {},
+      { headers: { "X-CSRFToken": csrfToken } },
+    );
+  });
+}
 
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
+apiClient.interceptors.request.use((config) => {
+  config._flotivoSessionVersion = sessionVersion;
+
+  if (accessToken && !isPublicEndpoint(config.url)) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  return config;
+});
 
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const original = error.config;
 
-    if (!originalRequest) {
+    if (
+      !original ||
+      error.response?.status !== 401 ||
+      isPublicEndpoint(original.url) ||
+      original._retry ||
+      wasExplicitlySignedOut() ||
+      original._flotivoSessionVersion !== sessionVersion
+    ) {
       return Promise.reject(error);
     }
 
-    if (error.response?.status !== 401) {
-      return Promise.reject(error);
-    }
-
-    if (isPublicEndpoint(originalRequest.url)) {
-      return Promise.reject(error);
-    }
-
-    if (originalRequest._retry) {
-      clearTokens();
-      redirectToLogin();
-
-      return Promise.reject(error);
-    }
-
-    originalRequest._retry = true;
+    original._retry = true;
 
     try {
-      const newAccessToken = await refreshAccessToken();
-
-      originalRequest.headers = originalRequest.headers || {};
-
-      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-      return apiClient(originalRequest);
+      const token = await refreshAccessToken();
+      original.headers = original.headers || {};
+      original.headers.Authorization = `Bearer ${token}`;
+      return apiClient(original);
     } catch (refreshError) {
       return Promise.reject(refreshError);
     }

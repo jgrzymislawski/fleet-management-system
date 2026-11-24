@@ -1,5 +1,5 @@
 import os
-
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -353,6 +353,7 @@ DEFAULT_AUTO_FIELD = (
 )
 
 
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         (
@@ -367,6 +368,7 @@ REST_FRAMEWORK = {
             "IsAuthenticated"
         ),
     ),
+    "NUM_PROXIES": 1 if IS_PRODUCTION else 0,
 }
 
 
@@ -386,6 +388,59 @@ SIMPLE_JWT = {
     ),
 }
 
+IS_TESTING = "test" in sys.argv
+
+REDIS_URL = os.getenv(
+    "REDIS_URL",
+    "",
+).strip()
+
+REDIS_TEST_URL = os.getenv(
+    "REDIS_TEST_URL",
+    "",
+).strip()
+
+CACHE_URL = (
+    (REDIS_TEST_URL or REDIS_URL)
+    if IS_TESTING
+    else REDIS_URL
+)
+
+if CACHE_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": (
+                "django.core.cache.backends."
+                "redis.RedisCache"
+            ),
+            "LOCATION": CACHE_URL,
+            "TIMEOUT": 300,
+            "KEY_PREFIX": (
+                "flotivo_test"
+                if IS_TESTING
+                else (
+                    "flotivo_prod"
+                    if IS_PRODUCTION
+                    else "flotivo_dev"
+                )
+            ),
+        }
+    }
+else:
+    if IS_PRODUCTION:
+        raise RuntimeError(
+            "REDIS_URL jest wymagany w produkcji."
+        )
+
+    CACHES = {
+        "default": {
+            "BACKEND": (
+                "django.core.cache.backends."
+                "locmem.LocMemCache"
+            ),
+            "LOCATION": "flotivo-local-cache",
+        }
+    }
 
 CORS_ALLOWED_ORIGINS = env_list(
     "CORS_ALLOWED_ORIGINS",

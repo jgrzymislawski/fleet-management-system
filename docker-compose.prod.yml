@@ -1,77 +1,147 @@
+x-flotivo-logging: &flotivo-logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
+
   db:
     image: postgres:17
     env_file:
       - ./backend/.env.production
+
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
+
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"
-        ]
+        - CMD-SHELL
+        - pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 10s
+
     restart: unless-stopped
+    logging: *flotivo-logging
+
+  redis:
+    image: redis:7.4-alpine
+
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - redis-cli ping | grep -q '^PONG$'
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+    restart: unless-stopped
+    logging: *flotivo-logging
 
   backend:
     build:
       context: ./backend
+
     env_file:
       - ./backend/.env.production
+
     environment:
       DB_HOST: db
       DB_PORT: 5432
+      REDIS_URL: redis://redis:6379/1
+      REDIS_TEST_URL: redis://redis:6379/2
+
     volumes:
       - static_prod_data:/app/staticfiles
       - media_prod_data:/app/media
+
     expose:
       - "8000"
+
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
     healthcheck:
       test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import socket; s=socket.create_connection(('127.0.0.1', 8000), 2); s.close()"
-        ]
-      interval: 30s
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; req=urllib.request.Request('http://127.0.0.1:8000/api/health/ready/', headers={'X-Forwarded-Proto':'https'}); response=urllib.request.urlopen(req, timeout=3); assert response.status == 200"
+      interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 3
       start_period: 30s
+
     restart: unless-stopped
+    logging: *flotivo-logging
 
   frontend:
     build:
       context: ./frontend
+
       args:
         VITE_API_URL: /api/
-    ports:
-      - "80:80"
+
+    expose:
+      - "80"
+
     volumes:
       - static_prod_data:/var/www/static:ro
+
     depends_on:
       backend:
         condition: service_healthy
+
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          "wget -qO- http://127.0.0.1/ > /dev/null || exit 1"
-        ]
+        - CMD-SHELL
+        - wget -qO- http://127.0.0.1/ > /dev/null || exit 1
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 10s
+
     restart: unless-stopped
+    logging: *flotivo-logging
+
+  edge:
+    image: caddy:2-alpine
+
+    environment:
+      FLOTIVO_DOMAIN: ${FLOTIVO_DOMAIN:-flotivo.invalid}
+
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+    depends_on:
+      frontend:
+        condition: service_healthy
+
+    restart: unless-stopped
+    logging: *flotivo-logging
 
 volumes:
   postgres_prod_data:
   static_prod_data:
   media_prod_data:
+  caddy_data:
+  caddy_config:

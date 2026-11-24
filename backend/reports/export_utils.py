@@ -7,6 +7,8 @@ from django.utils import timezone
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
 
+from config.spreadsheet_security import sanitize_workbook
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import (
@@ -295,7 +297,7 @@ def create_service_costs_workbook(
             details_sheet.dimensions
         )
 
-    return workbook
+    return sanitize_workbook(workbook)
 
 
 def create_service_costs_pdf(

@@ -1,0 +1,96 @@
+
+services:
+  db:
+    image: postgres:17
+    env_file:
+      - ./backend/.env.smoke.local
+    volumes:
+      - smoke_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
+  redis:
+    image: redis:7.4-alpine
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q '^PONG$'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - ./backend/.env.smoke.local
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      REDIS_URL: redis://redis:6379/1
+      REDIS_TEST_URL: redis://redis:6379/2
+    volumes:
+      - smoke_static_data:/app/staticfiles
+      - smoke_media_data:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; req=urllib.request.Request('http://127.0.0.1:8000/api/health/ready/', headers={'X-Forwarded-Proto':'https'}); response=urllib.request.urlopen(req, timeout=3); assert response.status == 200"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api/
+    volumes:
+      - smoke_static_data:/var/www/static:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  edge:
+    image: caddy:2-alpine
+    environment:
+      FLOTIVO_DOMAIN: localhost
+    ports:
+      - "127.0.0.1:18443:443/tcp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - smoke_caddy_data:/data
+      - smoke_caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+
+volumes:
+  smoke_postgres_data:
+  smoke_static_data:
+  smoke_media_data:
+  smoke_caddy_data:
+  smoke_caddy_config:

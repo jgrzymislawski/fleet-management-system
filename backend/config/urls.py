@@ -1,11 +1,22 @@
-from django.conf import settings
-from django.conf.urls.static import static
+
 from django.contrib import admin
 from django.urls import include, path
 
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
+from config.auth_views import (
+    CookieTokenObtainPairView,
+    CookieTokenRefreshView,
+    CookieTokenLogoutView,
+    csrf_cookie,
+)
+
+from config.health_views import (
+    health_live,
+    health_ready,
+)
+
+from config.throttles import (
+    LoginAccountThrottle,
+    LoginIPThrottle,
 )
 
 from organizations.views import (
@@ -16,18 +27,43 @@ from organizations.views import (
 
 urlpatterns = [
     path(
+        "api/health/live/",
+        health_live,
+        name="health-live",
+    ),
+    path(
+        "api/health/ready/",
+        health_ready,
+        name="health-ready",
+    ),
+    path(
         "admin/",
         admin.site.urls,
     ),
     path(
+        "api/auth/csrf/",
+        csrf_cookie,
+        name="auth_csrf",
+    ),
+    path(
         "api/auth/token/",
-        TokenObtainPairView.as_view(),
+        CookieTokenObtainPairView.as_view(
+            throttle_classes=[
+                LoginIPThrottle,
+                LoginAccountThrottle,
+            ],
+        ),
         name="token_obtain_pair",
     ),
     path(
         "api/auth/token/refresh/",
-        TokenRefreshView.as_view(),
+        CookieTokenRefreshView.as_view(),
         name="token_refresh",
+    ),
+    path(
+        "api/auth/token/blacklist/",
+        CookieTokenLogoutView.as_view(),
+        name="token_blacklist",
     ),
     path(
         "api/auth/me/",
@@ -72,10 +108,3 @@ urlpatterns = [
         include("contact.urls"),
     ),
 ]
-
-
-if settings.DEBUG:
-    urlpatterns += static(
-        settings.MEDIA_URL,
-        document_root=settings.MEDIA_ROOT,
-    )

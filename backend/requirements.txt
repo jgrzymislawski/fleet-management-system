@@ -11,3 +11,4 @@ django-auditlog==3.4.1
 openpyxl==3.1.5
 reportlab==5.1.0
 gunicorn==27.0.1
+redis==6.4.0

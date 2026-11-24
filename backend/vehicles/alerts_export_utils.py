@@ -5,6 +5,8 @@ from django.utils import timezone
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
 
+from config.spreadsheet_security import sanitize_workbook
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import (
@@ -79,7 +81,7 @@ def create_alerts_workbook(alerts):
 
     worksheet.auto_filter.ref = worksheet.dimensions
 
-    return workbook
+    return sanitize_workbook(workbook)
 
 
 def create_alerts_pdf(alerts, filter_name):
