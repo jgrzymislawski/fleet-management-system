@@ -9,6 +9,11 @@ from config.auth_views import (
     csrf_cookie,
 )
 
+from config.health_views import (
+    health_live,
+    health_ready,
+)
+
 from config.throttles import (
     LoginAccountThrottle,
     LoginIPThrottle,
@@ -21,6 +26,16 @@ from organizations.views import (
 
 
 urlpatterns = [
+    path(
+        "api/health/live/",
+        health_live,
+        name="health-live",
+    ),
+    path(
+        "api/health/ready/",
+        health_ready,
+        name="health-ready",
+    ),
     path(
         "admin/",
         admin.site.urls,

@@ -1,0 +1,92 @@
+diff --git a/deploy/Caddyfile b/deploy/Caddyfile
+index 9b512c8..962f3dc 100644
+--- a/deploy/Caddyfile
++++ b/deploy/Caddyfile
+@@ -21,16 +21,28 @@
+             max_size 12MB
+         }
+ 
+-        reverse_proxy backend:8000
++        reverse_proxy backend:8000 {
++            header_down -X-Content-Type-Options
++            header_down -X-Frame-Options
++            header_down -Referrer-Policy
++        }
+     }
+ 
+     # Panel administracyjny Django
+     handle /admin/* {
+-        reverse_proxy backend:8000
++        reverse_proxy backend:8000 {
++            header_down -X-Content-Type-Options
++            header_down -X-Frame-Options
++            header_down -Referrer-Policy
++        }
+     }
+ 
+     # React, Nginx i pliki static
+     handle {
+-        reverse_proxy frontend:80
++        reverse_proxy frontend:80 {
++            header_down -X-Content-Type-Options
++            header_down -X-Frame-Options
++            header_down -Referrer-Policy
++        }
+     }
+ }
+diff --git a/docker-compose.prod.yml b/docker-compose.prod.yml
+index 8ba0171..89c6102 100644
+--- a/docker-compose.prod.yml
++++ b/docker-compose.prod.yml
+@@ -1,4 +1,11 @@
+ 
++# Docker local log driver: bounded per-container log retention.
++x-flotivo-logging: &flotivo-logging
++  driver: local
++  options:
++    max-size: "10m"
++    max-file: "5"
++
+ services:
+   db:
+     image: postgres:17
+@@ -15,6 +22,7 @@ services:
+       retries: 10
+       start_period: 10s
+     restart: unless-stopped
++    logging: *flotivo-logging
+ 
+   redis:
+     image: redis:7.4-alpine
+@@ -32,6 +40,7 @@ services:
+       timeout: 3s
+       retries: 5
+     restart: unless-stopped
++    logging: *flotivo-logging
+ 
+   backend:
+     build:
+@@ -64,6 +73,7 @@ services:
+       retries: 5
+       start_period: 30s
+     restart: unless-stopped
++    logging: *flotivo-logging
+ 
+   frontend:
+     build:
+@@ -86,6 +96,7 @@ services:
+       retries: 5
+       start_period: 10s
+     restart: unless-stopped
++    logging: *flotivo-logging
+ 
+   edge:
+     image: caddy:2-alpine
+@@ -103,6 +114,7 @@ services:
+       frontend:
+         condition: service_healthy
+     restart: unless-stopped
++    logging: *flotivo-logging
+ 
+ volumes:
+   postgres_prod_data:

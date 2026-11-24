@@ -21,16 +21,28 @@
             max_size 12MB
         }
 
-        reverse_proxy backend:8000
+        reverse_proxy backend:8000 {
+            header_down -X-Content-Type-Options
+            header_down -X-Frame-Options
+            header_down -Referrer-Policy
+        }
     }
 
     # Panel administracyjny Django
     handle /admin/* {
-        reverse_proxy backend:8000
+        reverse_proxy backend:8000 {
+            header_down -X-Content-Type-Options
+            header_down -X-Frame-Options
+            header_down -Referrer-Policy
+        }
     }
 
     # React, Nginx i pliki static
     handle {
-        reverse_proxy frontend:80
+        reverse_proxy frontend:80 {
+            header_down -X-Content-Type-Options
+            header_down -X-Frame-Options
+            header_down -Referrer-Policy
+        }
     }
 }
