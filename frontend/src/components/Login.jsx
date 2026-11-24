@@ -5,7 +5,7 @@ import apiClient, {
   logoutSession,
   setAuthenticatedSession,
 } from "../api/client";
-import cars from "../assets/cars.jpg";
+import cars from "../assets/cars.webp";
 import "./Login.css";
 
 function Login({ onLoginSuccess }) {

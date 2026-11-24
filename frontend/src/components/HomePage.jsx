@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import Navbar from "./navbar/Navbar";
 import Footer from "./footer/Footer";
-import cars from "../assets/cars.jpg";
+import cars from "../assets/cars.webp";
 import "./HomePage.css";
 
 function HomePage() {

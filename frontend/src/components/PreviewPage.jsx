@@ -2,9 +2,9 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "./navbar/Navbar";
 import Footer from "./footer/Footer";
 
-import dashboardImage from "../assets/pulpit.png";
-import vehiclesImage from "../assets/samochody.png";
-import driversImage from "../assets/kierowcy.png";
+import dashboardImage from "../assets/pulpit.webp";
+import vehiclesImage from "../assets/samochody.webp";
+import driversImage from "../assets/kierowcy.webp";
 
 import "./PreviewPage.css";
 
