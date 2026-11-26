@@ -865,11 +865,6 @@ class AdminUserDetailView(
             )
         )
 
-        self.validate_self_update(
-            request,
-            membership,
-        )
-
         serializer = (
             AdminUserUpdateSerializer(
                 membership,
@@ -884,6 +879,12 @@ class AdminUserDetailView(
 
         serializer.is_valid(
             raise_exception=True
+        )
+
+        self.validate_self_update(
+            request,
+            membership,
+            serializer.validated_data,
         )
 
         with set_actor(
@@ -921,11 +922,6 @@ class AdminUserDetailView(
             )
         )
 
-        self.validate_self_update(
-            request,
-            membership,
-        )
-
         serializer = (
             AdminUserUpdateSerializer(
                 membership,
@@ -941,6 +937,12 @@ class AdminUserDetailView(
 
         serializer.is_valid(
             raise_exception=True
+        )
+
+        self.validate_self_update(
+            request,
+            membership,
+            serializer.validated_data,
         )
 
         with set_actor(
@@ -964,6 +966,7 @@ class AdminUserDetailView(
         self,
         request,
         membership,
+        validated_data,
     ):
         if (
             membership.user_id
@@ -971,16 +974,12 @@ class AdminUserDetailView(
         ):
             return
 
-        new_is_active = (
-            request.data.get(
-                "is_active"
-            )
+        new_is_active = validated_data.get(
+            "is_active"
         )
 
-        new_role = (
-            request.data.get(
-                "role"
-            )
+        new_role = validated_data.get(
+            "role"
         )
 
         if new_is_active is False:

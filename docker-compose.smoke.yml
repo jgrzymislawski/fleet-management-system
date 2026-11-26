@@ -30,6 +30,7 @@ services:
   backend:
     build:
       context: ./backend
+    user: "10001:10001"
     env_file:
       - ./backend/.env.smoke.local
     environment:

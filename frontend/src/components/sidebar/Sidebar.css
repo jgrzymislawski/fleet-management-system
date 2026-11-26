@@ -12,7 +12,8 @@
 
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 24px;
 
     box-sizing: border-box;
 
@@ -22,7 +23,8 @@
 }
 
 .sidebar-top {
-    min-height: 0;
+    /* Nie pozwalamy scisnac menu przy niskiej wysokosci okna. */
+    flex: 0 0 auto;
 }
 
 .sidebar-logo-row {
@@ -65,7 +67,7 @@
     color: #FAF5F2;
 
     font-family: 'Poppins', sans-serif;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 400;
 
     text-align: left;
@@ -108,7 +110,9 @@
 .sidebar-logout {
     width: 100%;
 
-    margin-top: 25px;
+    /* W wysokich oknach na dole; w niskich po menu, bez nakladania. */
+    flex: 0 0 auto;
+    margin-top: auto;
     padding: 13px 15px;
 
     border: 1px solid #FAF5F2;
@@ -119,7 +123,7 @@
     color: #FAF5F2;
 
     font-family: 'Poppins', sans-serif;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 400;
 
     cursor: pointer;
@@ -164,13 +168,13 @@
     .sidebar-item {
         padding: 12px;
 
-        font-size: 13px;
+        font-size: 14px;
     }
 
     .sidebar-logout {
         padding: 12px;
 
-        font-size: 13px;
+        font-size: 14px;
     }
 }
 
@@ -247,13 +251,13 @@
     .sidebar-item {
         padding: 13px 14px;
 
-        font-size: 14px;
+        font-size: 15px;
     }
 
     .sidebar-logout {
         padding: 13px 14px;
 
-        font-size: 14px;
+        font-size: 15px;
     }
 
     .sidebar-mobile-toggle {
@@ -341,12 +345,12 @@
     .sidebar-item {
         padding: 12px 13px;
 
-        font-size: 13px;
+        font-size: 14px;
     }
 
     .sidebar-logout {
         padding: 12px 13px;
 
-        font-size: 13px;
+        font-size: 14px;
     }
 }

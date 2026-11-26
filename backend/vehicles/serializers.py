@@ -785,11 +785,16 @@ class VehicleDocumentSerializer(
                 )
             )
 
-        allowed_mime_types = {
-            "application/pdf",
-            "image/jpeg",
-            "image/png",
+        expected_mime_types = {
+            ".pdf": "application/pdf",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
         }
+
+        expected_mime_type = expected_mime_types[
+            extension
+        ]
 
         mime_type = getattr(
             file,
@@ -797,15 +802,11 @@ class VehicleDocumentSerializer(
             None,
         )
 
-        if (
-            mime_type
-            and mime_type
-            not in allowed_mime_types
-        ):
+        if mime_type and mime_type != expected_mime_type:
             raise serializers.ValidationError(
                 (
-                    "Nieprawidłowy "
-                    "typ pliku."
+                    "Typ MIME pliku nie odpowiada "
+                    "jego rozszerzeniu."
                 )
             )
 
@@ -818,7 +819,7 @@ class VehicleDocumentSerializer(
         if (
             guessed_mime_type
             and guessed_mime_type
-            not in allowed_mime_types
+            != expected_mime_type
         ):
             raise serializers.ValidationError(
                 (

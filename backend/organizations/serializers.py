@@ -281,14 +281,14 @@ class AdminUserCreateSerializer(
 
             return attrs
 
-        self.validate_companies(
+        self._validate_companies(
             companies=companies,
             organization=organization,
         )
 
         return attrs
 
-    def validate_companies(
+    def _validate_companies(
         self,
         companies,
         organization,
@@ -317,6 +317,22 @@ class AdminUserCreateSerializer(
                         )
                     }
                 )
+
+            try:
+                company_id = serializers.IntegerField(
+                    min_value=1,
+                ).run_validation(company_id)
+            except serializers.ValidationError as exc:
+                raise serializers.ValidationError(
+                    {
+                        "companies": (
+                            "Identyfikator spółki musi być "
+                            "dodatnią liczbą całkowitą."
+                        )
+                    }
+                ) from exc
+
+            access["company_id"] = company_id
 
             if company_role not in (
                 "viewer",
@@ -540,7 +556,7 @@ class AdminUserUpdateSerializer(
             return attrs
 
         if "companies" in attrs:
-            self.validate_companies(
+            self._validate_companies(
                 companies=(
                     attrs[
                         "companies"
@@ -551,7 +567,7 @@ class AdminUserUpdateSerializer(
 
         return attrs
 
-    def validate_companies(
+    def _validate_companies(
         self,
         companies,
         organization,
@@ -580,6 +596,22 @@ class AdminUserUpdateSerializer(
                         )
                     }
                 )
+
+            try:
+                company_id = serializers.IntegerField(
+                    min_value=1,
+                ).run_validation(company_id)
+            except serializers.ValidationError as exc:
+                raise serializers.ValidationError(
+                    {
+                        "companies": (
+                            "Identyfikator spółki musi być "
+                            "dodatnią liczbą całkowitą."
+                        )
+                    }
+                ) from exc
+
+            access["company_id"] = company_id
 
             if company_role not in (
                 "viewer",

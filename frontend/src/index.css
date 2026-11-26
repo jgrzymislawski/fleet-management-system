@@ -1,7 +1,21 @@
-
 /*
- * Flotivo korzysta z wlasnych arkuszy CSS.
+ * Flotivo — wspolny wyglad paskow przewijania.
  *
- * Style globalne znajduja sie w App.css.
- * Style podstron znajduja sie przy komponentach.
+ * App.css zawiera juz style ::-webkit-scrollbar dla przegladarek
+ * opartych na Chromium. Firefox wymaga scrollbar-width i
+ * scrollbar-color NA KAZDYM przewijanym elemencie, a nie tylko na html.
+ *
+ * Ten arkusz jest importowany przez main.jsx; nie wymaga zmian
+ * w Sidebar.css, DriverList.css ani w komponentach React.
  */
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #B7AEA6 transparent;
+}
+
+@media (forced-colors: active) {
+    * {
+        scrollbar-color: auto;
+    }
+}

@@ -13,6 +13,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import (
     InvalidToken,
     TokenError,
@@ -104,7 +105,16 @@ class CookieTokenRefreshView(TokenRefreshView):
         )
 
         try:
-            serializer.is_valid(raise_exception=True)
+            validated_refresh = RefreshToken(refresh_token)
+
+            JWTAuthentication().get_user(
+                validated_refresh
+            )
+
+            serializer.is_valid(
+                raise_exception=True
+            )
+
         except TokenError as exc:
             raise InvalidToken(str(exc)) from exc
 
